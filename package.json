@@ -1,0 +1,22 @@
+{
+  "name": "agriflow-ai-root",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI-Powered Organic Product Management & Delivery Platform",
+  "workspaces": [
+    "api",
+    "agriadmin",
+    "agriapp"
+  ],
+  "scripts": {
+    "api:dev": "npm --prefix api run dev",
+    "api:build": "npm --prefix api run build",
+    "api:start": "npm --prefix api run start",
+    "admin:dev": "npm --prefix agriadmin run dev",
+    "admin:build": "npm --prefix agriadmin run build"
+  },
+  "devDependencies": {
+    "metro-runtime": "^0.83.8",
+    "react": "19.1.0"
+  }
+}
