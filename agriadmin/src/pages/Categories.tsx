@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { categories, Category } from '../data/mockData';
+import React, { useState, useEffect } from 'react';
+import { categories, Category, fetchCategoriesFromDB } from '../data/mockData';
 
 const defaultForm: Omit<Category, 'id'> = {
   name: '', emoji: '🌿', description: '', productCount: 0, color: '#22c55e'
@@ -13,7 +13,15 @@ const Categories: React.FC = () => {
   const [editing, setEditing] = useState<Category | null>(null);
   const [form, setForm] = useState<Omit<Category, 'id'>>(defaultForm);
   const [search, setSearch] = useState('');
-  const [deleteConf, setDeleteConf] = useState<number | null>(null);
+  const [deleteConf, setDeleteConf] = useState<any>(null);
+
+  useEffect(() => {
+    fetchCategoriesFromDB().then(dbCategories => {
+      if (dbCategories && dbCategories.length > 0) {
+        setItems(dbCategories);
+      }
+    });
+  }, []);
 
   const openAdd = () => { setForm(defaultForm); setEditing(null); setModal('add'); };
   const openEdit = (cat: Category) => { setForm({ name: cat.name, emoji: cat.emoji, description: cat.description, productCount: cat.productCount, color: cat.color }); setEditing(cat); setModal('edit'); };

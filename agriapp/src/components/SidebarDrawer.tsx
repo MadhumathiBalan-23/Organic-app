@@ -6,7 +6,7 @@ import {
 import {
   X, LayoutDashboard, ShoppingBag, Tags, Sprout, Users,
   Package, FileText, Store, Calendar, Wallet, Home,
-  RefreshCw, User, MessageSquare, PhoneCall, LogOut, ChevronRight
+  RefreshCw, User, MessageSquare, PhoneCall, LogOut, ChevronRight, MonitorCog
 } from 'lucide-react-native';
 import { UserRole } from './RoleHeader';
 
@@ -24,6 +24,8 @@ interface SidebarDrawerProps {
   activeScreen: string;
   onSelectScreen: (screenKey: string) => void;
   onLogout: () => void;
+  isApprovedVendor?: boolean;
+  isAdminUser?: boolean;
 }
 
 export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
@@ -32,17 +34,21 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
   role,
   activeScreen,
   onSelectScreen,
-  onLogout
+  onLogout,
+  isApprovedVendor = false,
+  isAdminUser = false,
 }) => {
   // Ultra-clean, simplified menu lists (No clutter headers, standard mobile app names)
   const getAdminMenus = (): MenuItem[] => [
     { key: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={16} /> },
+    { key: 'vendorRequests', label: 'Vendor Approvals', badge: 'New', icon: <Users size={16} /> },
     { key: 'products', label: 'Products', badge: '12', icon: <ShoppingBag size={16} /> },
     { key: 'categories', label: 'Categories', icon: <Tags size={16} /> },
     { key: 'brands', label: 'Brands', icon: <Sprout size={16} /> },
     { key: 'customers', label: 'Customers', badge: 'VIP', icon: <Users size={16} /> },
     { key: 'orders', label: 'Orders', badge: 'New', icon: <Package size={16} /> },
     { key: 'logs', label: 'System Logs', icon: <FileText size={16} /> },
+    { key: 'CUSTOMER_SWITCH', label: 'View Customer Market', badge: 'STORE', icon: <Home size={16} /> },
   ];
 
   const getVendorMenus = (): MenuItem[] => [
@@ -51,18 +57,36 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
     { key: 'orders', label: 'Orders Dispatch', badge: '3', icon: <Package size={16} /> },
     { key: 'harvests', label: 'Harvest Tracker', icon: <Calendar size={16} /> },
     { key: 'payouts', label: 'Payouts', badge: '₹48K', icon: <Wallet size={16} /> },
+    { key: 'CUSTOMER_SWITCH', label: 'Back to Customer Market', badge: 'STORE', icon: <Home size={16} /> },
   ];
 
-  const getCustomerMenus = (): MenuItem[] => [
-    { key: 'HOME', label: 'Home Market', icon: <Home size={16} /> },
-    { key: 'ALL_PRODUCTS', label: 'Products', icon: <ShoppingBag size={16} /> },
-    { key: 'CART', label: 'My Cart', icon: <Package size={16} /> },
-    { key: 'MY_SUBSCRIPTIONS', label: 'Subscriptions', badge: 'Active', icon: <RefreshCw size={16} /> },
-    { key: 'ORDER_HISTORY', label: 'My Orders', icon: <FileText size={16} /> },
-    { key: 'PROFILE', label: 'My Profile', icon: <User size={16} /> },
-    { key: 'WHATSAPP_AI', label: 'WhatsApp AI', badge: 'BOT', icon: <MessageSquare size={16} /> },
-    { key: 'AI_VOICE_CALL', label: 'Voice Assistant', badge: 'LIVE', icon: <PhoneCall size={16} /> },
-  ];
+  const getCustomerMenus = (): MenuItem[] => {
+    const menus: MenuItem[] = [
+      { key: 'HOME', label: 'Home Market', icon: <Home size={16} /> },
+      { key: 'ALL_PRODUCTS', label: 'Products', icon: <ShoppingBag size={16} /> },
+      { key: 'CART', label: 'My Cart', icon: <Package size={16} /> },
+      { key: 'MY_SUBSCRIPTIONS', label: 'Subscriptions', badge: 'Active', icon: <RefreshCw size={16} /> },
+      { key: 'ORDER_HISTORY', label: 'My Orders', icon: <FileText size={16} /> },
+      { key: 'PROFILE', label: 'My Profile', icon: <User size={16} /> },
+    ];
+
+    // Admin user return option
+    if (isAdminUser) {
+      menus.push({ key: 'ADMIN_SWITCH', label: 'Super Admin Console', badge: 'ADMIN', icon: <MonitorCog size={16} /> });
+    }
+
+    // Only approved vendors get the vendor switch drawer option
+    if (isApprovedVendor) {
+      menus.push({ key: 'VENDOR_SWITCH', label: 'Switch to Vendor Console', badge: 'FARMER', icon: <Store size={16} /> });
+    }
+
+    menus.push(
+      { key: 'WHATSAPP_AI', label: 'WhatsApp AI', badge: 'BOT', icon: <MessageSquare size={16} /> },
+      { key: 'AI_VOICE_CALL', label: 'Voice Assistant', badge: 'LIVE', icon: <PhoneCall size={16} /> }
+    );
+
+    return menus;
+  };
 
   const menuItems = role === 'admin' 
     ? getAdminMenus() 
@@ -81,10 +105,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={sd.modalOverlay}>
-        {/* Backdrop Press to Close */}
-        <TouchableOpacity style={sd.backdrop} activeOpacity={1} onPress={onClose} />
-
-        {/* Ultra Slim Professional Drawer */}
+        {/* Left Side Drawer Container (Opens on left side) */}
         <View style={sd.drawerContainer}>
           <SafeAreaView style={{ flex: 1 }}>
             {/* Header Box */}
@@ -98,8 +119,8 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
                 <Text style={sd.appName} numberOfLines={1}>Mathira Organic</Text>
                 <Text style={sd.roleSub} numberOfLines={1}>{getRoleTitle()}</Text>
               </View>
-              <TouchableOpacity style={sd.closeBtn} onPress={onClose}>
-                <X size={14} color="#64748B" />
+              <TouchableOpacity style={sd.closeBtn} onPress={onClose} activeOpacity={0.7}>
+                <X size={15} color="#FFFFFF" strokeWidth={2.5} />
               </TouchableOpacity>
             </View>
 
@@ -118,8 +139,9 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
                     activeOpacity={0.7}
                   >
                     <View style={sd.iconBox}>
-                      {React.cloneElement(item.icon as React.ReactElement, {
-                        color: isActive ? '#15803D' : '#64748B'
+                      {React.cloneElement(item.icon as React.ReactElement<any>, {
+                        color: isActive ? '#15803D' : '#64748B',
+                        size: 18,
                       })}
                     </View>
                     
@@ -157,10 +179,13 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
 
             {/* Minimalist App Version Footer */}
             <View style={sd.footerBox}>
-              <Text style={sd.footerText}>Mathira Organic v1.0</Text>
+              <Text style={sd.footerText}>🌿 Mathira Organic · 100% Certified</Text>
             </View>
           </SafeAreaView>
         </View>
+
+        {/* Backdrop Press to Close (Fills remaining right side) */}
+        <TouchableOpacity style={sd.backdrop} activeOpacity={1} onPress={onClose} />
       </View>
     </Modal>
   );
@@ -176,83 +201,86 @@ const sd = StyleSheet.create({
     flex: 1,
   },
   drawerContainer: {
-    width: 210, // Slim width as requested
+    width: 265, // Comfortable width for mobile and tablet
     height: '100%',
     backgroundColor: '#FFFFFF',
     borderRightWidth: 1,
     borderRightColor: '#E2E8F0',
     shadowColor: '#000',
-    shadowOffset: { width: 3, height: 0 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 6,
+    shadowOffset: { width: 5, height: 0 },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    elevation: 16,
   },
   headerBox: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#0D2B1D',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: 'rgba(34, 197, 94, 0.25)',
   },
   logo: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#15803D',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: '#22c55e',
   },
   appName: {
-    color: '#0F172A',
-    fontSize: 12,
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: '800',
     letterSpacing: -0.2,
   },
   roleSub: {
-    color: '#15803D',
-    fontSize: 9,
+    color: '#86EFAC',
+    fontSize: 10,
     fontWeight: '700',
-    marginTop: 0.5,
+    marginTop: 1,
   },
   closeBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#E2E8F0',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   menuList: {
-    paddingVertical: 8,
-    paddingHorizontal: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
   },
   menuRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 9,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    marginBottom: 2,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginBottom: 4,
   },
   menuRowActive: {
     backgroundColor: '#F0FDF4',
-    borderLeftWidth: 3,
+    borderLeftWidth: 3.5,
     borderLeftColor: '#15803D',
   },
   logoutRow: {
-    marginTop: 4,
+    marginTop: 8,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
   },
   iconBox: {
-    marginRight: 9,
-    width: 18,
+    marginRight: 10,
+    width: 22,
     alignItems: 'center',
   },
   menuLabel: {
     flex: 1,
-    color: '#334155',
-    fontSize: 11.5,
+    color: '#1E293B',
+    fontSize: 13,
     fontWeight: '600',
   },
   menuLabelActive: {
@@ -261,22 +289,25 @@ const sd = StyleSheet.create({
   },
   logoutLabel: {
     color: '#DC2626',
-    fontSize: 11.5,
+    fontSize: 13,
     fontWeight: '700',
   },
   badge: {
     backgroundColor: '#F1F5F9',
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 6,
-    marginRight: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginRight: 6,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   badgeActive: {
     backgroundColor: '#DCFCE7',
+    borderColor: '#86EFAC',
   },
   badgeText: {
     color: '#64748B',
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: '700',
   },
   badgeTextActive: {
@@ -286,11 +317,11 @@ const sd = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: '#F1F5F9',
-    marginVertical: 6,
-    marginHorizontal: 8,
+    marginVertical: 8,
+    marginHorizontal: 6,
   },
   footerBox: {
-    paddingVertical: 8,
+    paddingVertical: 12,
     alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
@@ -298,7 +329,7 @@ const sd = StyleSheet.create({
   },
   footerText: {
     color: '#94A3B8',
-    fontSize: 9.5,
+    fontSize: 10,
     fontWeight: '600',
   },
 });

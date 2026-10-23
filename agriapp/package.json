@@ -4,10 +4,11 @@
   "private": true,
   "main": "index.js",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
+    "start": "node start.js -p 8085",
+    "android": "node start.js --android -p 8085",
+    "ios": "node start.js --ios -p 8085",
+    "web": "node start.js --web -p 8085",
+    "build": "tsc && npx expo export -p web",
     "ts:check": "tsc"
   },
   "dependencies": {

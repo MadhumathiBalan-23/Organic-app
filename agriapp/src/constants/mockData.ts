@@ -30,7 +30,7 @@ export const Categories = [
 export const MockProducts: Product[] = [
   {
     id: 'p1',
-    name: 'Organic A2 Cow Milk',
+    name: 'Organic A2 Desi Cow Milk',
     category: 'Dairy & Pure Ghee',
     price: 85,
     unit: 'Litre',
@@ -39,16 +39,16 @@ export const MockProducts: Product[] = [
     minStock: 20,
     availabilityStart: '05:00 AM',
     availabilityEnd: '10:00 AM',
-    description: 'Fresh organic A2 cow milk sourced directly from local pastures, untouched by synthetic chemicals and processed using organic methods.',
-    benefits: ['Rich in A2 Beta-Casein protein', 'No added preservatives', 'Sourced locally from pasture-fed cows'],
-    imageUrl: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=400',
+    description: 'Fresh organic A2 cow milk sourced directly from local pastures, untouched by synthetic chemicals and processed using traditional organic methods.',
+    benefits: ['Rich in A2 Beta-Casein protein', 'No added preservatives or antibiotics', 'Sourced locally from pasture-fed desi cows'],
+    imageUrl: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=600',
     subscriptionAllowed: true,
     oneTimeAllowed: true,
     organicCertified: true
   },
   {
     id: 'p2',
-    name: 'Pure Desi Cow Ghee',
+    name: 'Pure Desi Cow Bilona Ghee',
     category: 'Dairy & Pure Ghee',
     price: 680,
     unit: '500ml',
@@ -57,64 +57,154 @@ export const MockProducts: Product[] = [
     minStock: 10,
     availabilityStart: '06:00 AM',
     availabilityEnd: '09:00 PM',
-    description: 'Handcrafted Desi Cow Ghee churned using the traditional Bilona method. Offers rich aroma and health properties.',
-    benefits: ['Hand-churned via classical Bilona method', 'Great for digestion and immunity booster', 'High smoke point for healthy cooking'],
-    imageUrl: 'https://images.unsplash.com/photo-1627308595229-7830a5c91f9f?auto=format&fit=crop&q=80&w=400',
+    description: 'Handcrafted Desi Cow Ghee churned using the traditional wooden Bilona method. Offers divine aroma, golden granules, and natural immunity booster.',
+    benefits: ['Hand-churned via classical Bilona method', 'Rich in fat-soluble vitamins A, D, E & K', 'High smoke point for healthy digestive cooking'],
+    imageUrl: 'https://images.unsplash.com/photo-1627308595229-7830a5c91f9f?auto=format&fit=crop&q=80&w=600',
     subscriptionAllowed: true,
     oneTimeAllowed: true,
     organicCertified: true
   },
   {
     id: 'p3',
-    name: 'Fresh Farm Spinach (Palak)',
+    name: 'Farm Fresh Baby Spinach (Palak)',
     category: 'Fresh Vegetables',
     price: 30,
     unit: 'Bunch',
-    rating: 4.5,
-    stock: 15,
-    minStock: 10,
+    rating: 4.6,
+    stock: 60,
+    minStock: 15,
     availabilityStart: '06:00 AM',
     availabilityEnd: '12:00 PM',
-    description: 'Freshly harvested spinach leaves, rich in iron and vitamins, sourced from chemical-free soil.',
-    benefits: ['Loaded with Iron and Calcium', 'Harvested on the morning of delivery', 'Thoroughly washed with clean running water'],
-    imageUrl: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&q=80&w=400',
+    description: 'Freshly harvested tender spinach leaves, rich in iron, folic acid, and natural chlorophyll, grown in chemical-free virgin soil.',
+    benefits: ['Loaded with natural Iron & Calcium', 'Harvested on the morning of delivery', 'Thoroughly washed with organic bio-purifiers'],
+    imageUrl: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&q=80&w=600',
     subscriptionAllowed: true,
     oneTimeAllowed: true,
     organicCertified: true
   },
   {
     id: 'p4',
-    name: 'Native Organic Bananas',
+    name: 'Native Organic Robusta Bananas',
     category: 'Fresh Fruits',
     price: 60,
     unit: 'Dozen',
-    rating: 4.6,
+    rating: 4.7,
     stock: 75,
     minStock: 15,
     availabilityStart: '06:00 AM',
     availabilityEnd: '08:00 PM',
-    description: 'Naturally ripened native sweet bananas directly cut from chemical-free organic orchards.',
-    benefits: ['100% naturally ripened without carbide', 'Instant natural energy booster', 'Grown using natural animal compost manure'],
-    imageUrl: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&q=80&w=400',
+    description: '100% naturally tree-ripened native sweet bananas harvested from organic hillside orchards without artificial calcium carbide chemicals.',
+    benefits: ['Zero carbide ripening chemicals', 'High potassium & natural dietary fibre', 'Sourced from smallholder organic farmers'],
+    imageUrl: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&q=80&w=600',
     subscriptionAllowed: true,
     oneTimeAllowed: true,
     organicCertified: true
   },
   {
     id: 'p5',
-    name: 'Wild Forest Raw Honey',
+    name: 'Wild Forest Raw Organic Honey',
     category: 'Dry Fruits & Snacks',
     price: 240,
     unit: '250g',
-    rating: 4.7,
-    stock: 9,
-    minStock: 10, // Stock level 9 is less than 10, triggering Low Stock status
+    rating: 4.9,
+    stock: 35,
+    minStock: 10,
     availabilityStart: '08:00 AM',
     availabilityEnd: '09:00 PM',
-    description: 'Raw unpasteurized honey filtered directly from honeycombs in deep forests. Retains natural pollens.',
-    benefits: ['Unheated, unfiltered and 100% raw', 'Natural immunity shield', 'Rich source of trace vitamins & antioxidants'],
-    imageUrl: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&q=80&w=400',
+    description: 'Raw unpasteurized organic honey filtered directly from wild forest beehives. Packed with active bee pollen, beneficial enzymes, and natural nectar.',
+    benefits: ['Unheated, unfiltered & 100% pure raw nectar', 'Natural antibacterial & immunity booster', 'Sustainably harvested without hurting bee colonies'],
+    imageUrl: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&q=80&w=600',
     subscriptionAllowed: false,
+    oneTimeAllowed: true,
+    organicCertified: true
+  },
+  {
+    id: 'p6',
+    name: 'Wood Churned Groundnut Oil',
+    category: 'Organic Oils',
+    price: 320,
+    unit: '1 Litre',
+    rating: 4.8,
+    stock: 40,
+    minStock: 10,
+    availabilityStart: '07:00 AM',
+    availabilityEnd: '09:00 PM',
+    description: 'Cold-pressed in traditional wooden chekku apparatus at low temperatures. Retains authentic nutty aroma, heart-friendly mono-unsaturated fats, and natural vitamin E.',
+    benefits: ['Extracted at cold temperatures below 40°C', 'Free from chemical hexane refining solvents', 'Zero trans fats and unadulterated pure seed oil'],
+    imageUrl: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&q=80&w=600',
+    subscriptionAllowed: true,
+    oneTimeAllowed: true,
+    organicCertified: true
+  },
+  {
+    id: 'p7',
+    name: 'Farm-Fresh Vine Country Tomatoes',
+    category: 'Fresh Vegetables',
+    price: 45,
+    unit: '1 Kg',
+    rating: 4.5,
+    stock: 85,
+    minStock: 20,
+    availabilityStart: '06:00 AM',
+    availabilityEnd: '06:00 PM',
+    description: 'Juicy, plump heirloom country tomatoes picked ripe from the vine at dawn. Naturally sweet, tangy, and bursting with fresh flavor and lycopene.',
+    benefits: ['Rich in antioxidant Lycopene & Vitamin C', 'Grown in nutrient-rich organic compost', 'Delivered within 24 hours of farm harvest'],
+    imageUrl: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&q=80&w=600',
+    subscriptionAllowed: true,
+    oneTimeAllowed: true,
+    organicCertified: true
+  },
+  {
+    id: 'p8',
+    name: 'Organic Aged Basmati Brown Rice',
+    category: 'Groceries & Grains',
+    price: 195,
+    unit: '1 Kg',
+    rating: 4.7,
+    stock: 90,
+    minStock: 15,
+    availabilityStart: '07:00 AM',
+    availabilityEnd: '09:00 PM',
+    description: 'Single-origin Himalayan foothills whole grain brown basmati rice. High in natural dietary fiber and slow-release low GI energy with a delicate nutty fragrance.',
+    benefits: ['Naturally low Glycemic Index (GI)', 'Retains healthy outer bran and germ layers', '100% certified pesticide-free organic paddy'],
+    imageUrl: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=80&w=600',
+    subscriptionAllowed: true,
+    oneTimeAllowed: true,
+    organicCertified: true
+  },
+  {
+    id: 'p9',
+    name: 'Pure Virgin Cold-Pressed Coconut Oil',
+    category: 'Organic Oils',
+    price: 260,
+    unit: '500ml',
+    rating: 4.9,
+    stock: 50,
+    minStock: 12,
+    availabilityStart: '07:00 AM',
+    availabilityEnd: '09:00 PM',
+    description: 'Centrifuged pure virgin coconut oil made from fresh organic coconuts within 2 hours of harvest. Pristine water-clear clarity with heavenly fresh coconut aroma.',
+    benefits: ['Abundant in Medium Chain Triglycerides (MCTs)', 'Zero heating or chemical bleaching applied', 'Ideal for ketogenic diets, cooking & holistic skin care'],
+    imageUrl: 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600',
+    subscriptionAllowed: true,
+    oneTimeAllowed: true,
+    organicCertified: true
+  },
+  {
+    id: 'p10',
+    name: 'Pasture-Raised Free-Range Eggs',
+    category: 'Dairy & Pure Ghee',
+    price: 95,
+    unit: 'Pack of 6',
+    rating: 4.8,
+    stock: 65,
+    minStock: 15,
+    availabilityStart: '06:00 AM',
+    availabilityEnd: '11:00 AM',
+    description: 'Farm-fresh country eggs laid by pasture-foraged free-range hens fed on natural grains, herbs, and morning sunlight. Deep golden yolks packed with natural Omega-3.',
+    benefits: ['Hens raised cage-free on organic green pastures', 'No hormones, artificial coloring or antibiotic feeds', 'Twice the Omega-3 fatty acids of factory eggs'],
+    imageUrl: 'https://images.unsplash.com/photo-1506976785307-8732e854ad03?auto=format&fit=crop&q=80&w=600',
+    subscriptionAllowed: true,
     oneTimeAllowed: true,
     organicCertified: true
   }
@@ -321,4 +411,78 @@ export const AdminUserLogs: AdminUserLog[] = [
   { id: 'l9', user: 'Admin Jeena', role: 'Admin', action: 'Logged out', module: 'Auth', timestamp: '2026-09-24T20:00:00', type: 'logout' },
   { id: 'l10', user: 'Manager Ravi', role: 'Manager', action: 'Updated stock: Basmati Rice', module: 'Products', timestamp: '2026-09-24T15:10:00', type: 'update' },
 ];
+
+// ── LIVE PRISMA SQLITE DATABASE API LAYER ────────────────────
+const API_BASE = 'http://localhost:5050/api';
+
+export async function fetchProductsFromDB(): Promise<Product[]> {
+  try {
+    const res = await fetch(`${API_BASE}/products`);
+    const json = await res.json();
+    if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+      return json.data.map((p: any) => ({
+        ...p,
+        category: typeof p.category === 'object' && p.category !== null ? p.category.name : (p.categoryName || p.category || 'Organic'),
+        benefits: Array.isArray(p.benefits) ? p.benefits : (typeof p.benefits === 'string' ? JSON.parse(p.benefits || '[]') : [])
+      }));
+    }
+  } catch (e) {
+    console.warn('Could not fetch products from SQLite DB:', e);
+  }
+  return MockProducts;
+}
+
+export async function fetchSubscriptionsFromDB(): Promise<Subscription[]> {
+  try {
+    const res = await fetch(`${API_BASE}/subscriptions`);
+    const json = await res.json();
+    if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+      return json.data.map((s: any) => ({
+        id: s.id,
+        product: s.product || MockProducts[0],
+        quantity: s.quantity,
+        frequency: s.frequency as any,
+        deliveryTime: s.deliveryTime,
+        duration: s.duration,
+        startDate: s.startDate,
+        paymentStatus: s.paymentStatus as any,
+        status: s.status as any,
+        priceTotal: s.priceTotal,
+        autoRenew: s.autoRenew,
+        confirmationRequired: s.confirmationRequired,
+        skippedDates: typeof s.skippedDates === 'string' ? JSON.parse(s.skippedDates) : []
+      }));
+    }
+  } catch (e) {
+    console.warn('Could not fetch subscriptions from SQLite DB:', e);
+  }
+  return MockSubscriptions;
+}
+
+export async function fetchDeliveriesFromDB(): Promise<any[]> {
+  try {
+    const res = await fetch(`${API_BASE}/deliveries`);
+    const json = await res.json();
+    if (json.success && Array.isArray(json.data)) {
+      return json.data;
+    }
+  } catch (e) {
+    console.warn('Could not fetch deliveries from SQLite DB:', e);
+  }
+  return MockDeliveries;
+}
+
+export async function fetchAIAlertsFromDB(): Promise<any[]> {
+  try {
+    const res = await fetch(`${API_BASE}/ai-alerts`);
+    const json = await res.json();
+    if (json.success && Array.isArray(json.data)) {
+      return json.data;
+    }
+  } catch (e) {
+    console.warn('Could not fetch AI alerts from SQLite DB:', e);
+  }
+  return MockAIAlerts;
+}
+
 

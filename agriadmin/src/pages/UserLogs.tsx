@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { userLogs, UserLog } from '../data/mockData';
+import React, { useState, useEffect } from 'react';
+import { userLogs, UserLog, fetchUserLogsFromDB } from '../data/mockData';
 
 const typeChip = (type: string) => {
   const map: Record<string, string> = {
@@ -15,10 +15,18 @@ const typeEmoji = (type: string) => {
 };
 
 const UserLogs: React.FC = () => {
-  const [logs] = useState<UserLog[]>(userLogs);
+  const [logs, setLogs] = useState<UserLog[]>(userLogs);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('All');
   const [filterModule, setFilterModule] = useState('All');
+
+  useEffect(() => {
+    fetchUserLogsFromDB().then(dbLogs => {
+      if (dbLogs && dbLogs.length > 0) {
+        setLogs(dbLogs);
+      }
+    });
+  }, []);
 
   const modules = ['All', ...Array.from(new Set(logs.map(l => l.module)))];
   const types = ['All', 'create', 'update', 'delete', 'login', 'logout', 'view'];

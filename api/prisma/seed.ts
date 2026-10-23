@@ -1,0 +1,559 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+const initialCategories = [
+  { name: 'Dairy & Pure Ghee', emoji: '🥛', description: 'Fresh A2 milk, cultured curd, churned ghee, and butter' },
+  { name: 'Fresh Vegetables', emoji: '🥦', description: 'Chemical-free, farm-picked fresh daily vegetables' },
+  { name: 'Fresh Fruits', emoji: '🍎', description: 'Naturally ripened, pesticide-free seasonal fruits' },
+  { name: 'Groceries & Grains', emoji: '🌾', description: 'Heritage grains, brown rice, pulses, and unrefined flours' },
+  { name: 'Organic Oils', emoji: '🫒', description: 'Wood-churned cold pressed unrefined oils' },
+  { name: 'Dry Fruits & Snacks', emoji: '🍯', description: 'Raw forest honey, organic nuts, and roasted seeds' },
+  { name: 'Honey & Preserves', emoji: '🍯', description: 'Raw honey, jams, pickles, chutneys' },
+  { name: 'Eggs & Poultry', emoji: '🥚', description: 'Free-range eggs, country chicken' },
+];
+
+const initialBrands = [
+  { name: 'DesiDairy', emoji: '🐄', origin: 'Gujarat', productCount: 14, established: '2016', rating: 4.9 },
+  { name: 'NatureFarm', emoji: '🌱', origin: 'Tamil Nadu', productCount: 34, established: '2018', rating: 4.8 },
+  { name: 'GreenRoots', emoji: '🌿', origin: 'Kerala', productCount: 18, established: '2019', rating: 4.7 },
+  { name: 'Pure Harvest', emoji: '🌾', origin: 'Punjab', productCount: 22, established: '2015', rating: 4.6 },
+  { name: 'OrganicOasis', emoji: '🏡', origin: 'Karnataka', productCount: 27, established: '2017', rating: 4.5 },
+  { name: 'RuralRich', emoji: '🌻', origin: 'Rajasthan', productCount: 19, established: '2020', rating: 4.4 },
+];
+
+const initialProducts = [
+  {
+    id: 'p1',
+    name: 'Organic A2 Desi Cow Milk',
+    categoryName: 'Dairy & Pure Ghee',
+    brand: 'DesiDairy',
+    price: 85,
+    unit: 'Litre',
+    rating: 4.8,
+    stock: 120,
+    minStock: 20,
+    availabilityStart: '05:00 AM',
+    availabilityEnd: '10:00 AM',
+    description: 'Fresh organic A2 cow milk sourced directly from local pastures, untouched by synthetic chemicals and processed using traditional organic methods.',
+    benefits: JSON.stringify(['Rich in A2 Beta-Casein protein', 'No added preservatives or antibiotics', 'Sourced locally from pasture-fed desi cows']),
+    imageUrl: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=600',
+    subscriptionAllowed: true,
+    oneTimeAllowed: true,
+    organicCertified: true,
+    emoji: '🥛'
+  },
+  {
+    id: 'p2',
+    name: 'Pure Desi Cow Bilona Ghee',
+    categoryName: 'Dairy & Pure Ghee',
+    brand: 'DesiDairy',
+    price: 680,
+    unit: '500ml',
+    rating: 4.9,
+    stock: 45,
+    minStock: 10,
+    availabilityStart: '06:00 AM',
+    availabilityEnd: '09:00 PM',
+    description: 'Handcrafted Desi Cow Ghee churned using the traditional wooden Bilona method. Offers divine aroma, golden granules, and natural immunity booster.',
+    benefits: JSON.stringify(['Hand-churned via classical Bilona method', 'Rich in fat-soluble vitamins A, D, E & K', 'High smoke point for healthy digestive cooking']),
+    imageUrl: 'https://images.unsplash.com/photo-1627308595229-7830a5c91f9f?auto=format&fit=crop&q=80&w=600',
+    subscriptionAllowed: true,
+    oneTimeAllowed: true,
+    organicCertified: true,
+    emoji: '🍯'
+  },
+  {
+    id: 'p3',
+    name: 'Farm Fresh Baby Spinach (Palak)',
+    categoryName: 'Fresh Vegetables',
+    brand: 'GreenRoots',
+    price: 30,
+    unit: 'Bunch',
+    rating: 4.6,
+    stock: 60,
+    minStock: 15,
+    availabilityStart: '06:00 AM',
+    availabilityEnd: '12:00 PM',
+    description: 'Freshly harvested tender spinach leaves, rich in iron, folic acid, and natural chlorophyll, grown in chemical-free virgin soil.',
+    benefits: JSON.stringify(['Loaded with natural Iron & Calcium', 'Harvested on the morning of delivery', 'Thoroughly washed with organic bio-purifiers']),
+    imageUrl: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&q=80&w=600',
+    subscriptionAllowed: true,
+    oneTimeAllowed: true,
+    organicCertified: true,
+    emoji: '🥦'
+  },
+  {
+    id: 'p4',
+    name: 'Native Organic Robusta Bananas',
+    categoryName: 'Fresh Fruits',
+    brand: 'GreenRoots',
+    price: 60,
+    unit: 'Dozen',
+    rating: 4.7,
+    stock: 75,
+    minStock: 15,
+    availabilityStart: '06:00 AM',
+    availabilityEnd: '08:00 PM',
+    description: '100% naturally tree-ripened native sweet bananas harvested from organic hillside orchards without artificial calcium carbide chemicals.',
+    benefits: JSON.stringify(['Zero carbide ripening chemicals', 'High potassium & natural dietary fibre', 'Sourced from smallholder organic farmers']),
+    imageUrl: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&q=80&w=600',
+    subscriptionAllowed: true,
+    oneTimeAllowed: true,
+    organicCertified: true,
+    emoji: '🍌'
+  },
+  {
+    id: 'p5',
+    name: 'Wild Forest Raw Organic Honey',
+    categoryName: 'Dry Fruits & Snacks',
+    brand: 'NatureFarm',
+    price: 240,
+    unit: '250g',
+    rating: 4.9,
+    stock: 35,
+    minStock: 10,
+    availabilityStart: '08:00 AM',
+    availabilityEnd: '09:00 PM',
+    description: 'Raw unpasteurized organic honey filtered directly from wild forest beehives. Packed with active bee pollen, beneficial enzymes, and natural nectar.',
+    benefits: JSON.stringify(['Unheated, unfiltered & 100% pure raw nectar', 'Natural antibacterial & immunity booster', 'Sustainably harvested without hurting bee colonies']),
+    imageUrl: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&q=80&w=600',
+    subscriptionAllowed: false,
+    oneTimeAllowed: true,
+    organicCertified: true,
+    emoji: '🍯'
+  },
+  {
+    id: 'p6',
+    name: 'Wood Churned Groundnut Oil',
+    categoryName: 'Organic Oils',
+    brand: 'OrganicOasis',
+    price: 320,
+    unit: '1 Litre',
+    rating: 4.8,
+    stock: 40,
+    minStock: 10,
+    availabilityStart: '07:00 AM',
+    availabilityEnd: '09:00 PM',
+    description: 'Cold-pressed in traditional wooden chekku apparatus at low temperatures. Retains authentic nutty aroma, heart-friendly mono-unsaturated fats, and natural vitamin E.',
+    benefits: JSON.stringify(['Extracted at cold temperatures below 40°C', 'Free from chemical hexane refining solvents', 'Zero trans fats and unadulterated pure seed oil']),
+    imageUrl: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&q=80&w=600',
+    subscriptionAllowed: true,
+    oneTimeAllowed: true,
+    organicCertified: true,
+    emoji: '🫒'
+  },
+  {
+    id: 'p7',
+    name: 'Farm-Fresh Vine Country Tomatoes',
+    categoryName: 'Fresh Vegetables',
+    brand: 'GreenRoots',
+    price: 45,
+    unit: '1 Kg',
+    rating: 4.5,
+    stock: 85,
+    minStock: 20,
+    availabilityStart: '06:00 AM',
+    availabilityEnd: '06:00 PM',
+    description: 'Juicy, plump heirloom country tomatoes picked ripe from the vine at dawn. Naturally sweet, tangy, and bursting with fresh flavor and lycopene.',
+    benefits: JSON.stringify(['Rich in antioxidant Lycopene & Vitamin C', 'Grown in nutrient-rich organic compost', 'Delivered within 24 hours of farm harvest']),
+    imageUrl: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&q=80&w=600',
+    subscriptionAllowed: true,
+    oneTimeAllowed: true,
+    organicCertified: true,
+    emoji: '🍅'
+  },
+  {
+    id: 'p8',
+    name: 'Organic Aged Basmati Brown Rice',
+    categoryName: 'Groceries & Grains',
+    brand: 'Pure Harvest',
+    price: 195,
+    unit: '1 Kg',
+    rating: 4.7,
+    stock: 90,
+    minStock: 15,
+    availabilityStart: '07:00 AM',
+    availabilityEnd: '09:00 PM',
+    description: 'Single-origin Himalayan foothills whole grain brown basmati rice. High in natural dietary fiber and slow-release low GI energy with a delicate nutty fragrance.',
+    benefits: JSON.stringify(['Naturally low Glycemic Index (GI)', 'Retains healthy outer bran and germ layers', '100% certified pesticide-free organic paddy']),
+    imageUrl: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=80&w=600',
+    subscriptionAllowed: true,
+    oneTimeAllowed: true,
+    organicCertified: true,
+    emoji: '🌾'
+  },
+  {
+    id: 'p9',
+    name: 'Pure Virgin Cold-Pressed Coconut Oil',
+    categoryName: 'Organic Oils',
+    brand: 'OrganicOasis',
+    price: 260,
+    unit: '500ml',
+    rating: 4.9,
+    stock: 50,
+    minStock: 12,
+    availabilityStart: '07:00 AM',
+    availabilityEnd: '09:00 PM',
+    description: 'Centrifuged pure virgin coconut oil made from fresh organic coconuts within 2 hours of harvest. Pristine water-clear clarity with heavenly fresh coconut aroma.',
+    benefits: JSON.stringify(['Abundant in Medium Chain Triglycerides (MCTs)', 'Zero heating or chemical bleaching applied', 'Ideal for ketogenic diets, cooking & holistic skin care']),
+    imageUrl: 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600',
+    subscriptionAllowed: true,
+    oneTimeAllowed: true,
+    organicCertified: true,
+    emoji: '🥥'
+  },
+  {
+    id: 'p10',
+    name: 'Pasture-Raised Free-Range Eggs',
+    categoryName: 'Dairy & Pure Ghee',
+    brand: 'RuralRich',
+    price: 95,
+    unit: 'Pack of 6',
+    rating: 4.8,
+    stock: 65,
+    minStock: 15,
+    availabilityStart: '06:00 AM',
+    availabilityEnd: '11:00 AM',
+    description: 'Farm-fresh country eggs laid by pasture-foraged free-range hens fed on natural grains, herbs, and morning sunlight. Deep golden yolks packed with natural Omega-3.',
+    benefits: JSON.stringify(['Hens raised cage-free on organic green pastures', 'No hormones, artificial coloring or antibiotic feeds', 'Twice the Omega-3 fatty acids of factory eggs']),
+    imageUrl: 'https://images.unsplash.com/photo-1506976785307-8732e854ad03?auto=format&fit=crop&q=80&w=600',
+    subscriptionAllowed: true,
+    oneTimeAllowed: true,
+    organicCertified: true,
+    emoji: '🥚'
+  }
+];
+
+const initialUsers = [
+  { id: 'usr-admin', fullName: 'AgriFlow Admin', email: 'admin@agriflow.org', phoneNumber: '9999999999', role: 'admin', passwordHash: 'OTP_VERIFIED', location: 'Chennai, TN', status: 'Active', totalOrders: 0, totalSpend: 0 },
+  { id: 'usr-vendor', fullName: 'Organic Harvest Vendor', email: 'vendor@agriflow.org', phoneNumber: '8888888888', role: 'vendor', passwordHash: 'OTP_VERIFIED', location: 'Salem, TN', status: 'Active', totalOrders: 0, totalSpend: 0 },
+  { id: 'usr-c1', fullName: 'Priya Sharma', email: 'priya.sharma@gmail.com', phoneNumber: '9876543210', role: 'customer', passwordHash: 'OTP_VERIFIED', location: 'Chennai, TN', status: 'VIP', totalOrders: 34, totalSpend: 12800 },
+  { id: 'usr-c2', fullName: 'Arjun Menon', email: 'arjun.menon@email.com', phoneNumber: '9123456789', role: 'customer', passwordHash: 'OTP_VERIFIED', location: 'Kochi, KL', status: 'Active', totalOrders: 18, totalSpend: 7400 },
+  { id: 'usr-c3', fullName: 'Deepika Nair', email: 'deepika.n@email.com', phoneNumber: '8765432109', role: 'customer', passwordHash: 'OTP_VERIFIED', location: 'Bangalore, KA', status: 'VIP', totalOrders: 52, totalSpend: 21000 },
+  { id: 'usr-c4', fullName: 'Raj Kumar', email: 'raj.kumar@email.com', phoneNumber: '9988776655', role: 'customer', passwordHash: 'OTP_VERIFIED', location: 'Coimbatore, TN', status: 'Active', totalOrders: 8, totalSpend: 2800 },
+  { id: 'usr-c5', fullName: 'Sneha Patel', email: 'sneha.patel@email.com', phoneNumber: '8877665544', role: 'customer', passwordHash: 'OTP_VERIFIED', location: 'Ahmedabad, GJ', status: 'Active', totalOrders: 22, totalSpend: 9600 },
+  { id: 'usr-c6', fullName: 'Vikram Singh', email: 'vikram.s@email.com', phoneNumber: '7766554433', role: 'customer', passwordHash: 'OTP_VERIFIED', location: 'Jaipur, RJ', status: 'Inactive', totalOrders: 4, totalSpend: 1200 },
+  { id: 'usr-c7', fullName: 'Ananya Krishnan', email: 'ananya.k@email.com', phoneNumber: '9955443322', role: 'customer', passwordHash: 'OTP_VERIFIED', location: 'Hyderabad, TS', status: 'VIP', totalOrders: 29, totalSpend: 14500 },
+  { id: 'usr-c8', fullName: 'Rohit Gupta', email: 'rohit.g@email.com', phoneNumber: '8844332211', role: 'customer', passwordHash: 'OTP_VERIFIED', location: 'Delhi, DL', status: 'Active', totalOrders: 6, totalSpend: 1800 },
+];
+
+const initialSubscriptions = [
+  {
+    id: 'sub-01',
+    userId: 'usr-c1',
+    productId: 'p1', // Milk
+    quantity: 2,
+    frequency: 'Daily',
+    deliveryTime: '06:30 AM',
+    duration: 30,
+    startDate: '2026-08-20',
+    paymentStatus: 'Paid',
+    status: 'Active',
+    priceTotal: 5100,
+    autoRenew: true,
+    confirmationRequired: true,
+    skippedDates: JSON.stringify(['2026-08-23'])
+  },
+  {
+    id: 'sub-02',
+    userId: 'usr-c1',
+    productId: 'p2', // Ghee
+    quantity: 1,
+    frequency: 'Monthly',
+    deliveryTime: '09:00 AM',
+    duration: 90,
+    startDate: '2026-08-15',
+    paymentStatus: 'Paid',
+    status: 'Active',
+    priceTotal: 2040,
+    autoRenew: false,
+    confirmationRequired: false,
+    skippedDates: JSON.stringify([])
+  },
+  {
+    id: 'sub-03',
+    userId: 'usr-c3',
+    productId: 'p10', // Eggs
+    quantity: 2,
+    frequency: 'Weekly',
+    deliveryTime: '07:00 AM',
+    duration: 60,
+    startDate: '2026-08-10',
+    paymentStatus: 'Paid',
+    status: 'Active',
+    priceTotal: 1520,
+    autoRenew: true,
+    confirmationRequired: false,
+    skippedDates: JSON.stringify([])
+  },
+  {
+    id: 'sub-04',
+    userId: 'usr-c7',
+    productId: 'p3', // Spinach
+    quantity: 1,
+    frequency: 'Daily',
+    deliveryTime: '06:30 AM',
+    duration: 30,
+    startDate: '2026-08-25',
+    paymentStatus: 'Paid',
+    status: 'Active',
+    priceTotal: 900,
+    autoRenew: true,
+    confirmationRequired: true,
+    skippedDates: JSON.stringify([])
+  }
+];
+
+const initialOrders = [
+  {
+    id: 'ORD-2001',
+    userId: 'usr-c1',
+    customerName: 'Priya Sharma',
+    customerPhone: '9876543210',
+    deliveryAddress: '12 MG Road, Chennai',
+    totalAmount: 1530,
+    orderType: 'One-Time',
+    paymentStatus: 'SUCCESS',
+    deliveryStatus: 'DELIVERED',
+    paymentMethod: 'UPI'
+  },
+  {
+    id: 'ORD-2002',
+    userId: 'usr-c3',
+    customerName: 'Deepika Nair',
+    customerPhone: '8765432109',
+    deliveryAddress: '45 Koramangala, Bangalore',
+    totalAmount: 620,
+    orderType: 'One-Time',
+    paymentStatus: 'SUCCESS',
+    deliveryStatus: 'PROCESSING',
+    paymentMethod: 'COD'
+  },
+  {
+    id: 'ORD-2003',
+    userId: 'usr-c2',
+    customerName: 'Arjun Menon',
+    customerPhone: '9123456789',
+    deliveryAddress: '7 Marine Drive, Kochi',
+    totalAmount: 520,
+    orderType: 'One-Time',
+    paymentStatus: 'SUCCESS',
+    deliveryStatus: 'PENDING',
+    paymentMethod: 'Card'
+  },
+  {
+    id: 'ORD-2004',
+    userId: 'usr-c7',
+    customerName: 'Ananya Krishnan',
+    customerPhone: '9955443322',
+    deliveryAddress: '33 Banjara Hills, Hyderabad',
+    totalAmount: 2675,
+    orderType: 'Subscription Delivery',
+    paymentStatus: 'SUCCESS',
+    deliveryStatus: 'DELIVERED',
+    paymentMethod: 'UPI'
+  },
+  {
+    id: 'ORD-2005',
+    userId: 'usr-c5',
+    customerName: 'Sneha Patel',
+    customerPhone: '8877665544',
+    deliveryAddress: '19 CG Road, Ahmedabad',
+    totalAmount: 270,
+    orderType: 'One-Time',
+    paymentStatus: 'REFUNDED',
+    deliveryStatus: 'CANCELLED',
+    paymentMethod: 'UPI'
+  },
+  {
+    id: 'ORD-2006',
+    userId: 'usr-c4',
+    customerName: 'Raj Kumar',
+    customerPhone: '9988776655',
+    deliveryAddress: '8 RS Puram, Coimbatore',
+    totalAmount: 380,
+    orderType: 'One-Time',
+    paymentStatus: 'SUCCESS',
+    deliveryStatus: 'DELIVERED',
+    paymentMethod: 'Card'
+  },
+  {
+    id: 'ORD-2007',
+    userId: 'usr-c8',
+    customerName: 'Rohit Gupta',
+    customerPhone: '8844332211',
+    deliveryAddress: '22 Lajpat Nagar, Delhi',
+    totalAmount: 640,
+    orderType: 'One-Time',
+    paymentStatus: 'PENDING',
+    deliveryStatus: 'PENDING',
+    paymentMethod: 'COD'
+  },
+  {
+    id: 'ORD-2008',
+    userId: 'usr-c1',
+    customerName: 'Priya Sharma',
+    customerPhone: '9876543210',
+    deliveryAddress: '12 MG Road, Chennai',
+    totalAmount: 720,
+    orderType: 'One-Time',
+    paymentStatus: 'SUCCESS',
+    deliveryStatus: 'DELIVERED',
+    paymentMethod: 'UPI'
+  }
+];
+
+const initialDeliveries = [
+  {
+    id: 'del-01',
+    customerName: 'Ananya Sharma',
+    address: 'Flat 402, Green Glen Layout, Outer Ring Road, Bangalore - 560103',
+    products: 'Organic A2 Cow Milk (2 Litres), Fresh Spinach (1 Bunch)',
+    quantity: '2L, 1 Bunch',
+    deliveryTime: '06:30 AM',
+    status: 'Assigned'
+  },
+  {
+    id: 'del-02',
+    customerName: 'Rohan Verma',
+    address: 'No 45, Ideal Homes Township, Rajarajeshwari Nagar, Bangalore - 560098',
+    products: 'Desi Cow Ghee (500ml)',
+    quantity: '1 Jar',
+    deliveryTime: '09:00 AM',
+    status: 'Delivered'
+  },
+  {
+    id: 'del-03',
+    customerName: 'Priya Sharma',
+    address: '12 MG Road, Chennai - 600001',
+    products: 'Organic A2 Cow Milk (2 Litres)',
+    quantity: '2 Litres',
+    deliveryTime: '06:30 AM',
+    status: 'Out for Delivery'
+  }
+];
+
+const initialUserLogs = [
+  { id: 'l1', user: 'Admin Jeena', role: 'Admin', action: 'Added product: Organic A2 Desi Cow Milk', module: 'Products', type: 'create' },
+  { id: 'l2', user: 'Admin Jeena', role: 'Admin', action: 'Updated price of Pure Desi Cow Bilona Ghee to ₹680', module: 'Products', type: 'update' },
+  { id: 'l3', user: 'Manager Ravi', role: 'Manager', action: 'Logged in to admin dashboard', module: 'Auth', type: 'login' },
+  { id: 'l4', user: 'Manager Ravi', role: 'Manager', action: 'Verified certified brand: OrganicOasis', module: 'Brands', type: 'create' },
+  { id: 'l5', user: 'Admin Jeena', role: 'Admin', action: 'Synced certified inventory with local farms', module: 'Inventory', type: 'update' },
+  { id: 'l6', user: 'Admin Jeena', role: 'Admin', action: 'Viewed VIP customer profile: Priya Sharma', module: 'Customers', type: 'view' },
+  { id: 'l7', user: 'Manager Ravi', role: 'Manager', action: 'Updated ORD-2002 status to Processing', module: 'Orders', type: 'update' },
+  { id: 'l8', user: 'Staff Preethi', role: 'Manager', action: 'Verified morning delivery schedule', module: 'Deliveries', type: 'update' },
+  { id: 'l9', user: 'Admin Jeena', role: 'Admin', action: 'Reviewed monthly crop yield forecasts', module: 'AI Analytics', type: 'view' },
+  { id: 'l10', user: 'Manager Ravi', role: 'Manager', action: 'Updated stock: Aged Basmati Rice', module: 'Products', type: 'update' }
+];
+
+const initialAIAlerts = [
+  { id: 'al-1', type: 'Demand Prediction', text: 'Milk demand expected to rise by 18% tomorrow due to subscription renewals.', time: '2 hrs ago', severity: 'info' },
+  { id: 'al-2', type: 'Low Stock Alert', text: 'Tomato and Forest Honey stocks may be insufficient for tomorrow\'s morning orders.', time: '4 hrs ago', severity: 'warning' },
+  { id: 'al-3', type: 'Delivery Analytics', text: '42 deliveries successfully mapped and routes optimized for early morning delivery.', time: '5 hrs ago', severity: 'success' }
+];
+
+export async function main() {
+  console.log('🌱 [Prisma SQLite]: Seeding all organic database records into dev.db...');
+
+  // 1. Categories
+  for (const cat of initialCategories) {
+    await prisma.category.upsert({
+      where: { name: cat.name },
+      update: cat,
+      create: cat,
+    });
+  }
+  console.log(`✓ Seeded ${initialCategories.length} Categories into Prisma.`);
+
+  // 2. Brands
+  for (const b of initialBrands) {
+    await prisma.brand.upsert({
+      where: { name: b.name },
+      update: b,
+      create: b,
+    });
+  }
+  console.log(`✓ Seeded ${initialBrands.length} Brands into Prisma.`);
+
+  // 3. Products
+  for (const prod of initialProducts) {
+    await prisma.product.upsert({
+      where: { id: prod.id },
+      update: prod,
+      create: prod,
+    });
+  }
+  console.log(`✓ Seeded ${initialProducts.length} Products with images & benefits into Prisma.`);
+
+  // 4. Users
+  for (const u of initialUsers) {
+    await prisma.user.upsert({
+      where: { phoneNumber: u.phoneNumber },
+      update: u,
+      create: u,
+    });
+  }
+  console.log(`✓ Seeded ${initialUsers.length} Users/Customers into Prisma.`);
+
+  // 5. Subscriptions
+  for (const s of initialSubscriptions) {
+    await prisma.subscription.upsert({
+      where: { id: s.id },
+      update: s,
+      create: s,
+    });
+  }
+  console.log(`✓ Seeded ${initialSubscriptions.length} Subscriptions into Prisma.`);
+
+  // 6. Orders
+  for (const o of initialOrders) {
+    await prisma.order.upsert({
+      where: { id: o.id },
+      update: o,
+      create: o,
+    });
+  }
+  console.log(`✓ Seeded ${initialOrders.length} Orders into Prisma.`);
+
+  // 7. Deliveries
+  for (const d of initialDeliveries) {
+    await prisma.delivery.upsert({
+      where: { id: d.id },
+      update: d,
+      create: d,
+    });
+  }
+  console.log(`✓ Seeded ${initialDeliveries.length} Deliveries into Prisma.`);
+
+  // 8. UserLogs
+  for (const l of initialUserLogs) {
+    await prisma.userLog.upsert({
+      where: { id: l.id },
+      update: l,
+      create: l,
+    });
+  }
+  console.log(`✓ Seeded ${initialUserLogs.length} UserLogs into Prisma.`);
+
+  // 9. AI Alerts
+  for (const a of initialAIAlerts) {
+    await prisma.aIAlert.upsert({
+      where: { id: a.id },
+      update: a,
+      create: a,
+    });
+  }
+  console.log(`✓ Seeded ${initialAIAlerts.length} AI Alerts into Prisma.`);
+
+  console.log('✅ [Prisma SQLite]: Entire database seeded and fully stored in SQLite dev.db!');
+}
+
+main()
+  .catch((e) => {
+    console.error('❌ Prisma seed error:', e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

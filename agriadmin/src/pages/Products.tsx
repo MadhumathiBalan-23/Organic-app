@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { products, Product, categories, brands } from '../data/mockData';
+import React, { useState, useEffect } from 'react';
+import { products, Product, categories, brands, fetchProductsFromDB } from '../data/mockData';
 
 const statusChip = (status: string) => {
   const map: Record<string, string> = { Active: 'chip-success', Inactive: 'chip-danger', 'Low Stock': 'chip-warning' };
@@ -15,7 +15,15 @@ const Products: React.FC = () => {
   const [modal, setModal] = useState<'add' | 'edit' | null>(null);
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState<typeof defaultForm>(defaultForm);
-  const [deleteConf, setDeleteConf] = useState<number | null>(null);
+  const [deleteConf, setDeleteConf] = useState<any>(null);
+
+  useEffect(() => {
+    fetchProductsFromDB().then(dbProducts => {
+      if (dbProducts && dbProducts.length > 0) {
+        setItems(dbProducts);
+      }
+    });
+  }, []);
 
   const categoryNames = categories.map(c => c.name);
   const brandNames = brands.map(b => b.name);
@@ -27,17 +35,36 @@ const Products: React.FC = () => {
   };
   const closeModal = () => { setModal(null); setEditing(null); };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name.trim()) return;
     if (editing) {
       setItems(prev => prev.map(p => p.id === editing.id ? { ...p, ...form } : p));
     } else {
-      setItems(prev => [{ id: Date.now(), ...form, sales: 0 }, ...prev]);
+      const newProd: Product = { id: 'p_' + Date.now(), ...form, sales: 0 };
+      setItems(prev => [newProd, ...prev]);
+      try {
+        await fetch('http://localhost:5050/api/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: form.name,
+            categoryName: form.category,
+            brand: form.brand,
+            price: Number(form.price),
+            stock: Number(form.stock),
+            unit: form.unit,
+            description: `Organic ${form.name}`,
+            imageUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=600'
+          })
+        });
+      } catch (e) {
+        console.warn('Could not post product to SQLite API:', e);
+      }
     }
     closeModal();
   };
 
-  const handleDelete = (id: number) => { setItems(prev => prev.filter(p => p.id !== id)); setDeleteConf(null); };
+  const handleDelete = (id: any) => { setItems(prev => prev.filter(p => p.id !== id)); setDeleteConf(null); };
 
   const filtered = items.filter(p => {
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.category.toLowerCase().includes(search.toLowerCase()) || p.brand.toLowerCase().includes(search.toLowerCase());
@@ -85,8 +112,12 @@ const Products: React.FC = () => {
             {filtered.map(p => (
               <tr key={p.id}>
                 <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 24 }}>{p.emoji}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {p.imageUrl ? (
+                      <img src={p.imageUrl} alt={p.name} style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--color-border)' }} />
+                    ) : (
+                      <span style={{ fontSize: 24 }}>{p.emoji}</span>
+                    )}
                     <div>
                       <div style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Unit: {p.unit}</div>

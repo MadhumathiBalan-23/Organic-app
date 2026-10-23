@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { 
   SafeAreaView, StyleSheet, Text, View, TextInput, 
-  TouchableOpacity, StatusBar, Alert, Modal, Image
+  TouchableOpacity, StatusBar, Alert, Modal, Image, ActivityIndicator
 } from 'react-native';
-import { MockProducts, Product } from './src/constants/mockData';
+import { MockProducts, MockDeliveries, Product } from './src/constants/mockData';
 import { MobileFrameWrapper } from './src/components/MobileFrameWrapper';
 import { RoleHeader, UserRole } from './src/components/RoleHeader';
 import { BottomNavBar } from './src/components/BottomNavBar';
+import { VendorBottomNavBar } from './src/components/VendorBottomNavBar';
 import { CustomerScreens } from './src/screens/CustomerScreens';
 import { AIScreens } from './src/screens/AIScreens';
 import { VendorAndAdminScreens } from './src/screens/VendorAndAdminScreens';
@@ -21,6 +22,7 @@ export default function App() {
   const [customerScreen, setCustomerScreen] = useState<string>('HOME');
   const [adminTab, setAdminTab] = useState<string>('dashboard');
   const [vendorTab, setVendorTab] = useState<string>('dashboard');
+  const [showVendorAddProduct, setShowVendorAddProduct] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedProduct, setSelectedProduct] = useState<Product>(MockProducts[0]);
@@ -46,35 +48,184 @@ export default function App() {
     }
   ]);
 
-  // Form states
+  // Mobile OTP Auth states (Customer-only login, Passwordless)
+  const [authStep, setAuthStep] = useState<'PHONE' | 'OTP'>('PHONE');
   const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [receivedOtp, setReceivedOtp] = useState('');
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [customerToken, setCustomerToken] = useState<string | null>(null);
+  const [vendorToken, setVendorToken] = useState<string | null>(null);
+  const [isAdminUser, setIsAdminUser] = useState(false);
+  const [isSwitchingToVendor, setIsSwitchingToVendor] = useState(false);
+  const [vendorStatus, setVendorStatus] = useState<'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED'>('NONE');
+
+  const checkVendorStatus = async (overridePhone?: string) => {
+    const cleanPhone = (overridePhone || phone || '').replace(/[^0-9]/g, '');
+    if (!cleanPhone || cleanPhone.length !== 10) return;
+    try {
+      const res = await fetch(`http://localhost:5050/api/vendor-requests/status/${cleanPhone}`);
+      const data = await res.json();
+      if (data.success && data.status) {
+        setVendorStatus(data.status);
+      }
+    } catch {
+      // offline fallback
+    }
+  };
 
   const triggerRefresh = () => setRefreshKey((prev) => prev + 1);
 
-  const handleUniversalLogin = () => {
-    if (phone.length !== 10) {
-      Alert.alert('Error', 'Please enter a valid 10-digit phone number.');
+  const handleSendOtp = async (overridePhone?: string) => {
+    const cleanPhone = (overridePhone || phone).replace(/[^0-9]/g, '');
+    setAuthError(null);
+
+    if (cleanPhone.length !== 10) {
+      setAuthError('Please enter a valid 10-digit mobile number.');
       return;
     }
-    
-    if (phone === '9999999999' && password === 'admin123') {
-      setRole('admin');
-    } else if (phone === '8888888888' && password === 'vendor123') {
-      setRole('vendor');
-    } else if (password === 'customer123') {
-      setRole('customer');
-    } else {
-      Alert.alert('Error', 'Invalid Credentials.');
+
+    setIsSendingOtp(true);
+    try {
+      const res = await fetch('http://localhost:5050/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber: cleanPhone })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setReceivedOtp(data.otp || '1234');
+      } else {
+        setReceivedOtp('1234');
+      }
+    } catch {
+      // Offline / network fallback with demo OTP
+      setReceivedOtp('1234');
+    } finally {
+      setIsSendingOtp(false);
+      setAuthStep('OTP');
+      setOtp('');
     }
+  };
+
+  // Customer Login: ONLY generates and sets Customer Token, moves directly to Customer Page
+  const handleVerifyOtp = async (codeToVerify?: string) => {
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const cleanCode = (codeToVerify || otp).trim();
+    setAuthError(null);
+
+    if (cleanCode.length !== 4) {
+      setAuthError('Please enter the 4-digit OTP code.');
+      return;
+    }
+
+    setIsVerifying(true);
+    try {
+      const res = await fetch('http://localhost:5050/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber: cleanPhone, otp: cleanCode })
+      });
+      const data = await res.json();
+      if (data.success && data.user) {
+        if (data.token) {
+          setCustomerToken(data.token);
+        }
+        if (data.user.role === 'admin' || cleanPhone === '9999999999') {
+          setIsAdminUser(true);
+          setRole('admin');
+          setAdminTab('dashboard');
+        } else {
+          setIsAdminUser(false);
+          setRole('customer');
+          setCustomerScreen('HOME');
+          checkVendorStatus(cleanPhone);
+        }
+        setAuthStep('PHONE');
+        setOtp('');
+        return;
+      }
+    } catch {
+      // Fallback
+    }
+
+    // Client-side fallback check
+    if (cleanCode === '1234' || (receivedOtp && cleanCode === receivedOtp)) {
+      if (cleanPhone === '9999999999') {
+        setIsAdminUser(true);
+        setCustomerToken('demo_admin_token_' + Date.now());
+        setRole('admin');
+        setAdminTab('dashboard');
+      } else {
+        setIsAdminUser(false);
+        setCustomerToken('demo_customer_token_' + Date.now());
+        setRole('customer');
+        setCustomerScreen('HOME');
+        checkVendorStatus(cleanPhone);
+      }
+      setAuthStep('PHONE');
+      setOtp('');
+    } else {
+      setAuthError('Invalid OTP code. Enter 1234 or your received OTP.');
+    }
+    setIsVerifying(false);
+  };
+
+  // Switch to Vendor: ONLY permitted when Admin has verified and approved the vendor request
+  const handleSwitchToVendor = async () => {
+    if (isSwitchingToVendor) return;
+    const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
+    const validPhone = cleanPhone.length === 10 ? cleanPhone : '9876543210';
+
+    setIsSwitchingToVendor(true);
+
+    try {
+      const res = await fetch('http://localhost:5050/api/auth/vendor-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber: validPhone })
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success && data.token) {
+        setVendorToken(data.token);
+        setVendorStatus('APPROVED');
+        // Smooth brief animation pause so user sees the loading state cleanly
+        setTimeout(() => {
+          setRole('vendor');
+          setVendorTab('dashboard');
+          setIsSwitchingToVendor(false);
+        }, 400);
+      } else {
+        setIsSwitchingToVendor(false);
+        Alert.alert(
+          'Vendor Verification Required',
+          data.message || 'Please submit your Vendor Application in your Profile and wait for Admin approval.'
+        );
+      }
+    } catch {
+      setIsSwitchingToVendor(false);
+    }
+  };
+
+  // Switch back to Customer Market
+  const handleSwitchToCustomer = () => {
+    setRole('customer');
+    setCustomerScreen('HOME');
   };
 
   const handleLogout = () => {
     setRole(null);
+    setIsAdminUser(false);
     setPhone('');
-    setPassword('');
-    setShowPassword(false);
+    setOtp('');
+    setReceivedOtp('');
+    setAuthStep('PHONE');
+    setAuthError(null);
+    setCustomerToken(null);
+    setVendorToken(null);
     setCustomerScreen('HOME');
     setAdminTab('dashboard');
     setVendorTab('dashboard');
@@ -87,6 +238,22 @@ export default function App() {
   };
 
   const handleSelectScreen = (screenKey: string) => {
+    if (screenKey === 'VENDOR_SWITCH') {
+      setShowMenu(false);
+      handleSwitchToVendor();
+      return;
+    }
+    if (screenKey === 'CUSTOMER_SWITCH') {
+      setShowMenu(false);
+      handleSwitchToCustomer();
+      return;
+    }
+    if (screenKey === 'ADMIN_SWITCH') {
+      setShowMenu(false);
+      setRole('admin');
+      setAdminTab('dashboard');
+      return;
+    }
     if (role === 'admin') {
       setAdminTab(screenKey);
     } else if (role === 'vendor') {
@@ -96,7 +263,7 @@ export default function App() {
     }
   };
 
-  // --- 1. UNIVERSAL LOGIN SCREEN ---
+  // --- 1. NEAT CUSTOMER LOGIN SCREEN (ONLY CUSTOMER TOKEN GENERATED) ---
   if (role === null) {
     return (
       <MobileFrameWrapper>
@@ -106,51 +273,174 @@ export default function App() {
             <View style={styles.logoContainer}>
               <Image 
                 source={require('./asset/logo.jpeg')}
-                style={{ width: 90, height: 90, borderRadius: 45, marginBottom: 12 }}
+                style={styles.logoImg}
                 resizeMode="contain"
               />
-              <Text style={styles.logoTitle}>Mathira Organic Farming</Text>
-              <Text style={styles.logoSubtitle}>
+              <Text style={styles.brandTitle}>Mathira Organic Farming</Text>
+              <Text style={styles.brandSubtitle}>
                 Pure · Natural · Healthy organic food products direct from certified farms.
               </Text>
-            </View>
-
-            <View style={{ width: '100%' }}>
-              <Text style={styles.label}>Mobile Number</Text>
-              <TextInput 
-                style={styles.input} 
-                placeholder="10-digit number" 
-                keyboardType="phone-pad" 
-                maxLength={10}
-                value={phone} 
-                onChangeText={(text) => setPhone(text.replace(/[^0-9]/g, ''))} 
-                placeholderTextColor="#94A3B8" 
-              />
-              <Text style={styles.label}>Password</Text>
-              <View style={styles.passwordContainer}>
-                <TextInput 
-                  style={styles.passwordInput} 
-                  placeholder="••••••••" 
-                  value={password} 
-                  onChangeText={setPassword} 
-                  secureTextEntry={!showPassword} 
-                  placeholderTextColor="#94A3B8" 
-                />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-                  <Text style={{ fontSize: 16 }}>{showPassword ? '🙈' : '👁️'}</Text>
-                </TouchableOpacity>
-              </View>
-
-              <TouchableOpacity style={styles.primaryButton} onPress={handleUniversalLogin}>
-                <Text style={styles.buttonText}>Secure Login</Text>
-              </TouchableOpacity>
               
-              <Text style={[styles.demoText, { textAlign: 'left', lineHeight: 18, marginTop: 16 }]}>
-                Demo Admin: 9999999999 / admin123{'\n'}
-                Demo Vendor: 8888888888 / vendor123{'\n'}
-                Demo Customer: Any 10 digits / customer123
-              </Text>
+              <View style={styles.customerBadge}>
+                <Text style={styles.customerBadgeText}>🛒 Customer Access</Text>
+              </View>
             </View>
+
+            {authStep === 'PHONE' ? (
+              <View style={{ width: '100%' }}>
+                <Text style={styles.inputSectionTitle}>Enter Mobile Number</Text>
+                
+                <View style={styles.phoneInputRow}>
+                  <View style={styles.countryCodeBadge}>
+                    <Text style={styles.flagEmoji}>🇮🇳</Text>
+                    <Text style={styles.countryCodeText}>+91</Text>
+                  </View>
+                  <TextInput 
+                    style={styles.phoneInput} 
+                    placeholder="10-digit number" 
+                    keyboardType="phone-pad" 
+                    maxLength={10}
+                    value={phone} 
+                    onChangeText={(text) => {
+                      setPhone(text.replace(/[^0-9]/g, ''));
+                      setAuthError(null);
+                    }} 
+                    placeholderTextColor="#94A3B8" 
+                  />
+                </View>
+
+                {authError && (
+                  <View style={styles.errorBox}>
+                    <Text style={styles.errorText}>⚠️ {authError}</Text>
+                  </View>
+                )}
+
+                <TouchableOpacity 
+                  style={[styles.primaryButton, phone.length !== 10 && styles.buttonDisabled]} 
+                  onPress={() => handleSendOtp()}
+                  disabled={isSendingOtp}
+                  activeOpacity={0.8}
+                >
+                  {isSendingOtp ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.buttonText}>Get OTP on SMS 📲</Text>
+                  )}
+                </TouchableOpacity>
+
+                {/* Neat One-tap test shortcut */}
+                <TouchableOpacity 
+                  style={styles.neatTestPill}
+                  onPress={() => { setPhone('9876543210'); setAuthError(null); }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.neatTestText}>
+                    👤 Customer Demo: <Text style={{ fontWeight: 'bold', color: '#15803D' }}>9876543210</Text>
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Super Admin Quick Access */}
+                <TouchableOpacity 
+                  style={[styles.neatTestPill, { marginTop: 6, borderColor: '#166534', backgroundColor: '#F0FDF4' }]}
+                  onPress={() => { setPhone('9999999999'); setAuthError(null); }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.neatTestText}>
+                    ⚙️ Super Admin Access: <Text style={{ fontWeight: 'bold', color: '#166534' }}>9999999999</Text>
+                  </Text>
+                </TouchableOpacity>
+                
+                <Text style={styles.privacyNote}>
+                  🔒 Passwordless Secure Login · Instant SMS OTP verification (Code: 1234).
+                </Text>
+              </View>
+            ) : (
+              <View style={{ width: '100%' }}>
+                <View style={styles.otpHeaderRow}>
+                  <TouchableOpacity 
+                    style={styles.backButton} 
+                    onPress={() => { setAuthStep('PHONE'); setAuthError(null); }}
+                  >
+                    <Text style={styles.backButtonText}>← Edit Number</Text>
+                  </TouchableOpacity>
+                  <View style={styles.smsSentBadge}>
+                    <Text style={styles.smsSentBadgeText}>✓ SMS Sent</Text>
+                  </View>
+                </View>
+
+                <Text style={styles.otpSentToLabel}>
+                  Code sent to <Text style={{ fontWeight: 'bold', color: '#15803D' }}>+91 {phone}</Text>
+                </Text>
+
+                {/* Instant Tap-to-AutoFill Banner */}
+                <TouchableOpacity 
+                  style={styles.autoFillBanner} 
+                  onPress={() => {
+                    const code = receivedOtp || '1234';
+                    setOtp(code);
+                    handleVerifyOtp(code);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.autoFillLeft}>
+                    <Text style={styles.autoFillIcon}>⚡</Text>
+                    <View>
+                      <Text style={styles.autoFillTitle}>
+                        Demo OTP: <Text style={styles.autoFillCode}>{receivedOtp || '1234'}</Text>
+                      </Text>
+                      <Text style={styles.autoFillSubtitle}>Tap to auto-fill & login instantly</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.autoFillArrow}>→</Text>
+                </TouchableOpacity>
+
+                <View style={styles.otpInputWrapper}>
+                  <TextInput 
+                    style={styles.otpInput} 
+                    placeholder="• • • •" 
+                    placeholderTextColor="#CBD5E1"
+                    keyboardType="number-pad" 
+                    maxLength={4}
+                    value={otp} 
+                    onChangeText={(text) => {
+                      const cleaned = text.replace(/[^0-9]/g, '');
+                      setOtp(cleaned);
+                      setAuthError(null);
+                      if (cleaned.length === 4) {
+                        handleVerifyOtp(cleaned);
+                      }
+                    }} 
+                    autoFocus
+                  />
+                </View>
+
+                {authError && (
+                  <View style={styles.errorBox}>
+                    <Text style={styles.errorText}>⚠️ {authError}</Text>
+                  </View>
+                )}
+
+                <TouchableOpacity 
+                  style={[styles.primaryButton, otp.length !== 4 && styles.buttonDisabled]} 
+                  onPress={() => handleVerifyOtp()}
+                  disabled={isVerifying}
+                  activeOpacity={0.8}
+                >
+                  {isVerifying ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.buttonText}>Verify & Start Shopping 🛒</Text>
+                  )}
+                </TouchableOpacity>
+
+                <View style={styles.resendRow}>
+                  <Text style={styles.resendPrompt}>Didn't receive code? </Text>
+                  <TouchableOpacity onPress={() => handleSendOtp(phone)}>
+                    <Text style={styles.resendLink}>Resend OTP</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </View>
         </SafeAreaView>
       </MobileFrameWrapper>
@@ -170,6 +460,7 @@ export default function App() {
           }}
           onOpenMenu={() => setShowMenu(true)}
           onOpenProfile={() => setCustomerScreen('PROFILE')}
+          onSwitchToCustomer={handleSwitchToCustomer}
           customerScreen={customerScreen}
         />
 
@@ -193,6 +484,11 @@ export default function App() {
               subscriptions={subscriptions}
               setSubscriptions={setSubscriptions}
               handleLogout={handleLogout}
+              userPhone={phone}
+              isApprovedVendor={vendorStatus === 'APPROVED'}
+              vendorApplicationStatus={vendorStatus}
+              onRefreshVendorStatus={() => checkVendorStatus()}
+              onSwitchToVendor={handleSwitchToVendor}
             />
           )
         )}
@@ -203,14 +499,32 @@ export default function App() {
             triggerRefresh={triggerRefresh}
             activeTab={role === 'admin' ? adminTab : vendorTab}
             onSelectTab={(t) => role === 'admin' ? setAdminTab(t) : setVendorTab(t)}
+            onSwitchToCustomer={handleSwitchToCustomer}
+            showAddModal={showVendorAddProduct}
+            setShowAddModal={setShowVendorAddProduct}
           />
         )}
 
-        {/* Bottom Tab Bar for Customer view */}
+        {/* Bottom Tab Bar for Customer view - ONLY shows Vendor button if approved by Admin */}
         {role === 'customer' && ['HOME', 'ALL_PRODUCTS', 'MY_SUBSCRIPTIONS', 'PROFILE'].includes(customerScreen) && (
           <BottomNavBar
             currentScreen={customerScreen}
             onNavigate={(screen) => setCustomerScreen(screen)}
+            onSwitchToVendor={handleSwitchToVendor}
+            isSwitchingToVendor={isSwitchingToVendor}
+            isApprovedVendor={vendorStatus === 'APPROVED'}
+          />
+        )}
+
+        {/* Dedicated Down Footer Menu for Vendor */}
+        {role === 'vendor' && (
+          <VendorBottomNavBar
+            currentTab={vendorTab}
+            onSelectTab={(tab) => setVendorTab(tab)}
+            onOpenAddProduct={() => setShowVendorAddProduct(true)}
+            onSwitchToCustomer={handleSwitchToCustomer}
+            pendingOrdersCount={MockDeliveries.filter((d) => d.status !== 'Delivered').length}
+            cropsCount={MockProducts.length}
           />
         )}
 
@@ -222,7 +536,17 @@ export default function App() {
           activeScreen={getActiveScreenKey()}
           onSelectScreen={handleSelectScreen}
           onLogout={handleLogout}
+          isApprovedVendor={vendorStatus === 'APPROVED'}
+          isAdminUser={isAdminUser}
         />
+
+        {/* Minute Looking Loading Toggle (Subtle, sleek floating toggle pill) */}
+        {isSwitchingToVendor && (
+          <View style={styles.minuteLoadingToggle}>
+            <ActivityIndicator size="small" color="#4ADE80" />
+            <Text style={styles.minuteLoadingToggleText}>Switching to Farmer Portal...</Text>
+          </View>
+        )}
       </View>
     </MobileFrameWrapper>
   );
@@ -338,79 +662,241 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  logoTitle: {
-    fontSize: 22,
+  logoImg: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 8,
+  },
+  brandTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#15803D',
-    marginTop: 6,
+    marginTop: 4,
   },
-  logoSubtitle: {
+  brandSubtitle: {
     fontSize: 12,
     color: '#64748B',
     marginTop: 4,
     textAlign: 'center',
+    lineHeight: 16,
   },
-  label: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#475569',
-    marginBottom: 4,
+  customerBadge: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
     marginTop: 8,
   },
-  input: {
-    width: '100%',
-    height: 42,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    fontSize: 13,
-    backgroundColor: '#F8FAFC',
-    color: '#0F172A',
-    marginBottom: 10,
+  customerBadgeText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#15803D',
   },
-  passwordContainer: {
+  inputSectionTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#334155',
+    marginBottom: 8,
+  },
+  phoneInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    height: 42,
+    marginBottom: 14,
+  },
+  countryCodeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#CBD5E1',
-    borderRadius: 10,
-    backgroundColor: '#F8FAFC',
-    marginBottom: 10,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    height: 48,
+    marginRight: 8,
   },
-  passwordInput: {
-    flex: 1,
-    height: '100%',
-    paddingHorizontal: 12,
-    fontSize: 13,
+  flagEmoji: {
+    fontSize: 16,
+    marginRight: 4,
+  },
+  countryCodeText: {
+    fontSize: 14,
+    fontWeight: 'bold',
     color: '#0F172A',
   },
-  eyeIcon: {
-    paddingHorizontal: 12,
-    justifyContent: 'center',
+  phoneInput: {
+    flex: 1,
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    backgroundColor: '#F8FAFC',
+    color: '#0F172A',
+    fontWeight: '600',
+  },
+  neatTestPill: {
+    marginTop: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
     alignItems: 'center',
+  },
+  neatTestText: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  errorBox: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 10,
+    width: '100%',
+  },
+  errorText: {
+    fontSize: 11,
+    color: '#DC2626',
+    fontWeight: '600',
   },
   primaryButton: {
     width: '100%',
-    height: 44,
+    height: 48,
     backgroundColor: '#15803D',
-    borderRadius: 22,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 14,
+    marginTop: 6,
+    shadowColor: '#15803D',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  buttonDisabled: {
+    backgroundColor: '#94A3B8',
+    shadowOpacity: 0,
+    elevation: 0,
   },
   buttonText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: 'bold',
   },
-  demoText: {
+  privacyNote: {
     fontSize: 11,
     color: '#94A3B8',
-    marginTop: 12,
+    marginTop: 14,
     textAlign: 'center',
+    lineHeight: 16,
+  },
+  otpHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  backButton: {
+    paddingVertical: 4,
+  },
+  backButtonText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#15803D',
+  },
+  smsSentBadge: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  smsSentBadgeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#15803D',
+  },
+  otpSentToLabel: {
+    fontSize: 13,
+    color: '#475569',
+    marginBottom: 12,
+  },
+  autoFillBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 16,
+  },
+  autoFillLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  autoFillIcon: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+  autoFillTitle: {
+    fontSize: 12,
+    color: '#065F46',
+    fontWeight: '600',
+  },
+  autoFillCode: {
+    fontWeight: 'bold',
+    color: '#047857',
+    fontSize: 13,
+  },
+  autoFillSubtitle: {
+    fontSize: 10,
+    color: '#059669',
+    marginTop: 2,
+  },
+  autoFillArrow: {
+    fontSize: 16,
+    color: '#059669',
+    fontWeight: 'bold',
+  },
+  otpInputWrapper: {
+    width: '100%',
+    marginBottom: 14,
+  },
+  otpInput: {
+    width: '100%',
+    height: 52,
+    borderWidth: 1.5,
+    borderColor: '#15803D',
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    textAlign: 'center',
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#0F172A',
+    letterSpacing: 14,
+  },
+  resendRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 14,
+  },
+  resendPrompt: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  resendLink: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#15803D',
   },
   modalOverlay: {
     flex: 1,
@@ -455,5 +941,31 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#E2E8F0',
     marginVertical: 8,
+  },
+  minuteLoadingToggle: {
+    position: 'absolute',
+    top: 14,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0D2B1D',
+    paddingVertical: 7,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 10,
+    zIndex: 99999,
+    borderWidth: 1,
+    borderColor: 'rgba(74, 222, 128, 0.4)',
+  },
+  minuteLoadingToggleText: {
+    color: '#F0FDF4',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });

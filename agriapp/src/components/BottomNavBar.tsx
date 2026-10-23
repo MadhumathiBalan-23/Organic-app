@@ -1,13 +1,22 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Home, Package, Calendar, User } from 'lucide-react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { Home, Package, Calendar, User, Sprout } from 'lucide-react-native';
 
 interface BottomNavBarProps {
   currentScreen: string;
   onNavigate: (screen: string) => void;
+  onSwitchToVendor?: () => void;
+  isSwitchingToVendor?: boolean;
+  isApprovedVendor?: boolean;
 }
 
-export const BottomNavBar: React.FC<BottomNavBarProps> = ({ currentScreen, onNavigate }) => {
+export const BottomNavBar: React.FC<BottomNavBarProps> = ({ 
+  currentScreen, 
+  onNavigate, 
+  onSwitchToVendor,
+  isSwitchingToVendor = false,
+  isApprovedVendor = false,
+}) => {
   const navItems = [
     { key: 'HOME', label: 'Home', Icon: Home },
     { key: 'ALL_PRODUCTS', label: 'Catalog', Icon: Package },
@@ -27,7 +36,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ currentScreen, onNav
             activeOpacity={0.7}
           >
             <item.Icon 
-              size={22} 
+              size={20} 
               color={isActive ? '#15803D' : '#94A3B8'} 
               strokeWidth={isActive ? 2.5 : 2}
             />
@@ -38,6 +47,27 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ currentScreen, onNav
           </TouchableOpacity>
         );
       })}
+
+      {/* Down Vendor Menu Item: ONLY visible when customer application is approved by Admin */}
+      {isApprovedVendor && onSwitchToVendor && (
+        <TouchableOpacity
+          style={[styles.navItem, styles.vendorNavItem]}
+          onPress={onSwitchToVendor}
+          disabled={isSwitchingToVendor}
+          activeOpacity={0.7}
+        >
+          <View style={styles.vendorIconBadge}>
+            {isSwitchingToVendor ? (
+              <ActivityIndicator size="small" color="#047857" />
+            ) : (
+              <Sprout size={18} color="#047857" strokeWidth={2.5} />
+            )}
+          </View>
+          <Text style={styles.vendorNavLabel}>
+            {isSwitchingToVendor ? 'Loading...' : 'Vendor'}
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -62,7 +92,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
+    paddingVertical: 4,
     position: 'relative',
   },
   activeNavItem: {
@@ -85,5 +115,22 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     backgroundColor: '#15803D',
+  },
+  vendorNavItem: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 12,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
+  },
+  vendorIconBadge: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  vendorNavLabel: {
+    fontSize: 10,
+    color: '#047857',
+    marginTop: 2,
+    fontWeight: 'bold',
   },
 });

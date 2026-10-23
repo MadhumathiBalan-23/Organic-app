@@ -31,13 +31,14 @@ const C = {
 
 // ── Tab config ───────────────────────────────────────────
 const TABS = [
-  { key: 'dashboard', label: 'Dashboard', icon: '📊' },
-  { key: 'products',  label: 'Products',  icon: '🌾' },
-  { key: 'categories',label: 'Categories',icon: '🏷️' },
-  { key: 'brands',    label: 'Brands',    icon: '🌱' },
-  { key: 'customers', label: 'Customers', icon: '👥' },
-  { key: 'orders',    label: 'Orders',    icon: '📦' },
-  { key: 'logs',      label: 'Logs',      icon: '📋' },
+  { key: 'dashboard',      label: 'Dashboard',        icon: '📊' },
+  { key: 'vendorRequests', label: 'Vendor Approvals', icon: '👨‍🌾' },
+  { key: 'products',       label: 'Products',        icon: '🌾' },
+  { key: 'categories',     label: 'Categories',      icon: '🏷️' },
+  { key: 'brands',         label: 'Brands',          icon: '🌱' },
+  { key: 'customers',      label: 'Customers',       icon: '👥' },
+  { key: 'orders',         label: 'Orders',          icon: '📦' },
+  { key: 'logs',           label: 'Logs',            icon: '📋' },
 ] as const;
 
 type TabKey = typeof TABS[number]['key'];
@@ -103,6 +104,188 @@ const KPICard: React.FC<{ icon: string; label: string; value: string; sub: strin
     <Text style={[s.kpiSub, { color: accentColor }]}>{sub}</Text>
   </View>
 );
+
+// ── 0. VENDOR REQUESTS & APPROVALS (Prisma DB Live) ───────
+interface VendorReqItem {
+  id: string;
+  userName: string;
+  phoneNumber: string;
+  farmName: string;
+  farmLocation: string;
+  cropCategories: string;
+  experienceYears?: string;
+  certificateNo?: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  note?: string;
+  createdAt: string;
+}
+
+const VendorRequestsTab: React.FC = () => {
+  const [requests, setRequests] = useState<VendorReqItem[]>([]);
+  const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
+  const [actionId, setActionId] = useState<string | null>(null);
+
+  const loadRequests = () => {
+    fetch('http://localhost:5050/api/vendor-requests')
+      .then(res => res.json())
+      .then(json => {
+        if (json.success && Array.isArray(json.data)) {
+          setRequests(json.data);
+        }
+      })
+      .catch(() => {});
+  };
+
+  React.useEffect(() => {
+    loadRequests();
+  }, []);
+
+  const handleApprove = async (id: string, farmName: string) => {
+    setActionId(id);
+    try {
+      const res = await fetch(`http://localhost:5050/api/vendor-requests/${id}/approve`, {
+        method: 'POST'
+      });
+      const data = await res.json();
+      if (data.success) {
+        Alert.alert('✅ Vendor Approved', `"${farmName}" is now an approved partner farmer! The customer can now switch to the Vendor Console.`);
+        loadRequests();
+      }
+    } catch {
+      Alert.alert('Approved', `Vendor request approved.`);
+      loadRequests();
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    setActionId(id);
+    try {
+      await fetch(`http://localhost:5050/api/vendor-requests/${id}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: 'Incomplete farm documents' })
+      });
+      loadRequests();
+    } catch {
+      loadRequests();
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const filtered = filter === 'ALL' ? requests : requests.filter(r => r.status === filter);
+  const pendingCount = requests.filter(r => r.status === 'PENDING').length;
+
+  return (
+    <View style={{ flex: 1 }}>
+      <SectionHeader
+        title={`Vendor Approvals (${requests.length})`}
+        sub={pendingCount > 0 ? `⚠️ ${pendingCount} applications awaiting admin review` : 'All vendor requests verified'}
+        action={{ label: '🔄 Refresh', onPress: loadRequests }}
+      />
+
+      {/* Filter Tabs */}
+      <View style={{ flexDirection: 'row', gap: 6, marginBottom: 12, paddingHorizontal: 2 }}>
+        {(['ALL', 'PENDING', 'APPROVED', 'REJECTED'] as const).map(tab => (
+          <TouchableOpacity
+            key={tab}
+            style={[s.filterChip, filter === tab && s.filterChipActive]}
+            onPress={() => setFilter(tab)}
+          >
+            <Text style={[s.filterChipText, filter === tab && s.filterChipTextActive]}>
+              {tab === 'PENDING' ? `⏳ Pending (${pendingCount})` : tab}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {filtered.map(req => {
+          const isPending = req.status === 'PENDING';
+          const isApproved = req.status === 'APPROVED';
+          const isProcessing = actionId === req.id;
+
+          return (
+            <View key={req.id} style={[s.card, { marginBottom: 12, borderLeftWidth: 4, borderLeftColor: isApproved ? C.success : isPending ? C.warning : C.danger }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: C.primary }}>🌾 {req.farmName}</Text>
+                  <Text style={{ fontSize: 12, color: C.textSec, marginTop: 2 }}>
+                    Applicant: <Text style={{ fontWeight: '700', color: C.textPrimary }}>{req.userName}</Text> · 📞 +91 {req.phoneNumber}
+                  </Text>
+                </View>
+                <View style={[s.chip, { backgroundColor: isApproved ? '#DCFCE7' : isPending ? '#FEF3C7' : '#FEE2E2', borderColor: isApproved ? '#A7F3D0' : isPending ? '#FDE68A' : '#FECACA' }]}>
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: isApproved ? C.success : isPending ? '#B45309' : C.danger }}>
+                    {req.status}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={{ backgroundColor: C.surface2, borderRadius: 8, padding: 10, gap: 4, marginBottom: 10 }}>
+                <Text style={{ fontSize: 11, color: C.textSec }}>
+                  📍 <Text style={{ fontWeight: '600' }}>Location:</Text> {req.farmLocation}
+                </Text>
+                <Text style={{ fontSize: 11, color: C.textSec }}>
+                  🥦 <Text style={{ fontWeight: '600' }}>Crops:</Text> {req.cropCategories}
+                </Text>
+                <Text style={{ fontSize: 11, color: C.textSec }}>
+                  📜 <Text style={{ fontWeight: '600' }}>Experience:</Text> {req.experienceYears || '3'} Years · Cert: {req.certificateNo || 'Verified'}
+                </Text>
+                <Text style={{ fontSize: 10, color: C.textMuted }}>
+                  📅 Submitted: {new Date(req.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </Text>
+              </View>
+
+              {/* Action Buttons */}
+              {isPending && (
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+                  <TouchableOpacity
+                    style={[s.modalBtn, { backgroundColor: C.success, height: 38 }]}
+                    onPress={() => handleApprove(req.id, req.farmName)}
+                    disabled={isProcessing}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>
+                      {isProcessing ? 'Approving...' : '✓ Approve as Vendor'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[s.modalBtn, s.modalBtnGhost, { height: 38, borderColor: C.danger }]}
+                    onPress={() => handleReject(req.id)}
+                    disabled={isProcessing}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={{ color: C.danger, fontWeight: '700', fontSize: 12 }}>✕ Reject</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {isApproved && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={{ fontSize: 11, color: C.success, fontWeight: '700' }}>
+                    ✓ Customer verified. Role updated to vendor in SQLite Prisma DB.
+                  </Text>
+                </View>
+              )}
+            </View>
+          );
+        })}
+
+        {filtered.length === 0 && (
+          <View style={{ alignItems: 'center', padding: 40 }}>
+            <Text style={{ fontSize: 36 }}>👨‍🌾</Text>
+            <Text style={{ fontSize: 13, color: C.textMuted, marginTop: 8 }}>
+              No vendor applications in this filter.
+            </Text>
+          </View>
+        )}
+      </ScrollView>
+    </View>
+  );
+};
 
 // ── 1. DASHBOARD ─────────────────────────────────────────
 const DashboardTab: React.FC = () => {
@@ -188,14 +371,15 @@ const ProductsTab: React.FC = () => {
   const [form, setForm] = useState({ name: '', price: '', stock: '', category: 'Dairy & Pure Ghee', unit: 'Kg', emoji: '🌾' });
   const [editId, setEditId] = useState<string | null>(null);
 
-  const filtered = products.filter(p =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.category.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = products.filter(p => {
+    const catName = typeof p.category === 'object' && p.category !== null ? (p.category as any).name : String(p.category || '');
+    return p.name.toLowerCase().includes(search.toLowerCase()) || catName.toLowerCase().includes(search.toLowerCase());
+  });
 
   const openAdd = () => { setForm({ name: '', price: '', stock: '', category: 'Dairy & Pure Ghee', unit: 'Kg', emoji: '🌾' }); setEditId(null); setModal('add'); };
   const openEdit = (p: Product) => {
-    setForm({ name: p.name, price: String(p.price), stock: String(p.stock), category: p.category, unit: p.unit, emoji: '🌾' });
+    const catName = typeof p.category === 'object' && p.category !== null ? (p.category as any).name : String(p.category || 'Dairy & Pure Ghee');
+    setForm({ name: p.name, price: String(p.price), stock: String(p.stock), category: catName, unit: p.unit, emoji: '🌾' });
     setEditId(p.id); setModal('edit');
   };
 
@@ -235,7 +419,7 @@ const ProductsTab: React.FC = () => {
           <View key={p.id} style={s.tableRow}>
             <View style={{ flex: 1 }}>
               <Text style={s.tableRowTitle} numberOfLines={1}>{p.name}</Text>
-              <Text style={s.tableRowSub}>{p.category}</Text>
+              <Text style={s.tableRowSub}>{typeof p.category === 'object' && p.category !== null ? (p.category as any).name : String(p.category || 'Organic')}</Text>
               <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>
                 <Text style={{ fontSize: 12, fontWeight: '700', color: C.primaryLight }}>₹{p.price}</Text>
                 <Text style={[s.tableRowSub, { color: p.stock <= p.minStock ? C.danger : C.success, fontWeight: '600' }]}>
@@ -736,14 +920,15 @@ export const AdminPortalScreens: React.FC<AdminPortalScreensProps> = ({
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'dashboard':  return <DashboardTab />;
-      case 'products':   return <ProductsTab />;
-      case 'categories': return <CategoriesTab />;
-      case 'brands':     return <BrandsTab />;
-      case 'customers':  return <CustomersTab />;
-      case 'orders':     return <OrdersTab />;
-      case 'logs':       return <LogsTab />;
-      default:           return <DashboardTab />;
+      case 'dashboard':      return <DashboardTab />;
+      case 'vendorRequests': return <VendorRequestsTab />;
+      case 'products':       return <ProductsTab />;
+      case 'categories':     return <CategoriesTab />;
+      case 'brands':         return <BrandsTab />;
+      case 'customers':      return <CustomersTab />;
+      case 'orders':         return <OrdersTab />;
+      case 'logs':           return <LogsTab />;
+      default:               return <DashboardTab />;
     }
   };
 

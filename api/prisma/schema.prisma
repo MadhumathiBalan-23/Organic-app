@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  emoji       String    @default("🌱")
+  description String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+}
+
+model Product {
+  id                  String         @id @default(uuid())
+  name                String
+  categoryName        String
+  category            Category?      @relation(fields: [categoryName], references: [name])
+  brand               String         @default("NatureFarm")
+  price               Float
+  unit                String         @default("Kg")
+  rating              Float          @default(4.8)
+  stock               Int            @default(100)
+  minStock            Int            @default(15)
+  availabilityStart   String         @default("06:00 AM")
+  availabilityEnd     String         @default("09:00 PM")
+  description         String
+  benefits            String         @default("[]") // JSON string of benefits
+  imageUrl            String
+  subscriptionAllowed Boolean        @default(true)
+  oneTimeAllowed      Boolean        @default(true)
+  organicCertified    Boolean        @default(true)
+  emoji               String         @default("🌱")
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  subscriptions       Subscription[]
+  orderItems          OrderItem[]
+}
+
+model User {
+  id            String         @id @default(uuid())
+  fullName      String
+  email         String?
+  phoneNumber   String         @unique
+  role          String         @default("customer") // admin, vendor, customer
+  passwordHash  String         @default("OTP_VERIFIED")
+  location      String?        @default("Chennai, TN")
+  status        String         @default("Active") // Active, VIP, Inactive
+  vendorStatus  String?        @default("NONE") // NONE, PENDING, APPROVED, REJECTED
+  totalOrders   Int            @default(0)
+  totalSpend    Float          @default(0)
+  createdAt     DateTime       @default(now())
+  subscriptions Subscription[]
+  orders        Order[]
+}
+
+model Brand {
+  id           String    @id @default(uuid())
+  name         String    @unique
+  emoji        String    @default("🌱")
+  origin       String
+  productCount Int       @default(0)
+  established  String    @default("2020")
+  rating       Float     @default(4.5)
+  createdAt    DateTime  @default(now())
+}
+
+model Delivery {
+  id           String    @id @default(uuid())
+  customerName String
+  address      String
+  products     String
+  quantity     String
+  deliveryTime String
+  status       String    @default("Assigned") // Assigned, Picked Up, Out for Delivery, Delivered, Failed
+  createdAt    DateTime  @default(now())
+}
+
+model UserLog {
+  id        String   @id @default(uuid())
+  user      String
+  role      String
+  action    String
+  module    String
+  ip        String   @default("127.0.0.1")
+  type      String   @default("view") // create, update, delete, login, logout, view
+  timestamp DateTime @default(now())
+}
+
+model AIAlert {
+  id        String   @id @default(uuid())
+  type      String
+  text      String
+  time      String
+  severity  String   @default("info")
+  createdAt DateTime @default(now())
+}
+
+model Subscription {
+  id                   String   @id @default(uuid())
+  userId               String?
+  user                 User?    @relation(fields: [userId], references: [id])
+  productId            String
+  product              Product  @relation(fields: [productId], references: [id])
+  quantity             Int      @default(1)
+  frequency            String   @default("Daily") // Daily, Weekly, Monthly
+  deliveryTime         String   @default("06:30 AM")
+  duration             Int      @default(30)
+  startDate            String
+  paymentStatus        String   @default("Paid")
+  status               String   @default("Active") // Active, Paused, Cancelled
+  priceTotal           Float
+  autoRenew            Boolean  @default(true)
+  confirmationRequired Boolean  @default(true)
+  skippedDates         String   @default("[]")
+  createdAt            DateTime @default(now())
+}
+
+model Order {
+  id            String      @id @default(uuid())
+  userId        String?
+  user          User?       @relation(fields: [userId], references: [id])
+  customerName  String
+  customerPhone String
+  deliveryAddress String
+  totalAmount   Float
+  orderType     String      @default("One-Time")
+  paymentStatus String      @default("SUCCESS")
+  deliveryStatus String     @default("CONFIRMED")
+  paymentMethod String      @default("UPI")
+  createdAt     DateTime    @default(now())
+  items         OrderItem[]
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id])
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int      @default(1)
+  price     Float
+}
+
+model VendorRequest {
+  id              String    @id @default(uuid())
+  userId          String?
+  userName        String
+  phoneNumber     String
+  farmName        String
+  farmLocation    String
+  cropCategories  String    @default("Fresh Vegetables & Dairy")
+  experienceYears String?   @default("3")
+  certificateNo   String?   @default("NPOP-ORG-TN-4821")
+  status          String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  note            String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}

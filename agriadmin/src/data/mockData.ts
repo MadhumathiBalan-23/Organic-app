@@ -3,7 +3,7 @@
 // =============================================
 
 export interface Product {
-  id: number;
+  id: number | string;
   name: string;
   category: string;
   brand: string;
@@ -13,10 +13,12 @@ export interface Product {
   status: 'Active' | 'Inactive' | 'Low Stock';
   sales: number;
   emoji: string;
+  imageUrl?: string;
+  benefits?: string[];
 }
 
 export interface Category {
-  id: number;
+  id: number | string;
   name: string;
   emoji: string;
   description: string;
@@ -25,7 +27,7 @@ export interface Category {
 }
 
 export interface Brand {
-  id: number;
+  id: number | string;
   name: string;
   emoji: string;
   origin: string;
@@ -35,7 +37,7 @@ export interface Brand {
 }
 
 export interface Customer {
-  id: number;
+  id: number | string;
   name: string;
   email: string;
   phone: string;
@@ -95,16 +97,16 @@ export const brands: Brand[] = [
 
 // ── Products ─────────────────────────────────
 export const products: Product[] = [
-  { id: 1, name: 'Organic A2 Cow Milk', category: 'Dairy Products', brand: 'DesiDairy', price: 85, stock: 1420, unit: 'L', status: 'Active', sales: 1420, emoji: '🥛' },
-  { id: 2, name: 'Pure Desi Cow Ghee', category: 'Dairy Products', brand: 'DesiDairy', price: 680, stock: 310, unit: 'Jar', status: 'Active', sales: 310, emoji: '🍯' },
-  { id: 3, name: 'Wild Forest Raw Honey', category: 'Honey & Preserves', brand: 'NatureFarm', price: 240, stock: 240, unit: 'Jar', status: 'Active', sales: 240, emoji: '🍯' },
-  { id: 4, name: 'Native Organic Bananas', category: 'Fresh Fruits', brand: 'GreenRoots', price: 60, stock: 780, unit: 'Dozen', status: 'Active', sales: 780, emoji: '🍌' },
-  { id: 5, name: 'Cold Pressed Groundnut Oil', category: 'Cold Pressed Oils', brand: 'OrganicOasis', price: 320, stock: 18, unit: 'L', status: 'Low Stock', sales: 190, emoji: '🫒' },
-  { id: 6, name: 'Organic Turmeric Powder', category: 'Herbal & Ayurvedic', brand: 'NatureFarm', price: 140, stock: 400, unit: 'Kg', status: 'Active', sales: 330, emoji: '🌿' },
-  { id: 7, name: 'Free Range Country Eggs', category: 'Eggs & Poultry', brand: 'RuralRich', price: 90, stock: 600, unit: 'Dozen', status: 'Active', sales: 500, emoji: '🥚' },
-  { id: 8, name: 'Organic Basmati Rice', category: 'Grains & Cereals', brand: 'Pure Harvest', price: 195, stock: 5, unit: 'Kg', status: 'Low Stock', sales: 900, emoji: '🌾' },
-  { id: 9, name: 'Farm Fresh Tomatoes', category: 'Fresh Vegetables', brand: 'GreenRoots', price: 40, stock: 0, unit: 'Kg', status: 'Inactive', sales: 650, emoji: '🍅' },
-  { id: 10, name: 'Organic Coconut Oil', category: 'Cold Pressed Oils', brand: 'OrganicOasis', price: 260, stock: 200, unit: 'L', status: 'Active', sales: 420, emoji: '🥥' },
+  { id: 1, name: 'Organic A2 Desi Cow Milk', category: 'Dairy Products', brand: 'DesiDairy', price: 85, stock: 1420, unit: 'L', status: 'Active', sales: 1420, emoji: '🥛', imageUrl: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=600' },
+  { id: 2, name: 'Pure Desi Cow Bilona Ghee', category: 'Dairy Products', brand: 'DesiDairy', price: 680, stock: 310, unit: 'Jar', status: 'Active', sales: 310, emoji: '🍯', imageUrl: 'https://images.unsplash.com/photo-1627308595229-7830a5c91f9f?auto=format&fit=crop&q=80&w=600' },
+  { id: 3, name: 'Wild Forest Raw Organic Honey', category: 'Honey & Preserves', brand: 'NatureFarm', price: 240, stock: 240, unit: 'Jar', status: 'Active', sales: 240, emoji: '🍯', imageUrl: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&q=80&w=600' },
+  { id: 4, name: 'Native Organic Robusta Bananas', category: 'Fresh Fruits', brand: 'GreenRoots', price: 60, stock: 780, unit: 'Dozen', status: 'Active', sales: 780, emoji: '🍌', imageUrl: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&q=80&w=600' },
+  { id: 5, name: 'Wood Churned Groundnut Oil', category: 'Cold Pressed Oils', brand: 'OrganicOasis', price: 320, stock: 18, unit: 'L', status: 'Low Stock', sales: 190, emoji: '🫒', imageUrl: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&q=80&w=600' },
+  { id: 6, name: 'Farm Fresh Baby Spinach (Palak)', category: 'Fresh Vegetables', brand: 'NatureFarm', price: 30, stock: 400, unit: 'Bunch', status: 'Active', sales: 330, emoji: '🌿', imageUrl: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&q=80&w=600' },
+  { id: 7, name: 'Pasture-Raised Free-Range Eggs', category: 'Eggs & Poultry', brand: 'RuralRich', price: 95, stock: 600, unit: 'Pack of 6', status: 'Active', sales: 500, emoji: '🥚', imageUrl: 'https://images.unsplash.com/photo-1506976785307-8732e854ad03?auto=format&fit=crop&q=80&w=600' },
+  { id: 8, name: 'Organic Aged Basmati Brown Rice', category: 'Grains & Cereals', brand: 'Pure Harvest', price: 195, stock: 50, unit: 'Kg', status: 'Active', sales: 900, emoji: '🌾', imageUrl: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=80&w=600' },
+  { id: 9, name: 'Farm-Fresh Vine Country Tomatoes', category: 'Fresh Vegetables', brand: 'GreenRoots', price: 45, stock: 85, unit: 'Kg', status: 'Active', sales: 650, emoji: '🍅', imageUrl: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&q=80&w=600' },
+  { id: 10, name: 'Pure Virgin Cold-Pressed Coconut Oil', category: 'Cold Pressed Oils', brand: 'OrganicOasis', price: 260, stock: 200, unit: 'L', status: 'Active', sales: 420, emoji: '🥥', imageUrl: 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600' },
 ];
 
 // ── Customers ────────────────────────────────
@@ -148,8 +150,8 @@ export const userLogs: UserLog[] = [
 ];
 
 // ── Customer Orders helper ───────────────────
-export function getCustomerOrders(customerId: number): Order[] {
-  return orders.filter(o => o.customerId === customerId);
+export function getCustomerOrders(customerId: number | string): Order[] {
+  return orders.filter(o => String(o.customerId) === String(customerId));
 }
 
 // ── KPI ─────────────────────────────────────
@@ -162,3 +164,161 @@ export const kpiData = {
   totalProducts: products.length,
   lowStockProducts: products.filter(p => p.status === 'Low Stock').length,
 };
+
+// ── LIVE PRISMA SQLITE DATABASE API LAYER ────────────────────
+const API_BASE = 'http://localhost:5050/api';
+
+export async function fetchProductsFromDB(): Promise<Product[]> {
+  try {
+    const res = await fetch(`${API_BASE}/products`);
+    const json = await res.json();
+    if (json.success && json.data) {
+      return json.data.map((p: any, idx: number) => ({
+        id: p.id,
+        name: p.name,
+        category: typeof p.category === 'object' && p.category !== null ? p.category.name : (p.categoryName || p.category || 'Dairy Products'),
+        brand: p.brand || 'NatureFarm',
+        price: p.price,
+        stock: p.stock,
+        unit: p.unit,
+        status: p.stock < p.minStock ? 'Low Stock' : 'Active',
+        sales: 100 + idx * 25,
+        emoji: p.emoji || '🌱',
+        imageUrl: p.imageUrl,
+        benefits: p.benefits
+      }));
+    }
+  } catch (e) {
+    console.warn('Error fetching products from SQLite DB:', e);
+  }
+  return products;
+}
+
+export async function fetchCategoriesFromDB(): Promise<Category[]> {
+  try {
+    const res = await fetch(`${API_BASE}/categories`);
+    const json = await res.json();
+    if (json.success && json.data) {
+      return json.data.map((c: any, idx: number) => ({
+        id: c.id,
+        name: c.name,
+        emoji: c.emoji || '🌱',
+        description: c.description || '',
+        productCount: c._count?.products || 0,
+        color: ['#3b82f6', '#22c55e', '#f59e0b', '#d97706', '#f97316', '#84cc16', '#10b981', '#ef4444'][idx % 8]
+      }));
+    }
+  } catch (e) {
+    console.warn('Error fetching categories from SQLite DB:', e);
+  }
+  return categories;
+}
+
+export async function fetchBrandsFromDB(): Promise<Brand[]> {
+  try {
+    const res = await fetch(`${API_BASE}/brands`);
+    const json = await res.json();
+    if (json.success && json.data) {
+      return json.data;
+    }
+  } catch (e) {
+    console.warn('Error fetching brands from SQLite DB:', e);
+  }
+  return brands;
+}
+
+export async function fetchCustomersFromDB(): Promise<Customer[]> {
+  try {
+    const res = await fetch(`${API_BASE}/customers`);
+    const json = await res.json();
+    if (json.success && json.data) {
+      return json.data.map((u: any) => ({
+        id: u.id,
+        name: u.fullName,
+        email: u.email || `${u.fullName.toLowerCase().replace(/\s+/g, '.')}@email.com`,
+        phone: u.phoneNumber,
+        location: u.location || 'Chennai, TN',
+        joinDate: u.createdAt ? u.createdAt.substring(0, 10) : '2026-01-01',
+        totalOrders: u.totalOrders || 0,
+        totalSpend: u.totalSpend || 0,
+        status: (u.status || 'Active') as any,
+        avatar: u.fullName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase(),
+        lastActive: '2026-09-27'
+      }));
+    }
+  } catch (e) {
+    console.warn('Error fetching customers from SQLite DB:', e);
+  }
+  return customers;
+}
+
+export async function fetchOrdersFromDB(): Promise<Order[]> {
+  try {
+    const res = await fetch(`${API_BASE}/orders`);
+    const json = await res.json();
+    if (json.success && json.data) {
+      return json.data.map((o: any) => ({
+        id: o.id,
+        customerId: o.userId || 1,
+        customerName: o.customerName,
+        items: o.items && o.items.length > 0 ? o.items.map((it: any) => ({
+          name: it.product?.name || 'Organic Item',
+          qty: it.quantity,
+          price: it.price
+        })) : [{ name: 'Organic Product', qty: 1, price: o.totalAmount }],
+        total: o.totalAmount,
+        status: o.deliveryStatus === 'DELIVERED' ? 'Delivered' : o.deliveryStatus === 'PROCESSING' ? 'Processing' : o.deliveryStatus === 'CANCELLED' ? 'Cancelled' : 'Pending',
+        date: o.createdAt ? o.createdAt.substring(0, 10) : '2026-09-26',
+        address: o.deliveryAddress,
+        paymentMethod: o.paymentMethod || 'UPI'
+      }));
+    }
+  } catch (e) {
+    console.warn('Error fetching orders from SQLite DB:', e);
+  }
+  return orders;
+}
+
+export async function fetchUserLogsFromDB(): Promise<UserLog[]> {
+  try {
+    const res = await fetch(`${API_BASE}/user-logs`);
+    const json = await res.json();
+    if (json.success && json.data) {
+      return json.data.map((l: any, idx: number) => ({
+        id: l.id || idx + 1,
+        user: l.user,
+        role: l.role,
+        action: l.action,
+        module: l.module,
+        ip: l.ip || '127.0.0.1',
+        timestamp: l.timestamp,
+        type: l.type
+      }));
+    }
+  } catch (e) {
+    console.warn('Error fetching user logs from SQLite DB:', e);
+  }
+  return userLogs;
+}
+
+export async function fetchKpiDataFromDB() {
+  try {
+    const res = await fetch(`${API_BASE}/dashboard/stats`);
+    const json = await res.json();
+    if (json.success && json.data) {
+      return {
+        totalRevenue: json.data.totalRevenue,
+        totalOrders: json.data.totalOrders,
+        totalCustomers: json.data.totalUsers,
+        totalProducts: json.data.totalProducts,
+        pendingOrders: 2,
+        processingOrders: 1,
+        lowStockProducts: 1
+      };
+    }
+  } catch (e) {
+    console.warn('Error fetching KPI data from SQLite DB:', e);
+  }
+  return kpiData;
+}
+

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { customers, getCustomerOrders, Customer } from '../data/mockData';
+import React, { useState, useEffect } from 'react';
+import { customers, getCustomerOrders, Customer, fetchCustomersFromDB } from '../data/mockData';
 
 const statusChip = (status: string) => {
   const map: Record<string, string> = { Active: 'chip-success', Inactive: 'chip-danger', VIP: 'chip-purple' };
@@ -12,10 +12,18 @@ const orderStatusChip = (status: string) => {
 };
 
 const Customers: React.FC = () => {
-  const [items] = useState<Customer[]>(customers);
+  const [items, setItems] = useState<Customer[]>(customers);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+
+  useEffect(() => {
+    fetchCustomersFromDB().then(dbCustomers => {
+      if (dbCustomers && dbCustomers.length > 0) {
+        setItems(dbCustomers);
+      }
+    });
+  }, []);
 
   const filtered = items.filter(c => {
     const match = c.name.toLowerCase().includes(search.toLowerCase()) ||

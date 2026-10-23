@@ -9,6 +9,7 @@ interface RoleHeaderProps {
   onSelectRole: (role: 'customer' | 'admin' | 'vendor') => void;
   onOpenMenu: () => void;
   onOpenProfile?: () => void;
+  onSwitchToCustomer?: () => void;
   customerScreen?: string;
 }
 
@@ -22,7 +23,7 @@ const roleTheme = {
 };
 
 export const RoleHeader: React.FC<RoleHeaderProps> = ({
-  role, onSelectRole, onOpenMenu, onOpenProfile, customerScreen = 'HOME',
+  role, onSelectRole, onOpenMenu, onOpenProfile, onSwitchToCustomer, customerScreen = 'HOME',
 }) => {
   const theme = role ? roleTheme[role] : roleTheme.customer;
 
@@ -70,6 +71,12 @@ export const RoleHeader: React.FC<RoleHeaderProps> = ({
         {role === 'customer' && onOpenProfile && (
           <TouchableOpacity style={styles.iconBtn} onPress={onOpenProfile} activeOpacity={0.7}>
             <User size={18} color="#fff" strokeWidth={2.5} />
+          </TouchableOpacity>
+        )}
+        {role === 'vendor' && onSwitchToCustomer && (
+          <TouchableOpacity style={styles.customerSwitchBtn} onPress={onSwitchToCustomer} activeOpacity={0.8}>
+            <Store size={15} color="#fff" strokeWidth={2.2} />
+            <Text style={styles.customerSwitchBtnText}>Store</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -148,5 +155,21 @@ const styles = StyleSheet.create({
     fontSize: 8,
     fontWeight: '800',
     letterSpacing: 0.5,
+  },
+  customerSwitchBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  customerSwitchBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });

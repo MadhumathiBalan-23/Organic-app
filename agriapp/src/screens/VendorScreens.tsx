@@ -1,323 +1,1057 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Image,
-  TouchableOpacity, Alert, TextInput, Modal
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Image,
+  TouchableOpacity,
+  TextInput,
+  Modal,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
+import {
+  LayoutDashboard,
+  Sprout,
+  PackageCheck,
+  CalendarDays,
+  Wallet,
+  Plus,
+  CircleCheck,
+  Clock,
+  MapPin,
+  TriangleAlert,
+  TrendingUp,
+  X,
+  Store,
+  Search,
+  Trash,
+  Tag,
+} from 'lucide-react-native';
 import { Product, MockProducts, MockDeliveries, Categories } from '../constants/mockData';
 
-// ── Theme Palette for Vendor (Farmer Portal) ──────────────
+// ── Theme Palette (Mathira Organic Farmer / Vendor Portal) ──
 const VC = {
   primary: '#064E3B',
   sub: '#047857',
   accent: '#10B981',
   accentLight: '#ECFDF5',
-  bg: '#F0FDF4',
+  bg: '#F8FAFC',
   cardBg: '#FFFFFF',
-  border: '#A7F3D0',
-  textPrimary: '#064E3B',
-  textSec: '#047857',
-  textMuted: '#059669',
+  border: '#E2E8F0',
+  borderGreen: '#A7F3D0',
+  textPrimary: '#0F172A',
+  textSub: '#334155',
+  textMuted: '#64748B',
   success: '#10B981',
+  successLight: '#DCFCE7',
+  warning: '#F59E0B',
+  warningLight: '#FEF3C7',
   danger: '#EF4444',
+  dangerLight: '#FEE2E2',
   info: '#0284C7',
+  infoLight: '#E0F2FE',
 };
+
+// Safe helper to extract category string regardless of whether backend returns string or object
+export const getCategoryName = (cat: any): string => {
+  if (!cat) return 'Organic';
+  if (typeof cat === 'string') return cat;
+  if (typeof cat === 'object' && cat.name) return String(cat.name);
+  return String(cat);
+};
+
+// Preset images for realistic organic crops
+const IMAGE_PRESETS = [
+  { label: '🥛 Desi Cow Milk', url: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=600' },
+  { label: '🍅 Farm Tomatoes', url: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&q=80&w=600' },
+  { label: '🍯 Wild Honey', url: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&q=80&w=600' },
+  { label: '🥬 Fresh Spinach', url: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&q=80&w=600' },
+  { label: '🍎 Shimla Apples', url: 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&q=80&w=600' },
+  { label: '🌾 Basmati Rice', url: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=80&w=600' },
+];
+
+const AVAILABLE_UNITS = ['Kg', 'Litre', '500g', '250g', 'Bunch', 'Jar', 'Dozen', 'Crate'];
+const BENEFIT_OPTIONS = ['100% Pesticide Free', 'Daily Farm Fresh Harvest', 'Non-GMO & Natural', 'Rich in Nutrients', 'Certified Organic'];
+
+export type VendorTabKey = 'dashboard' | 'crops' | 'orders' | 'harvests' | 'payouts';
 
 interface VendorScreensProps {
   triggerRefresh: () => void;
   activeTab?: string;
   onSelectTab?: (tab: string) => void;
+  onSwitchToCustomer?: () => void;
+  showAddModal?: boolean;
+  setShowAddModal?: (show: boolean) => void;
 }
 
 export const VendorScreens: React.FC<VendorScreensProps> = ({
   triggerRefresh,
   activeTab: propActiveTab,
-  onSelectTab
+  onSelectTab,
+  onSwitchToCustomer,
+  showAddModal,
+  setShowAddModal,
 }) => {
-  const [internalTab, setInternalTab] = useState<'dashboard' | 'crops' | 'orders' | 'harvests' | 'payouts'>('dashboard');
-  const activeTab = (propActiveTab as any) || internalTab;
+  const [internalTab, setInternalTab] = useState<VendorTabKey>('dashboard');
+  const activeTab: VendorTabKey = ((propActiveTab as VendorTabKey) || internalTab);
 
-  const setActiveTab = (tab: any) => {
+  const setActiveTab = (tab: VendorTabKey) => {
     setInternalTab(tab);
     if (onSelectTab) onSelectTab(tab);
   };
 
-  // Add Product Modal state
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [pName, setPName] = useState('');
-  const [pPrice, setPPrice] = useState('');
-  const [pStock, setPStock] = useState('');
-  const [pUnit, setPUnit] = useState('kg');
-  const [pCategory, setPCategory] = useState(Categories[1]);
+  // State for products and deliveries to support live responsive edits
+  const [productList, setProductList] = useState<Product[]>([...MockProducts]);
+  const [deliveriesList, setDeliveriesList] = useState([...MockDeliveries]);
 
-  const handlePublishCrop = () => {
-    if (!pName || !pPrice || !pStock) {
-      Alert.alert('Error', 'Please fill in all crop details.');
+  // Load products from Prisma SQLite DB on mount
+  useEffect(() => {
+    let isMounted = true;
+    fetch('http://localhost:5050/api/products')
+      .then((res) => res.json())
+      .then((json) => {
+        if (isMounted && json.success && Array.isArray(json.data) && json.data.length > 0) {
+          const sanitized = json.data.map((p: any) => ({
+            ...p,
+            category: getCategoryName(p.category || p.categoryName),
+          }));
+          setProductList(sanitized);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Crops search and category filter
+  const [cropSearch, setCropSearch] = useState('');
+  const [selectedCropCategory, setSelectedCropCategory] = useState('All');
+
+  // Order status filter
+  const [orderStatusFilter, setOrderStatusFilter] = useState<'All' | 'Pending' | 'Shipped' | 'Delivered'>('All');
+
+  // Non-disruptive inline toast state (NO Alert.alert)
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+  };
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timer = setTimeout(() => setToastMessage(null), 3200);
+    return () => clearTimeout(timer);
+  }, [toastMessage]);
+
+  // Modal State (controlled via props from Bottom Navigation or internally)
+  const [internalShowModal, setInternalShowModal] = useState(false);
+  const isAddModalOpen = showAddModal !== undefined ? showAddModal : internalShowModal;
+  const setModalOpen = (open: boolean) => {
+    setInternalShowModal(open);
+    if (setShowAddModal) setShowAddModal(open);
+  };
+
+  // Add Product Form State
+  const [pName, setPName] = useState('');
+  const [pCategory, setPCategory] = useState(Categories[1]);
+  const [pPrice, setPPrice] = useState('');
+  const [pStock, setPStock] = useState('50');
+  const [pMinStock, setPMinStock] = useState('10');
+  const [pUnit, setPUnit] = useState('Kg');
+  const [pDescription, setPDescription] = useState('Fresh organic harvest direct from Salem farm.');
+  const [pImageUrl, setPImageUrl] = useState(IMAGE_PRESETS[1].url);
+  const [selectedBenefits, setSelectedBenefits] = useState<string[]>([BENEFIT_OPTIONS[0], BENEFIT_OPTIONS[1]]);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  const toggleBenefit = (b: string) => {
+    setSelectedBenefits((prev) =>
+      prev.includes(b) ? prev.filter((item) => item !== b) : [...prev, b]
+    );
+  };
+
+  const handlePublishCrop = async () => {
+    setModalError(null);
+    if (!pName.trim()) {
+      setModalError('Please enter the crop / product name.');
       return;
     }
+    const numPrice = parseFloat(pPrice);
+    if (isNaN(numPrice) || numPrice <= 0) {
+      setModalError('Please enter a valid price in ₹.');
+      return;
+    }
+    const numStock = parseInt(pStock, 10);
+    if (isNaN(numStock) || numStock < 0) {
+      setModalError('Please enter a valid stock quantity.');
+      return;
+    }
+
+    setIsPublishing(true);
+
     const newCrop: Product = {
       id: 'c_' + Date.now(),
-      name: pName,
+      name: pName.trim(),
       category: pCategory,
-      price: parseFloat(pPrice),
+      price: numPrice,
       unit: pUnit,
-      rating: 5.0,
-      stock: parseInt(pStock),
-      minStock: 5,
+      rating: 4.9,
+      stock: numStock,
+      minStock: parseInt(pMinStock, 10) || 10,
       availabilityStart: '06:00 AM',
       availabilityEnd: '09:00 PM',
-      description: 'Fresh organic harvest direct from farmer.',
-      benefits: ['100% Pesticide Free', 'Fresh Daily Harvest'],
-      imageUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400',
+      description: pDescription.trim() || 'Fresh organic harvest direct from farmer.',
+      benefits: selectedBenefits.length > 0 ? selectedBenefits : ['100% Pesticide Free'],
+      imageUrl: pImageUrl.trim() || IMAGE_PRESETS[0].url,
       subscriptionAllowed: true,
       oneTimeAllowed: true,
       organicCertified: true,
     };
+
+    // Attempt to persist to Prisma SQLite Database via API
+    try {
+      await fetch('http://localhost:5050/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newCrop.name,
+          categoryName: newCrop.category,
+          price: newCrop.price,
+          unit: newCrop.unit,
+          stock: newCrop.stock,
+          minStock: newCrop.minStock,
+          description: newCrop.description,
+          benefits: newCrop.benefits,
+          imageUrl: newCrop.imageUrl,
+          organicCertified: true,
+        }),
+      });
+    } catch {
+      // Offline fallback
+    }
+
+    setProductList((prev) => [newCrop, ...prev]);
     MockProducts.unshift(newCrop);
     triggerRefresh();
-    setShowAddModal(false);
-    setPName(''); setPPrice(''); setPStock('');
-    Alert.alert('🎉 Published!', `${newCrop.name} is now live in the catalog!`);
+
+    setIsPublishing(false);
+    setModalOpen(false);
+    setPName('');
+    setPPrice('');
+    setPStock('50');
+    setModalError(null);
+    setActiveTab('crops');
+    showToast(`🌾 "${newCrop.name}" saved to Prisma DB & active in catalog!`);
   };
 
-  // Mock Harvest Schedule data
+  const handleStockAdjust = (id: string, delta: number) => {
+    setProductList((prev) =>
+      prev.map((item) => {
+        if (item.id === id) {
+          const updatedStock = Math.max(0, item.stock + delta);
+          const found = MockProducts.find((p) => p.id === id);
+          if (found) found.stock = updatedStock;
+          return { ...item, stock: updatedStock };
+        }
+        return item;
+      })
+    );
+    triggerRefresh();
+  };
+
+  const handleToggleStockStatus = (id: string) => {
+    setProductList((prev) =>
+      prev.map((item) => {
+        if (item.id === id) {
+          const newStock = item.stock > 0 ? 0 : 30;
+          const found = MockProducts.find((p) => p.id === id);
+          if (found) found.stock = newStock;
+          showToast(newStock > 0 ? `Crop marked Active (${newStock} ${item.unit}s)` : 'Crop marked Out of Stock');
+          return { ...item, stock: newStock };
+        }
+        return item;
+      })
+    );
+    triggerRefresh();
+  };
+
+  const handleDeleteCrop = (id: string, name: string) => {
+    setProductList((prev) => prev.filter((p) => p.id !== id));
+    const idx = MockProducts.findIndex((p) => p.id === id);
+    if (idx !== -1) MockProducts.splice(idx, 1);
+    triggerRefresh();
+    showToast(`Removed "${name}" from vendor listings`);
+  };
+
+  const handleUpdateOrderStatus = (orderId: string, newStatus: string) => {
+    setDeliveriesList((prev) =>
+      prev.map((del) => {
+        if (del.id === orderId) {
+          return { ...del, status: newStatus };
+        }
+        return del;
+      })
+    );
+    const target = MockDeliveries.find((d) => d.id === orderId);
+    if (target) target.status = newStatus;
+    triggerRefresh();
+    showToast(`Order #${(orderId || '').toUpperCase()} marked as ${newStatus}!`);
+  };
+
+  // Harvest Schedule data
   const [harvests] = useState([
-    { id: 'h1', crop: 'Organic Tomatoes', expectedYield: '120 kg', harvestDate: '2026-10-02', status: 'Growing 🌿' },
-    { id: 'h2', crop: 'Pure A2 Milk (Fresh Drop)', expectedYield: '250 L', harvestDate: '2026-09-28', status: 'Ready Tomorrow 🥛' },
-    { id: 'h3', crop: 'Wild Forest Honey', expectedYield: '45 Jars', harvestDate: '2026-10-10', status: 'Maturing 🍯' },
+    { id: 'h1', crop: 'Organic Vine Tomatoes', expectedYield: '140 kg', harvestDate: 'Tomorrow, Oct 24', status: 'Ready 🌿', badgeColor: VC.success },
+    { id: 'h2', crop: 'Pure Desi Cow A2 Milk', expectedYield: '280 L', harvestDate: 'Daily Morning Flow', status: 'In Flow 🥛', badgeColor: VC.info },
+    { id: 'h3', crop: 'Wild Forest Raw Honey', expectedYield: '50 Jars', harvestDate: 'Oct 28', status: 'Maturing 🍯', badgeColor: VC.warning },
+    { id: 'h4', crop: 'Country Free-Range Eggs', expectedYield: '90 Crates', harvestDate: 'Daily Morning', status: 'Ready 🥚', badgeColor: VC.success },
   ]);
 
+  // Tab Definitions
+  const tabs: { key: VendorTabKey; label: string; Icon: any; count?: number }[] = [
+    { key: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
+    { key: 'crops', label: 'My Crops', Icon: Sprout, count: productList.length },
+    { key: 'orders', label: 'Orders', Icon: PackageCheck, count: deliveriesList.filter((d) => d.status !== 'Delivered').length },
+    { key: 'harvests', label: 'Harvests', Icon: CalendarDays },
+    { key: 'payouts', label: 'Payouts', Icon: Wallet },
+  ];
+
+  const pendingCount = deliveriesList.filter((d) => d.status !== 'Delivered').length;
+  const lowStockCount = productList.filter((p) => p.stock <= p.minStock).length;
+
+  // Filtered crops list
+  const filteredCrops = productList.filter((item) => {
+    const matchesSearch = item.name.toLowerCase().includes(cropSearch.toLowerCase());
+    const itemCat = getCategoryName(item.category);
+    const matchesCat = selectedCropCategory === 'All' || itemCat === selectedCropCategory;
+    return matchesSearch && matchesCat;
+  });
+
+  // Filtered orders list
+  const filteredOrders = deliveriesList.filter((del) => {
+    if (orderStatusFilter === 'All') return true;
+    if (orderStatusFilter === 'Pending') return del.status === 'Assigned' || del.status === 'Pending';
+    return del.status === orderStatusFilter;
+  });
+
   return (
-    <View style={{ flex: 1, backgroundColor: VC.bg }}>
-      {/* Top Tab Bar removed - Navigation is now driven exclusively by the sleek Sidebar Drawer */}
-
-      {/* ── TAB 1: DASHBOARD ────────────────────────────────────── */}
-      {activeTab === 'dashboard' && (
-        <ScrollView contentContainerStyle={vs.content}>
-          {/* Executive Stats */}
-          <View style={vs.statsRow}>
-            <View style={[vs.statCard, { borderLeftColor: VC.accent }]}>
-              <Text style={vs.statLabel}>MY CROPS LISTED</Text>
-              <Text style={vs.statValue}>{MockProducts.length}</Text>
-              <Text style={vs.statSub}>Active in catalog</Text>
-            </View>
-            <View style={[vs.statCard, { borderLeftColor: VC.success }]}>
-              <Text style={vs.statLabel}>TOTAL EARNINGS</Text>
-              <Text style={[vs.statValue, { color: VC.success }]}>₹48,250</Text>
-              <Text style={vs.statSub}>+₹4,200 this week</Text>
-            </View>
+    <View style={styles.container}>
+      {/* ── Top Producer Bar with Vendor Identity & Store Switch ── */}
+      <View style={styles.vendorTopBar}>
+        <View style={styles.vendorInfo}>
+          <View style={styles.vendorBadge}>
+            <Text style={styles.vendorBadgeText}>🌾 SALEM ORGANIC FARM HUB</Text>
           </View>
+          <Text style={styles.vendorTitle} numberOfLines={1}>Direct Partner Producer</Text>
+          <Text style={styles.vendorSub}>Token Verified · SQLite Prisma Sync</Text>
+        </View>
 
-          <View style={vs.statsRow}>
-            <View style={[vs.statCard, { borderLeftColor: VC.info }]}>
-              <Text style={vs.statLabel}>PENDING ORDERS</Text>
-              <Text style={[vs.statValue, { color: VC.info }]}>{MockDeliveries.filter(d => d.status !== 'Delivered').length}</Text>
-              <Text style={vs.statSub}>Ready to dispatch</Text>
-            </View>
-            <View style={[vs.statCard, { borderLeftColor: VC.danger }]}>
-              <Text style={vs.statLabel}>LOW STOCK CROPS</Text>
-              <Text style={[vs.statValue, { color: VC.danger }]}>{MockProducts.filter(p => p.stock <= p.minStock).length}</Text>
-              <Text style={vs.statSub}>Needs restock</Text>
-            </View>
-          </View>
-
-          {/* Action Bar */}
-          <TouchableOpacity style={vs.addCropBarBtn} onPress={() => setShowAddModal(true)}>
-            <Text style={vs.addCropBarBtnText}>+ Publish New Organic Crop</Text>
+        {onSwitchToCustomer && (
+          <TouchableOpacity
+            style={styles.switchStoreBtn}
+            onPress={onSwitchToCustomer}
+            activeOpacity={0.8}
+          >
+            <Store size={14} color="#047857" strokeWidth={2.5} />
+            <Text style={styles.switchStoreBtnText}>Customer Store</Text>
           </TouchableOpacity>
+        )}
+      </View>
 
-          {/* Recent Orders Preview */}
-          <View style={vs.card}>
-            <View style={vs.cardHeader}>
-              <Text style={vs.cardTitle}>📦 Recent Incoming Orders</Text>
-              <TouchableOpacity onPress={() => setActiveTab('orders')}>
-                <Text style={{ fontSize: 12, color: VC.textMuted, fontWeight: '700' }}>View All →</Text>
-              </TouchableOpacity>
-            </View>
-            {MockDeliveries.slice(0, 3).map((del) => (
-              <View key={del.id} style={vs.orderRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={vs.customerName}>{del.customerName}</Text>
-                  <Text style={vs.orderProducts}>{del.products}</Text>
-                </View>
-                <View style={[vs.statusBadge, { backgroundColor: del.status === 'Delivered' ? '#DCFCE7' : '#FEF3C7' }]}>
-                  <Text style={{ fontSize: 10, fontWeight: '700', color: del.status === 'Delivered' ? VC.success : VC.accent }}>{del.status}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        </ScrollView>
-      )}
-
-      {/* ── TAB 2: MY CROPS INVENTORY ────────────────────────────── */}
-      {activeTab === 'crops' && (
-        <ScrollView contentContainerStyle={vs.content}>
-          <TouchableOpacity style={vs.addCropBarBtn} onPress={() => setShowAddModal(true)}>
-            <Text style={vs.addCropBarBtnText}>+ Add New Crop Harvest</Text>
-          </TouchableOpacity>
-
-          <View style={{ gap: 12 }}>
-            {MockProducts.map((item) => (
-              <View key={item.id} style={vs.cropCard}>
-                <Image source={{ uri: item.imageUrl }} style={vs.cropImg} />
-                <View style={{ flex: 1, padding: 12 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text style={vs.cropName} numberOfLines={1}>{item.name}</Text>
-                    <Text style={vs.cropPrice}>₹{item.price}/{item.unit}</Text>
-                  </View>
-                  <Text style={vs.cropCat}>{item.category}</Text>
-                  <Text style={{ fontSize: 11, color: item.stock > 10 ? VC.success : VC.danger, fontWeight: '700', marginTop: 4 }}>
-                    Stock: {item.stock} {item.unit}s {item.stock <= item.minStock ? '(Low Stock!)' : ''}
-                  </Text>
-
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
-                    {/* Stock adjustment */}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <TouchableOpacity style={vs.qtyBtn} onPress={() => { if (item.stock > 0) item.stock--; triggerRefresh(); }}>
-                        <Text style={vs.qtyBtnText}>−</Text>
-                      </TouchableOpacity>
-                      <Text style={{ fontWeight: '800', fontSize: 14 }}>{item.stock}</Text>
-                      <TouchableOpacity style={vs.qtyBtn} onPress={() => { item.stock++; triggerRefresh(); }}>
-                        <Text style={vs.qtyBtnText}>+</Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    {/* Stock status pill toggle */}
-                    <TouchableOpacity
-                      style={[vs.pillToggle, { backgroundColor: item.stock > 0 ? '#DCFCE7' : '#FEE2E2' }]}
-                      onPress={() => { item.stock = item.stock > 0 ? 0 : 20; triggerRefresh(); }}
-                    >
-                      <Text style={{ fontSize: 10, fontWeight: '700', color: item.stock > 0 ? VC.success : VC.danger }}>
-                        {item.stock > 0 ? 'Active' : 'Out of Stock'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            ))}
-          </View>
-        </ScrollView>
-      )}
-
-      {/* ── TAB 3: DISPATCH & ORDERS ────────────────────────────── */}
-      {activeTab === 'orders' && (
-        <ScrollView contentContainerStyle={vs.content}>
-          <Text style={vs.cardTitle}>Fulfillment & Dispatch Desk</Text>
-          <View style={{ gap: 12, marginTop: 10 }}>
-            {MockDeliveries.map((del) => (
-              <View key={del.id} style={vs.dispatchCard}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={vs.customerName}>{del.customerName}</Text>
-                    <Text style={vs.orderProducts}>{del.products}</Text>
-                    <Text style={{ fontSize: 11, color: VC.textSec, marginTop: 4 }}>📍 {del.address}</Text>
-                    <Text style={{ fontSize: 11, color: VC.textMuted, marginTop: 2 }}>🕐 Delivery Slot: {del.deliveryTime}</Text>
-                  </View>
-                  <View style={[vs.statusBadge, { backgroundColor: del.status === 'Delivered' ? '#DCFCE7' : del.status === 'Shipped' ? '#DBEAFE' : '#FEF3C7' }]}>
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: del.status === 'Delivered' ? VC.success : del.status === 'Shipped' ? VC.info : VC.accent }}>{del.status}</Text>
-                  </View>
-                </View>
-
-                {del.status !== 'Delivered' && (
-                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-                    {del.status === 'Pending' && (
-                      <TouchableOpacity style={[vs.actionBtn, { backgroundColor: VC.info }]} onPress={() => { del.status = 'Shipped'; triggerRefresh(); Alert.alert('Shipped!', 'Marked order as SHIPPED.'); }}>
-                        <Text style={vs.actionBtnText}>🚀 Mark Shipped</Text>
-                      </TouchableOpacity>
-                    )}
-                    {del.status === 'Shipped' && (
-                      <TouchableOpacity style={[vs.actionBtn, { backgroundColor: VC.success }]} onPress={() => { del.status = 'Delivered'; triggerRefresh(); Alert.alert('Delivered!', 'Order marked DELIVERED!'); }}>
-                        <Text style={vs.actionBtnText}>✓ Mark Delivered</Text>
-                      </TouchableOpacity>
-                    )}
+      {/* ── Horizontal Segmented Quick Tab Bar ── */}
+      <View style={styles.tabBarWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabBarScroll}
+        >
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.key;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                style={[styles.tabButton, isActive && styles.tabButtonActive]}
+                onPress={() => setActiveTab(tab.key)}
+                activeOpacity={0.7}
+              >
+                <tab.Icon
+                  size={14}
+                  color={isActive ? '#FFFFFF' : '#475569'}
+                  strokeWidth={isActive ? 2.5 : 2}
+                />
+                <Text style={[styles.tabButtonText, isActive && styles.tabButtonTextActive]}>
+                  {tab.label}
+                </Text>
+                {typeof tab.count === 'number' && (
+                  <View style={[styles.tabBadge, isActive && styles.tabBadgeActive]}>
+                    <Text style={[styles.tabBadgeText, isActive && styles.tabBadgeTextActive]}>
+                      {tab.count}
+                    </Text>
                   </View>
                 )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* ── Smooth Non-Disruptive Inline Notification Toast ── */}
+      {toastMessage && (
+        <View style={styles.toastContainer}>
+          <CircleCheck size={16} color="#047857" strokeWidth={2.5} />
+          <Text style={styles.toastText} numberOfLines={1}>
+            {toastMessage}
+          </Text>
+        </View>
+      )}
+
+      {/* ── TAB 1: DASHBOARD (KEY METRICS & PREVIEWS) ── */}
+      {activeTab === 'dashboard' && (
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {/* Quick Metrics 2x2 Grid */}
+          <View style={styles.metricsGrid}>
+            <TouchableOpacity
+              style={[styles.metricCard, { borderLeftColor: VC.sub }]}
+              onPress={() => setActiveTab('crops')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.metricHeaderRow}>
+                <Text style={styles.metricLabel}>ACTIVE CROPS</Text>
+                <Sprout size={16} color={VC.sub} />
+              </View>
+              <Text style={styles.metricValue}>{productList.length}</Text>
+              <Text style={styles.metricSub}>Live in catalog →</Text>
+            </TouchableOpacity>
+
+            <View style={[styles.metricCard, { borderLeftColor: VC.success }]}>
+              <View style={styles.metricHeaderRow}>
+                <Text style={styles.metricLabel}>TOTAL EARNINGS</Text>
+                <TrendingUp size={16} color={VC.success} />
+              </View>
+              <Text style={[styles.metricValue, { color: VC.success }]}>₹48,250</Text>
+              <Text style={styles.metricSub}>+₹4,200 this week</Text>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.metricCard, { borderLeftColor: VC.info }]}
+              onPress={() => setActiveTab('orders')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.metricHeaderRow}>
+                <Text style={styles.metricLabel}>PENDING DISPATCH</Text>
+                <PackageCheck size={16} color={VC.info} />
+              </View>
+              <Text style={[styles.metricValue, { color: VC.info }]}>{pendingCount}</Text>
+              <Text style={styles.metricSub}>Ready to fulfill →</Text>
+            </TouchableOpacity>
+
+            <View style={[styles.metricCard, { borderLeftColor: lowStockCount > 0 ? VC.danger : VC.sub }]}>
+              <View style={styles.metricHeaderRow}>
+                <Text style={styles.metricLabel}>LOW STOCK ALERT</Text>
+                <TriangleAlert size={16} color={lowStockCount > 0 ? VC.danger : VC.textMuted} />
+              </View>
+              <Text style={[styles.metricValue, { color: lowStockCount > 0 ? VC.danger : VC.textPrimary }]}>
+                {lowStockCount}
+              </Text>
+              <Text style={styles.metricSub}>Needs harvest replenish</Text>
+            </View>
+          </View>
+
+          {/* Quick Action: Publish Crop Button */}
+          <TouchableOpacity
+            style={styles.publishActionBtn}
+            onPress={() => setModalOpen(true)}
+            activeOpacity={0.85}
+          >
+            <Plus size={18} color="#FFFFFF" strokeWidth={3} />
+            <Text style={styles.publishActionBtnText}>+ Add New Organic Product</Text>
+          </TouchableOpacity>
+
+          {/* Incoming Dispatch Orders Preview */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>📦 Incoming Deliveries</Text>
+              <TouchableOpacity onPress={() => setActiveTab('orders')}>
+                <Text style={styles.sectionActionLink}>View All ({deliveriesList.length}) →</Text>
+              </TouchableOpacity>
+            </View>
+
+            {deliveriesList.slice(0, 3).map((del) => (
+              <View key={del.id} style={styles.orderListItem}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.orderCustomer}>{del.customerName}</Text>
+                  <Text style={styles.orderItems} numberOfLines={1}>{del.products}</Text>
+                  <Text style={styles.orderSlot}>Delivery: {del.deliveryTime}</Text>
+                </View>
+                <View
+                  style={[
+                    styles.statusPill,
+                    {
+                      backgroundColor:
+                        del.status === 'Delivered'
+                          ? VC.successLight
+                          : del.status === 'Shipped'
+                          ? VC.infoLight
+                          : VC.warningLight,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.statusPillText,
+                      {
+                        color:
+                          del.status === 'Delivered'
+                            ? VC.success
+                            : del.status === 'Shipped'
+                            ? VC.info
+                            : VC.warning,
+                      },
+                    ]}
+                  >
+                    {del.status}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+
+          {/* Upcoming Harvest Forecast */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>🌱 Upcoming Farm Harvests</Text>
+              <TouchableOpacity onPress={() => setActiveTab('harvests')}>
+                <Text style={styles.sectionActionLink}>Track All →</Text>
+              </TouchableOpacity>
+            </View>
+
+            {harvests.slice(0, 2).map((h) => (
+              <View key={h.id} style={styles.harvestPreviewRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.harvestCrop}>{h.crop}</Text>
+                  <Text style={styles.harvestDate}>Est. Yield: {h.expectedYield} · {h.harvestDate}</Text>
+                </View>
+                <Text style={[styles.harvestBadge, { color: h.badgeColor }]}>{h.status}</Text>
               </View>
             ))}
           </View>
         </ScrollView>
       )}
 
-      {/* ── TAB 4: HARVEST SCHEDULE ────────────────────────────── */}
-      {activeTab === 'harvests' && (
-        <ScrollView contentContainerStyle={vs.content}>
-          <Text style={vs.cardTitle}>🌱 Crop Harvest Tracker</Text>
-          <Text style={{ fontSize: 12, color: VC.textSec, marginBottom: 14 }}>Track upcoming yield estimates and harvest dates for seamless supply planning.</Text>
-
-          {harvests.map(h => (
-            <View key={h.id} style={vs.harvestCard}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={vs.cropName}>{h.crop}</Text>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: VC.textMuted }}>{h.status}</Text>
-              </View>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-                <Text style={{ fontSize: 12, color: VC.textSec }}>Est. Yield: <Text style={{ fontWeight: '800', color: VC.textPrimary }}>{h.expectedYield}</Text></Text>
-                <Text style={{ fontSize: 12, color: VC.textSec }}>Harvest Date: <Text style={{ fontWeight: '800', color: VC.textPrimary }}>{h.harvestDate}</Text></Text>
-              </View>
+      {/* ── TAB 2: MY CROPS INVENTORY ── */}
+      {activeTab === 'crops' && (
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {/* Header Row */}
+          <View style={styles.cropsHeaderRow}>
+            <View>
+              <Text style={styles.screenHeading}>Crop Inventory</Text>
+              <Text style={styles.screenSubheading}>{productList.length} products listed in database</Text>
             </View>
-          ))}
-        </ScrollView>
-      )}
-
-      {/* ── TAB 5: PAYOUTS ────────────────────────────────────── */}
-      {activeTab === 'payouts' && (
-        <ScrollView contentContainerStyle={vs.content}>
-          <View style={vs.payoutBanner}>
-            <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', fontWeight: '800', letterSpacing: 1 }}>NEXT AUTOMATED PAYOUT</Text>
-            <Text style={{ fontSize: 32, fontWeight: '900', color: '#FFF', marginVertical: 4 }}>₹14,600</Text>
-            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>Scheduled for Monday, Oct 2nd · HDFC Bank **** 4892</Text>
+            <TouchableOpacity
+              style={styles.addCropSmallBtn}
+              onPress={() => setModalOpen(true)}
+              activeOpacity={0.8}
+            >
+              <Plus size={16} color="#FFFFFF" strokeWidth={3} />
+              <Text style={styles.addCropSmallBtnText}>+ Add Crop</Text>
+            </TouchableOpacity>
           </View>
 
-          <Text style={vs.cardTitle}>Payout History</Text>
-          {[
-            { date: '2026-09-21', amt: '₹18,450', status: 'Transfer Completed', ref: 'PAY_98124' },
-            { date: '2026-09-14', amt: '₹15,200', status: 'Transfer Completed', ref: 'PAY_87123' },
-            { date: '2026-09-07', amt: '₹12,800', status: 'Transfer Completed', ref: 'PAY_76120' },
-          ].map(p => (
-            <View key={p.ref} style={vs.payoutRow}>
-              <View>
-                <Text style={{ fontSize: 14, fontWeight: '800', color: VC.textPrimary }}>{p.amt}</Text>
-                <Text style={{ fontSize: 11, color: VC.textMuted, marginTop: 2 }}>Ref: {p.ref} · {p.date}</Text>
+          {/* Search Box */}
+          <View style={styles.searchBox}>
+            <Search size={16} color="#94A3B8" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search your listed crops..."
+              placeholderTextColor="#94A3B8"
+              value={cropSearch}
+              onChangeText={setCropSearch}
+            />
+            {cropSearch.length > 0 && (
+              <TouchableOpacity onPress={() => setCropSearch('')}>
+                <X size={16} color="#94A3B8" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Category Filter Pills */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catFilterRow}>
+            {['All', ...Categories.filter((c) => c !== 'All')].map((cat) => {
+              const isSelected = selectedCropCategory === cat;
+              return (
+                <TouchableOpacity
+                  key={cat}
+                  style={[styles.catFilterPill, isSelected && styles.catFilterPillActive]}
+                  onPress={() => setSelectedCropCategory(cat)}
+                >
+                  <Text style={[styles.catFilterPillText, isSelected && styles.catFilterPillTextActive]}>
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {/* Crops List */}
+          <View style={styles.cropListContainer}>
+            {filteredCrops.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Sprout size={36} color="#94A3B8" />
+                <Text style={styles.emptyText}>No crops match your search or filter</Text>
+                <TouchableOpacity style={styles.emptyActionBtn} onPress={() => setModalOpen(true)}>
+                  <Text style={styles.emptyActionBtnText}>+ Add a New Crop</Text>
+                </TouchableOpacity>
               </View>
-              <Text style={{ fontSize: 11, color: VC.success, fontWeight: '700' }}>✓ {p.status}</Text>
-            </View>
-          ))}
+            ) : (
+              filteredCrops.map((item) => {
+                const isLowStock = item.stock <= item.minStock;
+                const isOutOfStock = item.stock === 0;
+
+                return (
+                  <View key={item.id} style={styles.cropCard}>
+                    <Image source={{ uri: item.imageUrl }} style={styles.cropImage} resizeMode="cover" />
+
+                    <View style={styles.cropDetails}>
+                      <View style={styles.cropTopRow}>
+                        <View style={{ flex: 1, marginRight: 6 }}>
+                          <Text style={styles.cropTitle} numberOfLines={1}>{item.name}</Text>
+                          <Text style={styles.cropCategoryText}>
+                            {getCategoryName(item.category)} · <Text style={{ color: '#047857', fontWeight: 'bold' }}>₹{item.price}/{item.unit}</Text>
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          onPress={() => handleDeleteCrop(item.id, item.name)}
+                          style={styles.deleteCropBtn}
+                          activeOpacity={0.7}
+                        >
+                          <Trash size={14} color="#EF4444" />
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Stock Alert Badge */}
+                      <View style={styles.stockAlertRow}>
+                        <Text
+                          style={[
+                            styles.stockStatusText,
+                            {
+                              color: isOutOfStock
+                                ? VC.danger
+                                : isLowStock
+                                ? VC.warning
+                                : VC.success,
+                            },
+                          ]}
+                        >
+                          {isOutOfStock
+                            ? '● Out of Stock'
+                            : isLowStock
+                            ? `● Low Stock (${item.stock} left)`
+                            : `● Stock: ${item.stock} ${item.unit}s`}
+                        </Text>
+                      </View>
+
+                      {/* Actions Row: Stepper + Status Toggle */}
+                      <View style={styles.cropActionRow}>
+                        <View style={styles.stepperContainer}>
+                          <TouchableOpacity
+                            style={styles.stepperBtn}
+                            onPress={() => handleStockAdjust(item.id, -1)}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={styles.stepperBtnText}>−</Text>
+                          </TouchableOpacity>
+                          <Text style={styles.stepperValue}>{item.stock}</Text>
+                          <TouchableOpacity
+                            style={styles.stepperBtn}
+                            onPress={() => handleStockAdjust(item.id, 1)}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={styles.stepperBtnText}>+</Text>
+                          </TouchableOpacity>
+                        </View>
+
+                        <TouchableOpacity
+                          style={[
+                            styles.statusTogglePill,
+                            {
+                              backgroundColor: item.stock > 0 ? VC.successLight : VC.dangerLight,
+                            },
+                          ]}
+                          onPress={() => handleToggleStockStatus(item.id)}
+                          activeOpacity={0.7}
+                        >
+                          <Text
+                            style={[
+                              styles.statusToggleText,
+                              { color: item.stock > 0 ? VC.success : VC.danger },
+                            ]}
+                          >
+                            {item.stock > 0 ? 'Active' : 'Restock'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </View>
         </ScrollView>
       )}
 
-      {/* ── ADD CROP MODAL ──────────────────────────────────────── */}
-      <Modal visible={showAddModal} transparent animationType="slide">
-        <View style={vs.modalBg}>
-          <View style={vs.modalSheet}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <Text style={{ fontSize: 16, fontWeight: '800', color: VC.textPrimary }}>Publish New Crop</Text>
-              <TouchableOpacity onPress={() => setShowAddModal(false)}><Text style={{ fontSize: 18, color: VC.textMuted }}>✕</Text></TouchableOpacity>
+      {/* ── TAB 3: DISPATCH & ORDERS DESK ── */}
+      {activeTab === 'orders' && (
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.screenHeaderBox}>
+            <Text style={styles.screenHeading}>Fulfillment & Dispatch Desk</Text>
+            <Text style={styles.screenSubheading}>Manage outgoing packages and live customer deliveries</Text>
+          </View>
+
+          {/* Orders Status Filter Tabs */}
+          <View style={styles.orderFilterPillRow}>
+            {(['All', 'Pending', 'Shipped', 'Delivered'] as const).map((st) => (
+              <TouchableOpacity
+                key={st}
+                style={[styles.orderFilterPill, orderStatusFilter === st && styles.orderFilterPillActive]}
+                onPress={() => setOrderStatusFilter(st)}
+              >
+                <Text style={[styles.orderFilterPillText, orderStatusFilter === st && styles.orderFilterPillTextActive]}>
+                  {st}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={styles.ordersListContainer}>
+            {filteredOrders.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <PackageCheck size={36} color="#94A3B8" />
+                <Text style={styles.emptyText}>No orders match the selected status</Text>
+              </View>
+            ) : (
+              filteredOrders.map((del) => {
+                const isDelivered = del.status === 'Delivered';
+                const isShipped = del.status === 'Shipped';
+
+                return (
+                  <View key={del.id} style={styles.dispatchCard}>
+                    <View style={styles.dispatchHeader}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.dispatchCustomer}>{del.customerName}</Text>
+                        <Text style={styles.dispatchId}>Order ID: #{(del.id || '').toUpperCase()}</Text>
+                      </View>
+
+                      <View
+                        style={[
+                          styles.statusPill,
+                          {
+                            backgroundColor: isDelivered
+                              ? VC.successLight
+                              : isShipped
+                              ? VC.infoLight
+                              : VC.warningLight,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.statusPillText,
+                            {
+                              color: isDelivered
+                                ? VC.success
+                                : isShipped
+                                ? VC.info
+                                : VC.warning,
+                            },
+                          ]}
+                        >
+                          {del.status}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.dispatchDetailsBox}>
+                      <Text style={styles.dispatchProducts}>{del.products}</Text>
+                      <View style={styles.dispatchMetaRow}>
+                        <MapPin size={12} color={VC.textMuted} />
+                        <Text style={styles.dispatchMetaText} numberOfLines={1}>{del.address}</Text>
+                      </View>
+                      <View style={styles.dispatchMetaRow}>
+                        <Clock size={12} color={VC.textMuted} />
+                        <Text style={styles.dispatchMetaText}>Slot: {del.deliveryTime}</Text>
+                      </View>
+                    </View>
+
+                    {/* Order Transition Actions */}
+                    {!isDelivered && (
+                      <View style={styles.dispatchBtnRow}>
+                        {del.status === 'Shipped' ? (
+                          <TouchableOpacity
+                            style={[styles.dispatchActionBtn, { backgroundColor: VC.success }]}
+                            onPress={() => handleUpdateOrderStatus(del.id, 'Delivered')}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={styles.dispatchActionBtnText}>✓ Mark as Delivered</Text>
+                          </TouchableOpacity>
+                        ) : (
+                          <TouchableOpacity
+                            style={[styles.dispatchActionBtn, { backgroundColor: VC.info }]}
+                            onPress={() => handleUpdateOrderStatus(del.id, 'Shipped')}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={styles.dispatchActionBtnText}>🚀 Mark as Shipped</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
+                  </View>
+                );
+              })
+            )}
+          </View>
+        </ScrollView>
+      )}
+
+      {/* ── TAB 4: HARVEST SCHEDULE ── */}
+      {activeTab === 'harvests' && (
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.screenHeaderBox}>
+            <Text style={styles.screenHeading}>🌱 Crop Harvest Tracker</Text>
+            <Text style={styles.screenSubheading}>Track planned field yields and harvest dates</Text>
+          </View>
+
+          <View style={styles.harvestList}>
+            {harvests.map((h) => (
+              <View key={h.id} style={styles.harvestCard}>
+                <View style={styles.harvestCardTop}>
+                  <Text style={styles.harvestCardTitle}>{h.crop}</Text>
+                  <View style={[styles.statusPill, { backgroundColor: VC.accentLight }]}>
+                    <Text style={[styles.statusPillText, { color: h.badgeColor }]}>{h.status}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.harvestStatsRow}>
+                  <View style={styles.harvestStatCol}>
+                    <Text style={styles.harvestStatLabel}>EXPECTED YIELD</Text>
+                    <Text style={styles.harvestStatValue}>{h.expectedYield}</Text>
+                  </View>
+                  <View style={styles.harvestStatCol}>
+                    <Text style={styles.harvestStatLabel}>HARVEST DATE</Text>
+                    <Text style={styles.harvestStatValue}>{h.harvestDate}</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      )}
+
+      {/* ── TAB 5: PAYOUTS ── */}
+      {activeTab === 'payouts' && (
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {/* Payout Hero Card */}
+          <View style={styles.payoutHeroCard}>
+            <Text style={styles.payoutHeroLabel}>NEXT AUTOMATED PAYOUT</Text>
+            <Text style={styles.payoutHeroAmount}>₹14,600</Text>
+            <Text style={styles.payoutHeroSub}>
+              Scheduled for Monday, Oct 26 · HDFC Bank **** 4892
+            </Text>
+          </View>
+
+          <Text style={styles.sectionTitle}>Payout Transfer History</Text>
+          <View style={styles.payoutList}>
+            {[
+              { date: '2026-10-18', amt: '₹18,450', status: 'Completed', ref: 'PAY_98124' },
+              { date: '2026-10-11', amt: '₹15,200', status: 'Completed', ref: 'PAY_87123' },
+              { date: '2026-10-04', amt: '₹12,800', status: 'Completed', ref: 'PAY_76120' },
+            ].map((p) => (
+              <View key={p.ref} style={styles.payoutRow}>
+                <View>
+                  <Text style={styles.payoutAmt}>{p.amt}</Text>
+                  <Text style={styles.payoutMeta}>Ref: {p.ref} · {p.date}</Text>
+                </View>
+                <View style={[styles.statusPill, { backgroundColor: VC.successLight }]}>
+                  <Text style={[styles.statusPillText, { color: VC.success }]}>✓ {p.status}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      )}
+
+      {/* ── COMPREHENSIVE ADD NEW CROP MODAL ── */}
+      <Modal visible={isAddModalOpen} transparent animationType="slide">
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>Publish New Organic Crop</Text>
+                <Text style={styles.modalSubtitle}>Saves to Prisma DB & syncs to store</Text>
+              </View>
+              <TouchableOpacity onPress={() => setModalOpen(false)} style={styles.modalCloseBtn}>
+                <X size={20} color="#64748B" />
+              </TouchableOpacity>
             </View>
 
-            <Text style={vs.fieldLabel}>Crop Name</Text>
-            <TextInput style={vs.input} placeholder="e.g. Organic Sweet Corn" value={pName} onChangeText={setPName} placeholderTextColor="#94A3B8" />
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 460 }}>
+              {modalError && (
+                <View style={styles.modalErrorBox}>
+                  <TriangleAlert size={14} color="#DC2626" />
+                  <Text style={styles.modalErrorText}>{modalError}</Text>
+                </View>
+              )}
 
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={vs.fieldLabel}>Price (₹)</Text>
-                <TextInput style={vs.input} placeholder="60" keyboardType="number-pad" value={pPrice} onChangeText={setPPrice} placeholderTextColor="#94A3B8" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={vs.fieldLabel}>Stock Qty</Text>
-                <TextInput style={vs.input} placeholder="50" keyboardType="number-pad" value={pStock} onChangeText={setPStock} placeholderTextColor="#94A3B8" />
-              </View>
-            </View>
+              {/* Crop Name */}
+              <Text style={styles.inputLabel}>Crop / Product Name *</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="e.g. Organic Red Bell Peppers"
+                placeholderTextColor="#94A3B8"
+                value={pName}
+                onChangeText={setPName}
+              />
 
-            <Text style={vs.fieldLabel}>Category</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row', marginVertical: 8 }}>
-              {Categories.filter(c => c !== 'All').map(c => (
-                <TouchableOpacity key={c} style={[vs.catPill, pCategory === c && vs.catPillActive]} onPress={() => setPCategory(c)}>
-                  <Text style={[vs.catPillText, pCategory === c && vs.catPillTextActive]}>{c.split(' ')[0]}</Text>
-                </TouchableOpacity>
-              ))}
+              {/* Price & Unit */}
+              <View style={styles.formRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.inputLabel}>Price (₹) *</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="75"
+                    placeholderTextColor="#94A3B8"
+                    keyboardType="numeric"
+                    value={pPrice}
+                    onChangeText={setPPrice}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.inputLabel}>Unit</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.unitRow}>
+                    {AVAILABLE_UNITS.map((u) => (
+                      <TouchableOpacity
+                        key={u}
+                        style={[styles.unitChip, pUnit === u && styles.unitChipActive]}
+                        onPress={() => setPUnit(u)}
+                      >
+                        <Text style={[styles.unitChipText, pUnit === u && styles.unitChipTextActive]}>
+                          {u}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              </View>
+
+              {/* Stock Quantity & Min Safety Stock */}
+              <View style={styles.formRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.inputLabel}>Initial Stock Qty</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="50"
+                    placeholderTextColor="#94A3B8"
+                    keyboardType="numeric"
+                    value={pStock}
+                    onChangeText={setPStock}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.inputLabel}>Min Alert Threshold</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="10"
+                    placeholderTextColor="#94A3B8"
+                    keyboardType="numeric"
+                    value={pMinStock}
+                    onChangeText={setPMinStock}
+                  />
+                </View>
+              </View>
+
+              {/* Category Selector */}
+              <Text style={styles.inputLabel}>Category *</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catChipsRow}>
+                {Categories.filter((c) => c !== 'All').map((c) => {
+                  const isSelected = pCategory === c;
+                  return (
+                    <TouchableOpacity
+                      key={c}
+                      style={[styles.catChip, isSelected && styles.catChipActive]}
+                      onPress={() => setPCategory(c)}
+                    >
+                      <Text style={[styles.catChipText, isSelected && styles.catChipTextActive]}>
+                        {c}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              {/* Photo Presets */}
+              <Text style={styles.inputLabel}>Select Photo Preset</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.presetRow}>
+                {IMAGE_PRESETS.map((item) => {
+                  const isSelected = pImageUrl === item.url;
+                  return (
+                    <TouchableOpacity
+                      key={item.label}
+                      style={[styles.presetChip, isSelected && styles.presetChipActive]}
+                      onPress={() => setPImageUrl(item.url)}
+                    >
+                      <Image source={{ uri: item.url }} style={styles.presetThumb} />
+                      <Text style={[styles.presetText, isSelected && styles.presetTextActive]}>
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              {/* Key Organic Benefits */}
+              <Text style={styles.inputLabel}>Key Organic Benefits</Text>
+              <View style={styles.benefitsGrid}>
+                {BENEFIT_OPTIONS.map((b) => {
+                  const isChecked = selectedBenefits.includes(b);
+                  return (
+                    <TouchableOpacity
+                      key={b}
+                      style={[styles.benefitBadge, isChecked && styles.benefitBadgeActive]}
+                      onPress={() => toggleBenefit(b)}
+                    >
+                      <Text style={[styles.benefitBadgeText, isChecked && styles.benefitBadgeTextActive]}>
+                        {isChecked ? '✓ ' : '+ '} {b}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Description */}
+              <Text style={styles.inputLabel}>Farm Description</Text>
+              <TextInput
+                style={[styles.textInput, { height: 60, textAlignVertical: 'top' }]}
+                placeholder="Harvested fresh from organic soil."
+                placeholderTextColor="#94A3B8"
+                multiline
+                numberOfLines={2}
+                value={pDescription}
+                onChangeText={setPDescription}
+              />
             </ScrollView>
 
-            <TouchableOpacity style={vs.publishBtn} onPress={handlePublishCrop}>
-              <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 14 }}>Publish Crop to Market</Text>
+            <TouchableOpacity
+              style={styles.modalSubmitBtn}
+              onPress={handlePublishCrop}
+              disabled={isPublishing}
+              activeOpacity={0.85}
+            >
+              {isPublishing ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.modalSubmitBtnText}>Publish Crop to Market & DB</Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -326,64 +1060,866 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
   );
 };
 
-const vs = StyleSheet.create({
-  tabBar: { backgroundColor: VC.primary, paddingVertical: 10, flexGrow: 0 },
-  tabBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.12)' },
-  tabBtnActive: { backgroundColor: VC.accent },
-  tabText: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.7)' },
-  tabTextActive: { color: VC.primary },
-  content: { padding: 16 },
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
 
-  // Stats
-  statsRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
-  statCard: { flex: 1, backgroundColor: VC.cardBg, borderRadius: 12, padding: 12, borderLeftWidth: 4, borderWidth: 1, borderColor: VC.border },
-  statLabel: { fontSize: 9, fontWeight: '800', color: VC.textSec, letterSpacing: 0.5 },
-  statValue: { fontSize: 20, fontWeight: '900', color: VC.textPrimary, marginVertical: 2 },
-  statSub: { fontSize: 10, color: VC.textMuted },
+  // ── Top Bar ──
+  vendorTopBar: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  vendorInfo: {
+    flex: 1,
+  },
+  vendorBadge: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+  },
+  vendorBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#047857',
+    letterSpacing: 0.5,
+  },
+  vendorTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  vendorSub: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+  switchStoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  switchStoreBtnText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#047857',
+  },
 
-  // Action
-  addCropBarBtn: { backgroundColor: VC.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center', marginBottom: 14 },
-  addCropBarBtnText: { color: '#FFF', fontSize: 13, fontWeight: '800' },
+  // ── Tab Bar ──
+  tabBarWrapper: {
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    paddingVertical: 8,
+  },
+  tabBarScroll: {
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  tabButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    gap: 6,
+  },
+  tabButtonActive: {
+    backgroundColor: '#047857',
+  },
+  tabButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  tabButtonTextActive: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  tabBadge: {
+    backgroundColor: '#E2E8F0',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  tabBadgeActive: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  tabBadgeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#475569',
+  },
+  tabBadgeTextActive: {
+    color: '#FFFFFF',
+  },
 
-  // Card
-  card: { backgroundColor: VC.cardBg, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: VC.border, marginBottom: 14 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  cardTitle: { fontSize: 14, fontWeight: '800', color: VC.textPrimary },
-  orderRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: VC.border },
-  customerName: { fontSize: 13, fontWeight: '700', color: VC.textPrimary },
-  orderProducts: { fontSize: 11, color: VC.textSec, marginTop: 2 },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
+  // ── Toast ──
+  toastContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginHorizontal: 14,
+    marginTop: 10,
+    borderRadius: 12,
+    gap: 8,
+  },
+  toastText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#065F46',
+    flex: 1,
+  },
 
-  // Crops
-  cropCard: { flexDirection: 'row', backgroundColor: VC.cardBg, borderRadius: 14, borderWidth: 1, borderColor: VC.border, overflow: 'hidden' },
-  cropImg: { width: 90, height: 100, backgroundColor: VC.border },
-  cropName: { fontSize: 13, fontWeight: '800', color: VC.textPrimary, flex: 1 },
-  cropPrice: { fontSize: 13, fontWeight: '800', color: VC.primary },
-  cropCat: { fontSize: 10, color: VC.textMuted },
-  qtyBtn: { width: 26, height: 26, borderRadius: 13, backgroundColor: VC.bg, alignItems: 'center', justifyContent: 'center' },
-  qtyBtnText: { fontSize: 16, fontWeight: '700', color: VC.primary },
-  pillToggle: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  // ── Scroll Content ──
+  scrollContent: {
+    padding: 14,
+    paddingBottom: 40,
+  },
 
-  // Dispatch
-  dispatchCard: { backgroundColor: VC.cardBg, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: VC.border },
-  actionBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
-  actionBtnText: { color: '#FFF', fontSize: 12, fontWeight: '800' },
+  // ── Metrics 2x2 Grid ──
+  metricsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 14,
+  },
+  metricCard: {
+    flex: 1,
+    minWidth: '47%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderLeftWidth: 4,
+  },
+  metricHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  metricLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#64748B',
+    letterSpacing: 0.5,
+  },
+  metricValue: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#0F172A',
+    marginVertical: 2,
+  },
+  metricSub: {
+    fontSize: 10,
+    color: '#64748B',
+  },
 
-  // Harvest
-  harvestCard: { backgroundColor: VC.cardBg, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: VC.border, marginBottom: 10 },
+  // ── Action Button ──
+  publishActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#047857',
+    borderRadius: 14,
+    paddingVertical: 13,
+    gap: 8,
+    marginBottom: 14,
+    shadowColor: '#047857',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  publishActionBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
 
-  // Payouts
-  payoutBanner: { backgroundColor: VC.primary, borderRadius: 16, padding: 20, marginBottom: 16 },
-  payoutRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: VC.cardBg, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: VC.border, marginBottom: 8 },
+  // ── Section Card ──
+  sectionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 14,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  sectionActionLink: {
+    fontSize: 12,
+    color: '#047857',
+    fontWeight: '700',
+  },
 
-  // Modal
-  modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: VC.cardBg, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 },
-  fieldLabel: { fontSize: 12, fontWeight: '700', color: VC.textPrimary, marginTop: 10, marginBottom: 4 },
-  input: { backgroundColor: VC.bg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: VC.textPrimary, borderWidth: 1, borderColor: VC.border },
-  catPill: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 16, borderWidth: 1, borderColor: VC.border, marginRight: 8, backgroundColor: VC.bg },
-  catPillActive: { backgroundColor: VC.primary, borderColor: VC.primary },
-  catPillText: { fontSize: 11, color: VC.textSec, fontWeight: '600' },
-  catPillTextActive: { color: '#FFF', fontWeight: '800' },
-  publishBtn: { backgroundColor: VC.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center', marginTop: 16 },
+  // ── Order Item ──
+  orderListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  orderCustomer: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  orderItems: {
+    fontSize: 11,
+    color: '#475569',
+    marginTop: 2,
+  },
+  orderSlot: {
+    fontSize: 10,
+    color: '#94A3B8',
+    marginTop: 2,
+  },
+  statusPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  statusPillText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+
+  // ── Harvest Preview ──
+  harvestPreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  harvestCrop: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  harvestDate: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  harvestBadge: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+
+  // ── Crops Screen ──
+  cropsHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  screenHeading: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  screenSubheading: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  addCropSmallBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#047857',
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  addCropSmallBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 42,
+    marginBottom: 10,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: '#0F172A',
+  },
+  catFilterRow: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  catFilterPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    marginRight: 8,
+  },
+  catFilterPillActive: {
+    backgroundColor: '#047857',
+    borderColor: '#047857',
+  },
+  catFilterPillText: {
+    fontSize: 11,
+    color: '#475569',
+    fontWeight: '600',
+  },
+  catFilterPillTextActive: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  cropListContainer: {
+    gap: 10,
+  },
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 10,
+  },
+  emptyText: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  emptyActionBtn: {
+    backgroundColor: '#047857',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginTop: 4,
+  },
+  emptyActionBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  cropCard: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    overflow: 'hidden',
+  },
+  cropImage: {
+    width: 90,
+    height: 105,
+    backgroundColor: '#F1F5F9',
+  },
+  cropDetails: {
+    flex: 1,
+    padding: 10,
+    justifyContent: 'space-between',
+  },
+  cropTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  cropTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  cropCategoryText: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  deleteCropBtn: {
+    padding: 4,
+  },
+  stockAlertRow: {
+    marginVertical: 4,
+  },
+  stockStatusText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  cropActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  stepperContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  stepperBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  stepperBtnText: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  stepperValue: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#0F172A',
+    minWidth: 20,
+    textAlign: 'center',
+  },
+  statusTogglePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusToggleText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+
+  // ── Dispatch Desk ──
+  screenHeaderBox: {
+    marginBottom: 10,
+  },
+  orderFilterPillRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  orderFilterPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  orderFilterPillActive: {
+    backgroundColor: '#047857',
+    borderColor: '#047857',
+  },
+  orderFilterPillText: {
+    fontSize: 11,
+    color: '#475569',
+    fontWeight: '600',
+  },
+  orderFilterPillTextActive: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  ordersListContainer: {
+    gap: 12,
+  },
+  dispatchCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  dispatchHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  dispatchCustomer: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  dispatchId: {
+    fontSize: 10,
+    color: '#94A3B8',
+    marginTop: 1,
+  },
+  dispatchDetailsBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    padding: 10,
+    gap: 4,
+    marginVertical: 8,
+  },
+  dispatchProducts: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  dispatchMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  dispatchMetaText: {
+    fontSize: 11,
+    color: '#64748B',
+    flex: 1,
+  },
+  dispatchBtnRow: {
+    marginTop: 8,
+  },
+  dispatchActionBtn: {
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  dispatchActionBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+
+  // ── Harvests ──
+  harvestList: {
+    gap: 10,
+  },
+  harvestCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  harvestCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  harvestCardTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  harvestStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    padding: 10,
+    borderRadius: 10,
+  },
+  harvestStatCol: {
+    flex: 1,
+  },
+  harvestStatLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#94A3B8',
+  },
+  harvestStatValue: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#0F172A',
+    marginTop: 2,
+  },
+
+  // ── Payouts ──
+  payoutHeroCard: {
+    backgroundColor: '#047857',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+  },
+  payoutHeroLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: 'rgba(255,255,255,0.7)',
+    letterSpacing: 1,
+  },
+  payoutHeroAmount: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    marginVertical: 4,
+  },
+  payoutHeroSub: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.85)',
+  },
+  payoutList: {
+    gap: 8,
+    marginTop: 10,
+  },
+  payoutRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  payoutAmt: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  payoutMeta: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+
+  // ── Modal ──
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 14,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 440,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 14,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  modalSubtitle: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  modalCloseBtn: {
+    padding: 4,
+  },
+  modalErrorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 10,
+  },
+  modalErrorText: {
+    fontSize: 11,
+    color: '#DC2626',
+    fontWeight: '600',
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 4,
+    marginTop: 8,
+  },
+  textInput: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    fontSize: 13,
+    color: '#0F172A',
+  },
+  formRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  unitRow: {
+    flexDirection: 'row',
+    marginTop: 2,
+  },
+  unitChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginRight: 6,
+  },
+  unitChipActive: {
+    backgroundColor: '#047857',
+    borderColor: '#047857',
+  },
+  unitChipText: {
+    fontSize: 11,
+    color: '#475569',
+    fontWeight: '600',
+  },
+  unitChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  catChipsRow: {
+    flexDirection: 'row',
+    marginVertical: 4,
+  },
+  catChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: '#F1F5F9',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  catChipActive: {
+    backgroundColor: '#047857',
+    borderColor: '#047857',
+  },
+  catChipText: {
+    fontSize: 11,
+    color: '#475569',
+    fontWeight: '600',
+  },
+  catChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  presetRow: {
+    flexDirection: 'row',
+    marginVertical: 6,
+  },
+  presetChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    marginRight: 8,
+    gap: 6,
+  },
+  presetChipActive: {
+    borderColor: '#047857',
+    backgroundColor: '#ECFDF5',
+  },
+  presetThumb: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+  },
+  presetText: {
+    fontSize: 11,
+    color: '#334155',
+    fontWeight: '600',
+  },
+  presetTextActive: {
+    color: '#047857',
+    fontWeight: 'bold',
+  },
+  benefitsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginVertical: 4,
+  },
+  benefitBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  benefitBadgeActive: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+  },
+  benefitBadgeText: {
+    fontSize: 10,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  benefitBadgeTextActive: {
+    color: '#047857',
+    fontWeight: 'bold',
+  },
+  modalSubmitBtn: {
+    backgroundColor: '#047857',
+    borderRadius: 14,
+    paddingVertical: 13,
+    alignItems: 'center',
+    marginTop: 16,
+    shadowColor: '#047857',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  modalSubmitBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
 });

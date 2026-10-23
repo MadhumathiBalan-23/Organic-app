@@ -7,11 +7,31 @@ interface VendorAndAdminScreensProps {
   triggerRefresh: () => void;
   activeTab?: string;
   onSelectTab?: (tab: string) => void;
+  onSwitchToCustomer?: () => void;
+  showAddModal?: boolean;
+  setShowAddModal?: (show: boolean) => void;
 }
 
-export const VendorAndAdminScreens: React.FC<VendorAndAdminScreensProps> = ({ role, triggerRefresh, activeTab, onSelectTab }) => {
+export const VendorAndAdminScreens: React.FC<VendorAndAdminScreensProps> = ({ 
+  role, 
+  triggerRefresh, 
+  activeTab, 
+  onSelectTab, 
+  onSwitchToCustomer,
+  showAddModal,
+  setShowAddModal,
+}) => {
   if (role === 'vendor') {
-    return <VendorScreens triggerRefresh={triggerRefresh} activeTab={activeTab} onSelectTab={onSelectTab} />;
+    return (
+      <VendorScreens 
+        triggerRefresh={triggerRefresh} 
+        activeTab={activeTab} 
+        onSelectTab={onSelectTab} 
+        onSwitchToCustomer={onSwitchToCustomer} 
+        showAddModal={showAddModal}
+        setShowAddModal={setShowAddModal}
+      />
+    );
   }
 
   // --- SUPER ADMIN PORTAL VIEW ---

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { brands, Brand } from '../data/mockData';
+import React, { useState, useEffect } from 'react';
+import { brands, Brand, fetchBrandsFromDB } from '../data/mockData';
 
 const defaultForm: Omit<Brand, 'id'> = { name: '', emoji: '🌱', origin: '', productCount: 0, established: '', rating: 4.5 };
 
@@ -9,7 +9,15 @@ const Brands: React.FC = () => {
   const [editing, setEditing] = useState<Brand | null>(null);
   const [form, setForm] = useState<Omit<Brand, 'id'>>(defaultForm);
   const [search, setSearch] = useState('');
-  const [deleteConf, setDeleteConf] = useState<number | null>(null);
+  const [deleteConf, setDeleteConf] = useState<any>(null);
+
+  useEffect(() => {
+    fetchBrandsFromDB().then(dbBrands => {
+      if (dbBrands && dbBrands.length > 0) {
+        setItems(dbBrands);
+      }
+    });
+  }, []);
 
   const openAdd = () => { setForm(defaultForm); setEditing(null); setModal('add'); };
   const openEdit = (b: Brand) => { setForm({ name: b.name, emoji: b.emoji, origin: b.origin, productCount: b.productCount, established: b.established, rating: b.rating }); setEditing(b); setModal('edit'); };

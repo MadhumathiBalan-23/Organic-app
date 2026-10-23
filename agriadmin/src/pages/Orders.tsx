@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { orders, Order } from '../data/mockData';
+import React, { useState, useEffect } from 'react';
+import { orders, Order, fetchOrdersFromDB } from '../data/mockData';
 
 const statusChip = (s: string) => {
   const map: Record<string, string> = { Pending: 'chip-warning', Processing: 'chip-info', Delivered: 'chip-success', Cancelled: 'chip-danger', Returned: 'chip-default' };
@@ -11,6 +11,14 @@ const Orders: React.FC = () => {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
+  useEffect(() => {
+    fetchOrdersFromDB().then(dbOrders => {
+      if (dbOrders && dbOrders.length > 0) {
+        setItems(dbOrders);
+      }
+    });
+  }, []);
 
   const filtered = items.filter(o => {
     const match = o.id.toLowerCase().includes(search.toLowerCase()) || o.customerName.toLowerCase().includes(search.toLowerCase());

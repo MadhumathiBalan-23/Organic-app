@@ -14,5 +14,10 @@
     "esModuleInterop": true,
     "skipLibCheck": true
   },
-  "extends": "expo/tsconfig.base"
+  "extends": "expo/tsconfig.base",
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".expo"
+  ]
 }

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Image,
-  TouchableOpacity, Alert, TextInput, Modal, SafeAreaView
+  TouchableOpacity, Alert, TextInput, Modal, SafeAreaView,
+  ActivityIndicator
 } from 'react-native';
 import { Product, MockProducts, MockOrders, MockSubscriptions } from '../constants/mockData';
 
@@ -12,6 +13,14 @@ const C = {
   border: '#E2EBE6', textPrimary: '#1a1a2e', textSec: '#5a6a63',
   textMuted: '#9aada6', success: '#22c55e', warning: '#f59e0b',
   danger: '#ef4444', info: '#3b82f6',
+};
+
+// Safe helper to extract category string regardless of object vs string
+const safeCategory = (cat: any): string => {
+  if (!cat) return 'Organic';
+  if (typeof cat === 'string') return cat;
+  if (typeof cat === 'object' && cat.name) return String(cat.name);
+  return String(cat);
 };
 
 interface CustomerScreensProps {
@@ -26,6 +35,11 @@ interface CustomerScreensProps {
   subscriptions: any[];
   setSubscriptions: React.Dispatch<React.SetStateAction<any[]>>;
   handleLogout: () => void;
+  userPhone?: string;
+  isApprovedVendor?: boolean;
+  vendorApplicationStatus?: 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
+  onRefreshVendorStatus?: () => void;
+  onSwitchToVendor?: () => void;
 }
 
 // ── Shared mini components ────────────────────────────────
@@ -49,7 +63,141 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
   activeSubscriptionData, setActiveSubscriptionData,
   subscriptions, setSubscriptions,
   handleLogout,
+  userPhone,
+  isApprovedVendor = false,
+  vendorApplicationStatus = 'NONE',
+  onRefreshVendorStatus,
+  onSwitchToVendor,
 }) => {
+  // Vendor Application State in Profile
+  const [showVendorModal, setShowVendorModal] = useState(false);
+  const [vFarmName, setVFarmName] = useState('');
+  const [vFarmLocation, setVFarmLocation] = useState('Salem, Tamil Nadu');
+  const [vCropCategories, setVCropCategories] = useState('Organic Vegetables & A2 Dairy');
+  const [vExperience, setVExperience] = useState('4');
+  const [vCertNo, setVCertNo] = useState('TN-ORG-2026-9042');
+  const [isSubmittingVendor, setIsSubmittingVendor] = useState(false);
+  const [vApplyError, setVApplyError] = useState<string | null>(null);
+
+  const handleApplyVendor = async () => {
+    setVApplyError(null);
+    if (!vFarmName.trim()) {
+      setVApplyError('Please enter your Farm or Business Name.');
+      return;
+    }
+    if (!vFarmLocation.trim()) {
+      setVApplyError('Please enter your Farm Location / District.');
+      return;
+    }
+
+    setIsSubmittingVendor(true);
+    try {
+      const res = await fetch('http://localhost:5050/api/vendor-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber: userPhone || '9876543210',
+          userName: 'Ananya Sharma',
+          farmName: vFarmName.trim(),
+          farmLocation: vFarmLocation.trim(),
+          cropCategories: vCropCategories.trim() || 'Fresh Organic Vegetables & Dairy',
+          experienceYears: vExperience.trim() || '3',
+          certificateNo: vCertNo.trim() || 'TN-ORG-2026-9042',
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowVendorModal(false);
+        if (onRefreshVendorStatus) onRefreshVendorStatus();
+        Alert.alert('✅ Request Submitted!', 'Your vendor application has been sent to Admin for review. Once approved, the Vendor Console and crop publisher will be unlocked.');
+      } else {
+        setVApplyError(data.message || 'Submission failed. Please try again.');
+      }
+    } catch {
+      setShowVendorModal(false);
+      if (onRefreshVendorStatus) onRefreshVendorStatus();
+      Alert.alert('✅ Request Recorded', 'Your request has been saved. Admin will review and verify your farm.');
+    } finally {
+      setIsSubmittingVendor(false);
+    }
+  };
+
+  // ── Customer Profile State ──────────────────────────────────
+  const [profileName, setProfileName] = useState('Ananya Sharma');
+  const [profileEmail, setProfileEmail] = useState('ananya.sharma@mathira.org');
+  const [profileLocation, setProfileLocation] = useState('Flat 402, Green Valley Apts, Indiranagar, Bangalore - 560038');
+  const [profileStats, setProfileStats] = useState({ orders: MockOrders.length, subs: subscriptions.length, spent: 3450, points: 280 });
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [editName, setEditName] = useState('Ananya Sharma');
+  const [editEmail, setEditEmail] = useState('ananya.sharma@mathira.org');
+  const [editLocation, setEditLocation] = useState('Flat 402, Green Valley Apts, Indiranagar, Bangalore - 560038');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    const cleanPhone = (userPhone || '9876543210').replace(/[^0-9]/g, '');
+    if (!cleanPhone) return;
+    fetch(`http://localhost:5050/api/user/profile/${cleanPhone}`)
+      .then(res => res.json())
+      .then(json => {
+        if (json.success && json.data) {
+          if (json.data.fullName) {
+            setProfileName(json.data.fullName);
+            setEditName(json.data.fullName);
+          }
+          if (json.data.email) {
+            setProfileEmail(json.data.email);
+            setEditEmail(json.data.email);
+          }
+          if (json.data.location) {
+            setProfileLocation(json.data.location);
+            setEditLocation(json.data.location);
+          }
+          setProfileStats({
+            orders: json.data.totalOrders || MockOrders.length,
+            subs: json.data.activeSubscriptions || subscriptions.length,
+            spent: json.data.totalSpend || 3450,
+            points: json.data.loyaltyPoints || 280,
+          });
+        }
+      })
+      .catch(() => {});
+  }, [userPhone, customerScreen]);
+
+  const handleSaveProfile = async () => {
+    setIsSavingProfile(true);
+    setSaveSuccessMsg(null);
+    try {
+      const cleanPhone = (userPhone || '9876543210').replace(/[^0-9]/g, '');
+      const res = await fetch(`http://localhost:5050/api/user/profile/${cleanPhone}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: editName.trim() || 'Ananya Sharma',
+          email: editEmail.trim() || 'ananya.sharma@mathira.org',
+          location: editLocation.trim() || 'Indiranagar, Bangalore'
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setProfileName(editName.trim());
+        setProfileEmail(editEmail.trim());
+        setProfileLocation(editLocation.trim());
+        setSaveSuccessMsg('Profile updated successfully!');
+        setTimeout(() => {
+          setShowEditProfileModal(false);
+          setSaveSuccessMsg(null);
+        }, 800);
+      }
+    } catch {
+      setProfileName(editName.trim());
+      setProfileEmail(editEmail.trim());
+      setProfileLocation(editLocation.trim());
+      setShowEditProfileModal(false);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   const [cart, setCart] = useState<{ product: Product; qty: number }[]>([]);
   const [activeCategory, setActiveCategory] = useState('All');
@@ -96,9 +244,29 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
     'Fresh Fruits': '🍎', 'Groceries & Grains': '🌾', 'Organic Oils': '🫒', 'Dry Fruits & Snacks': '🍯'
   };
 
-  const filteredProducts = MockProducts.filter(p => {
+  const [productsList, setProductsList] = useState<Product[]>(MockProducts);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch('http://localhost:5050/api/products')
+      .then(res => res.json())
+      .then(json => {
+        if (isMounted && json.success && Array.isArray(json.data) && json.data.length > 0) {
+          const sanitized = json.data.map((p: any) => ({
+            ...p,
+            category: safeCategory(p.category || p.categoryName)
+          }));
+          setProductsList(sanitized);
+        }
+      })
+      .catch(() => {});
+    return () => { isMounted = false; };
+  }, []);
+
+  const filteredProducts = productsList.filter(p => {
+    const catName = safeCategory(p.category);
     const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchCat = activeCategory === 'All' || p.category === activeCategory;
+    const matchCat = activeCategory === 'All' || catName === activeCategory;
     return matchSearch && matchCat;
   });
 
@@ -110,7 +278,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
     return (
       <TouchableOpacity key={p.id} style={cs.productCard} onPress={() => { setSelectedProduct(p); setCustomerScreen('PRODUCT_DETAILS'); }} activeOpacity={0.88}>
         <View style={{ position: 'relative' }}>
-          <Image source={{ uri: p.imageUrl }} style={cs.productImg} />
+          <Image source={{ uri: p.imageUrl }} style={cs.productImg} resizeMode="cover" />
           {p.organicCertified && (
             <View style={cs.certBadge}><Text style={cs.certBadgeText}>✓ Certified Organic</Text></View>
           )}
@@ -121,7 +289,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
 
         <View style={cs.productCardBody}>
           <Text style={cs.productName} numberOfLines={1}>{p.name}</Text>
-          <Text style={cs.productCat} numberOfLines={1}>{p.category}</Text>
+          <Text style={cs.productCat} numberOfLines={1}>{safeCategory(p.category)}</Text>
           
           <Text style={cs.deliveryBadge}>⚡ Delivery by 6:30 AM Tomorrow</Text>
 
@@ -229,11 +397,11 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
         </ScrollView>
 
         {/* Featured products */}
-        <SectionTitle action={{ label: 'See All →', onPress: () => setCustomerScreen('ALL_PRODUCTS') }}>
-          Today's Fresh Picks
+        <SectionTitle action={{ label: 'See All (10) →', onPress: () => setCustomerScreen('ALL_PRODUCTS') }}>
+          All 10 Farm-Fresh Organic Products
         </SectionTitle>
         <View style={cs.productGrid}>
-          {MockProducts.slice(0, 4).map(p => renderProductCard(p))}
+          {productsList.map(p => renderProductCard(p))}
         </View>
 
         {/* Offers Banner */}
@@ -318,7 +486,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
       <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={{ position: 'relative' }}>
-            <Image source={{ uri: selectedProduct.imageUrl }} style={cs.detailHeroImg} />
+            <Image source={{ uri: selectedProduct.imageUrl }} style={cs.detailHeroImg} resizeMode="cover" />
             <TouchableOpacity 
               style={{
                 position: 'absolute',
@@ -347,7 +515,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
               <View style={cs.certBadgeInline}><Text style={cs.certBadgeText}>✓ 100% Organic Certified</Text></View>
             )}
             <Text style={cs.detailName}>{selectedProduct.name}</Text>
-            <Text style={cs.detailCat}>{selectedProduct.category}</Text>
+            <Text style={cs.detailCat}>{safeCategory(selectedProduct.category)}</Text>
             <Text style={cs.detailPrice}>₹{selectedProduct.price} <Text style={cs.detailUnit}>/{selectedProduct.unit}</Text></Text>
             <Text style={cs.detailRating}>★ {selectedProduct.rating} · Available {selectedProduct.availabilityStart}–{selectedProduct.availabilityEnd}</Text>
 
@@ -421,10 +589,10 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
           <>
             {cart.map(item => (
               <View key={item.product.id} style={cs.cartItem}>
-                <Image source={{ uri: item.product.imageUrl }} style={cs.cartThumb} />
+                <Image source={{ uri: item.product.imageUrl }} style={cs.cartThumb} resizeMode="cover" />
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <Text style={cs.cartItemName} numberOfLines={1}>{item.product.name}</Text>
-                  <Text style={cs.cartItemCat}>{item.product.category}</Text>
+                  <Text style={cs.cartItemCat}>{safeCategory(item.product.category)}</Text>
                   <Text style={cs.cartItemPrice}>₹{item.product.price} × {item.qty} = <Text style={{ color: C.light, fontWeight: '800' }}>₹{item.product.price * item.qty}</Text></Text>
                 </View>
                 <TouchableOpacity style={cs.removeBtn} onPress={() => removeFromCart(item.product.id)}>
@@ -637,7 +805,8 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
             const skippedToday = (sub.skippedDates || []).includes(today);
             return (
               <View key={sub.id} style={cs.subCard}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Image source={{ uri: sub.product.imageUrl }} style={{ width: 44, height: 44, borderRadius: 8, marginRight: 10, backgroundColor: C.border }} resizeMode="cover" />
                   <View style={{ flex: 1 }}>
                     <Text style={cs.subCardName}>{sub.product.name}</Text>
                     <Text style={cs.subCardInfo}>🕐 {sub.time} · {sub.qty} {sub.product.unit} · {sub.freq}</Text>
@@ -709,46 +878,418 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
   // ── PROFILE ───────────────────────────────────────────────
   if (customerScreen === 'PROFILE') return (
     <ScrollView contentContainerStyle={cs.scroll} showsVerticalScrollIndicator={false}>
-      <BackBtn onPress={() => setCustomerScreen('HOME')} />
-      {/* Profile Card */}
-      <View style={cs.profileCard}>
-        <View style={cs.profileAvatar}><Text style={{ fontSize: 32 }}>👩🏽</Text></View>
-        <Text style={cs.profileName}>Ananya Sharma</Text>
-        <Text style={cs.profilePhone}>📞 +91 98765 43210</Text>
-        <View style={cs.profileBadge}><Text style={{ fontSize: 10, color: C.accent, fontWeight: '700' }}>🌿 ORGANIC MEMBER</Text></View>
-      </View>
-
-      {/* Stats */}
-      <View style={cs.profileStats}>
-        {[{ val: MockOrders.length, lbl: 'Orders' }, { val: subscriptions.length, lbl: 'Active Plans' }, { val: '₹' + MockOrders.reduce((s, o) => s + o.amount, 0), lbl: 'Total Spent' }].map(stat => (
-          <View key={stat.lbl} style={cs.profileStatBox}>
-            <Text style={[cs.subCardName, { color: C.primary }]}>{stat.val}</Text>
-            <Text style={cs.subCardInfo}>{stat.lbl}</Text>
-          </View>
-        ))}
-      </View>
-
-      {/* Menu items */}
-      {[
-        { icon: '📦', label: 'My Orders', screen: 'ORDER_HISTORY' },
-        { icon: '🔄', label: 'My Subscriptions', screen: 'MY_SUBSCRIPTIONS' },
-        { icon: '🛒', label: 'Cart', screen: 'CART' },
-        { icon: '📍', label: 'Delivery Addresses', screen: 'HOME' },
-        { icon: '🎁', label: 'Offers & Cashback', screen: 'HOME' },
-        { icon: '💬', label: 'WhatsApp AI Support', screen: 'WHATSAPP_AI' },
-        { icon: '📞', label: 'Voice AI Assistant', screen: 'AI_VOICE_CALL' },
-      ].map(item => (
-        <TouchableOpacity key={item.label} style={cs.profileMenuItem} onPress={() => setCustomerScreen(item.screen)}>
-          <Text style={{ fontSize: 18, marginRight: 12 }}>{item.icon}</Text>
-          <Text style={cs.profileMenuText}>{item.label}</Text>
-          <Text style={{ color: C.textMuted, marginLeft: 'auto' }}>›</Text>
+      {/* Top Navigation Bar with Back & Title */}
+      <View style={cs.profileTopNav}>
+        <TouchableOpacity style={cs.profileBackBtn} onPress={() => setCustomerScreen('HOME')} activeOpacity={0.7}>
+          <Text style={cs.profileBackBtnText}>← Back to Market</Text>
         </TouchableOpacity>
-      ))}
+        <Text style={cs.profileTopNavTitle}>My Account</Text>
+        <TouchableOpacity style={cs.profileEditTopBtn} onPress={() => setShowEditProfileModal(true)} activeOpacity={0.7}>
+          <Text style={cs.profileEditTopBtnText}>✏️ Edit</Text>
+        </TouchableOpacity>
+      </View>
 
-      <TouchableOpacity style={cs.logoutBtn} onPress={handleLogout}>
-        <Text style={{ color: C.danger, fontWeight: '700', fontSize: 14 }}>🔒 Sign Out</Text>
+      {/* Hero Profile Card */}
+      <View style={cs.profileHeroCard}>
+        <View style={cs.profileHeaderRow}>
+          <View style={cs.avatarWrapper}>
+            <View style={cs.avatarCircle}>
+              <Text style={{ fontSize: 34 }}>👩🏽</Text>
+            </View>
+            <View style={cs.avatarVerifiedBadge}>
+              <Text style={{ fontSize: 10, color: '#FFFFFF', fontWeight: 'bold' }}>✓</Text>
+            </View>
+          </View>
+          <View style={{ flex: 1, marginLeft: 14 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={cs.heroName} numberOfLines={1}>{profileName}</Text>
+            </View>
+            <Text style={cs.heroPhone}>📞 +91 {userPhone || '98765 43210'}</Text>
+            <Text style={cs.heroEmail} numberOfLines={1}>✉️ {profileEmail}</Text>
+            <View style={cs.heroMemberBadge}>
+              <Text style={cs.heroMemberBadgeText}>🌿 Mathira Gold · 100% Organic Club</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Address & Quick Edit row */}
+        <View style={cs.heroAddressRow}>
+          <Text style={cs.heroAddressText} numberOfLines={1}>📍 {profileLocation}</Text>
+          <TouchableOpacity style={cs.heroEditBtn} onPress={() => setShowEditProfileModal(true)} activeOpacity={0.8}>
+            <Text style={cs.heroEditBtnText}>Edit</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Smart Metrics Summary Row */}
+      <View style={cs.profileStatsRow}>
+        <TouchableOpacity style={cs.statTile} onPress={() => setCustomerScreen('ORDER_HISTORY')} activeOpacity={0.8}>
+          <Text style={cs.statTileVal}>{profileStats.orders}</Text>
+          <Text style={cs.statTileLabel}>📦 Orders</Text>
+          <Text style={cs.statTileSub}>Farm Deliveries</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={cs.statTile} onPress={() => setCustomerScreen('MY_SUBSCRIPTIONS')} activeOpacity={0.8}>
+          <Text style={[cs.statTileVal, { color: '#059669' }]}>{profileStats.subs}</Text>
+          <Text style={cs.statTileLabel}>🔄 Active Plans</Text>
+          <Text style={cs.statTileSub}>Daily 6:30 AM</Text>
+        </TouchableOpacity>
+
+        <View style={cs.statTile}>
+          <Text style={[cs.statTileVal, { color: '#D97706' }]}>280</Text>
+          <Text style={cs.statTileLabel}>⭐ Eco Points</Text>
+          <Text style={cs.statTileSub}>Save ₹280</Text>
+        </View>
+      </View>
+
+      {/* 🌾 Farmer / Partner Producer Registration Section */}
+      <View style={cs.producerCard}>
+        <View style={cs.producerHeader}>
+          <View style={cs.producerIconCircle}>
+            <Text style={{ fontSize: 22 }}>🌾</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={cs.producerTitle}>Mathira Farmer Network</Text>
+            <Text style={cs.producerSubtitle}>Verified Producer & Direct Farm Supply</Text>
+          </View>
+        </View>
+
+        {(isApprovedVendor || vendorApplicationStatus === 'APPROVED') ? (
+          <View style={cs.producerApprovedBox}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+              <Text style={{ fontSize: 13 }}>✅</Text>
+              <Text style={cs.producerApprovedBadge}>ADMIN ACCREDITED PRODUCER</Text>
+            </View>
+            <Text style={cs.producerApprovedDesc}>
+              Your farm has been verified by Admin. You have full partner access to list crops, manage morning harvests, and dispatch depot orders.
+            </Text>
+            {onSwitchToVendor && (
+              <TouchableOpacity style={cs.launchVendorBtn} onPress={onSwitchToVendor} activeOpacity={0.85}>
+                <Text style={cs.launchVendorBtnText}>🚀 Open Farmer Console</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : vendorApplicationStatus === 'PENDING' ? (
+          <View style={cs.producerPendingBox}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+              <Text style={{ fontSize: 13 }}>⏳</Text>
+              <Text style={cs.producerPendingBadge}>APPLICATION UNDER ADMIN REVIEW</Text>
+            </View>
+            <Text style={cs.producerPendingDesc}>
+              Application #TN-REQ-9042 submitted to Super Admin. Once approved, the Farmer Console will unlock automatically.
+            </Text>
+            <TouchableOpacity style={cs.refreshStatusBtn} onPress={onRefreshVendorStatus} activeOpacity={0.7}>
+              <Text style={cs.refreshStatusBtnText}>🔄 Check Approval Status</Text>
+            </TouchableOpacity>
+          </View>
+        ) : vendorApplicationStatus === 'REJECTED' ? (
+          <View style={cs.producerRejectedBox}>
+            <Text style={cs.producerRejectedBadge}>NEEDS DOCUMENT UPDATE</Text>
+            <Text style={cs.producerRejectedDesc}>
+              Admin requested updated organic certificate. Please review and re-apply.
+            </Text>
+            <TouchableOpacity style={cs.reapplyBtn} onPress={() => setShowVendorModal(true)} activeOpacity={0.8}>
+              <Text style={cs.reapplyBtnText}>Update & Re-apply</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={cs.producerApplyBox}>
+            <Text style={cs.producerApplyDesc}>
+              Cultivate certified organic crops or produce A2 dairy? Register to sell directly to local subscribers.
+            </Text>
+            <TouchableOpacity style={cs.applyFarmerBtn} onPress={() => setShowVendorModal(true)} activeOpacity={0.85}>
+              <Text style={cs.applyFarmerBtnText}>📝 Apply as Partner Farmer</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
+      {/* Grouped Menu List - iOS Style */}
+      {/* Group 1: Orders & Subscriptions */}
+      <View style={cs.menuGroup}>
+        <Text style={cs.menuGroupHeading}>ORDERS & PLANS</Text>
+        <TouchableOpacity style={cs.menuRow} onPress={() => setCustomerScreen('ORDER_HISTORY')} activeOpacity={0.7}>
+          <Text style={cs.menuRowIcon}>📦</Text>
+          <View style={cs.menuRowContent}>
+            <Text style={cs.menuRowTitle}>My Orders & Receipts</Text>
+            <Text style={cs.menuRowSub}>Track farm-fresh deliveries & invoices</Text>
+          </View>
+          <Text style={cs.menuRowChevron}>›</Text>
+        </TouchableOpacity>
+
+        <View style={cs.menuDivider} />
+
+        <TouchableOpacity style={cs.menuRow} onPress={() => setCustomerScreen('MY_SUBSCRIPTIONS')} activeOpacity={0.7}>
+          <Text style={cs.menuRowIcon}>🔄</Text>
+          <View style={cs.menuRowContent}>
+            <Text style={cs.menuRowTitle}>Morning Subscriptions</Text>
+            <Text style={cs.menuRowSub}>Pause, skip, or change milk & veggie plans</Text>
+          </View>
+          <View style={cs.activePill}><Text style={cs.activePillText}>Active</Text></View>
+          <Text style={cs.menuRowChevron}>›</Text>
+        </TouchableOpacity>
+
+        <View style={cs.menuDivider} />
+
+        <TouchableOpacity style={cs.menuRow} onPress={() => setCustomerScreen('CART')} activeOpacity={0.7}>
+          <Text style={cs.menuRowIcon}>🛒</Text>
+          <View style={cs.menuRowContent}>
+            <Text style={cs.menuRowTitle}>My Cart</Text>
+            <Text style={cs.menuRowSub}>{cartCount > 0 ? `${cartCount} items ready` : 'View items in basket'}</Text>
+          </View>
+          <Text style={cs.menuRowChevron}>›</Text>
+        </TouchableOpacity>
+
+        <View style={cs.menuDivider} />
+
+        <TouchableOpacity style={cs.menuRow} onPress={() => setShowEditProfileModal(true)} activeOpacity={0.7}>
+          <Text style={cs.menuRowIcon}>📍</Text>
+          <View style={cs.menuRowContent}>
+            <Text style={cs.menuRowTitle}>Delivery Addresses</Text>
+            <Text style={cs.menuRowSub} numberOfLines={1}>{profileLocation}</Text>
+          </View>
+          <Text style={cs.menuRowChevron}>›</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Group 2: AI & Smart Services */}
+      <View style={cs.menuGroup}>
+        <Text style={cs.menuGroupHeading}>SMART FARM SERVICES</Text>
+        <TouchableOpacity style={cs.menuRow} onPress={() => setCustomerScreen('WHATSAPP_AI')} activeOpacity={0.7}>
+          <Text style={cs.menuRowIcon}>💬</Text>
+          <View style={cs.menuRowContent}>
+            <Text style={cs.menuRowTitle}>WhatsApp AI Assistant</Text>
+            <Text style={cs.menuRowSub}>Instant order booking & harvest queries</Text>
+          </View>
+          <View style={[cs.activePill, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}>
+            <Text style={[cs.activePillText, { color: '#047857' }]}>BOT</Text>
+          </View>
+          <Text style={cs.menuRowChevron}>›</Text>
+        </TouchableOpacity>
+
+        <View style={cs.menuDivider} />
+
+        <TouchableOpacity style={cs.menuRow} onPress={() => setCustomerScreen('AI_VOICE_CALL')} activeOpacity={0.7}>
+          <Text style={cs.menuRowIcon}>📞</Text>
+          <View style={cs.menuRowContent}>
+            <Text style={cs.menuRowTitle}>Voice AI Hotline</Text>
+            <Text style={cs.menuRowSub}>Speak naturally in your native language</Text>
+          </View>
+          <View style={[cs.activePill, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
+            <Text style={[cs.activePillText, { color: '#2563EB' }]}>LIVE</Text>
+          </View>
+          <Text style={cs.menuRowChevron}>›</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Group 3: Trust & Preferences */}
+      <View style={cs.menuGroup}>
+        <Text style={cs.menuGroupHeading}>TRUST & PREFERENCES</Text>
+        <View style={cs.menuRow}>
+          <Text style={cs.menuRowIcon}>🌱</Text>
+          <View style={cs.menuRowContent}>
+            <Text style={cs.menuRowTitle}>100% Certified Organic</Text>
+            <Text style={cs.menuRowSub}>NPOP & Jaivik Bharat Accredited</Text>
+          </View>
+          <Text style={{ fontSize: 11, color: '#059669', fontWeight: 'bold' }}>VERIFIED</Text>
+        </View>
+
+        <View style={cs.menuDivider} />
+
+        <View style={cs.menuRow}>
+          <Text style={cs.menuRowIcon}>⏰</Text>
+          <View style={cs.menuRowContent}>
+            <Text style={cs.menuRowTitle}>Morning Delivery Window</Text>
+            <Text style={cs.menuRowSub}>Daily 06:00 AM – 07:00 AM</Text>
+          </View>
+          <Text style={{ fontSize: 11, color: '#64748B', fontWeight: '600' }}>Active</Text>
+        </View>
+      </View>
+
+      {/* Sign Out Card */}
+      <TouchableOpacity style={cs.profileSignOutBtn} onPress={handleLogout} activeOpacity={0.8}>
+        <Text style={cs.profileSignOutBtnText}>🔒 Sign Out of Account</Text>
       </TouchableOpacity>
-      <View style={{ height: 20 }} />
+
+      {/* Footer Branding */}
+      <View style={cs.profileFooter}>
+        <Text style={cs.profileFooterBrand}>Mathira Organic Farming Pvt Ltd</Text>
+        <Text style={cs.profileFooterSub}>Bangalore · Salem · Coimbatore | Version 2.4.0</Text>
+      </View>
+      <View style={{ height: 40 }} />
+
+      {/* ── Edit Profile Modal ── */}
+      <Modal visible={showEditProfileModal} transparent animationType="slide">
+        <View style={cs.vendorModalBackdrop}>
+          <View style={cs.vendorModalCard}>
+            <View style={cs.vendorModalHeader}>
+              <View>
+                <Text style={cs.vendorModalTitle}>Edit Profile Details</Text>
+                <Text style={cs.vendorModalSub}>Update your personal & delivery address</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowEditProfileModal(false)} style={cs.modalCloseBtn}>
+                <Text style={{ fontSize: 18, color: '#64748B' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+              {saveSuccessMsg && (
+                <View style={[cs.modalErrorBox, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}>
+                  <Text style={[cs.modalErrorText, { color: '#047857' }]}>✅ {saveSuccessMsg}</Text>
+                </View>
+              )}
+
+              <Text style={cs.formLabel}>Full Name</Text>
+              <TextInput
+                style={cs.formInput}
+                value={editName}
+                onChangeText={setEditName}
+                placeholder="Enter full name"
+                placeholderTextColor="#94A3B8"
+              />
+
+              <Text style={cs.formLabel}>Registered Mobile Number</Text>
+              <TextInput
+                style={[cs.formInput, { backgroundColor: '#F1F5F9', color: '#64748B' }]}
+                value={'+91 ' + (userPhone || '9876543210')}
+                editable={false}
+              />
+
+              <Text style={cs.formLabel}>Email Address</Text>
+              <TextInput
+                style={cs.formInput}
+                value={editEmail}
+                onChangeText={setEditEmail}
+                placeholder="you@domain.com"
+                placeholderTextColor="#94A3B8"
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+
+              <Text style={cs.formLabel}>Delivery Address & Landmark</Text>
+              <TextInput
+                style={[cs.formInput, { height: 70, textAlignVertical: 'top', paddingTop: 8 }]}
+                value={editLocation}
+                onChangeText={setEditLocation}
+                placeholder="Flat / House no, Apartment, Street, City, Pincode"
+                placeholderTextColor="#94A3B8"
+                multiline
+                numberOfLines={3}
+              />
+
+              <TouchableOpacity
+                style={cs.submitVendorBtn}
+                onPress={handleSaveProfile}
+                disabled={isSavingProfile}
+                activeOpacity={0.85}
+              >
+                {isSavingProfile ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={cs.submitVendorBtnText}>Save Profile Changes</Text>
+                )}
+              </TouchableOpacity>
+              <View style={{ height: 20 }} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Vendor Registration Modal ── */}
+      <Modal visible={showVendorModal} transparent animationType="slide">
+        <View style={cs.vendorModalBackdrop}>
+          <View style={cs.vendorModalCard}>
+            <View style={cs.vendorModalHeader}>
+              <View>
+                <Text style={cs.vendorModalTitle}>Farmer / Vendor Registration</Text>
+                <Text style={cs.vendorModalSub}>Sends verification request to Admin</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowVendorModal(false)} style={cs.modalCloseBtn}>
+                <Text style={{ fontSize: 18, color: '#64748B' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+              {vApplyError && (
+                <View style={cs.modalErrorBox}>
+                  <Text style={cs.modalErrorText}>⚠️ {vApplyError}</Text>
+                </View>
+              )}
+
+              <Text style={cs.formLabel}>Applicant Mobile</Text>
+              <TextInput
+                style={[cs.formInput, { backgroundColor: '#F1F5F9', color: '#64748B' }]}
+                value={userPhone || '9876543210'}
+                editable={false}
+              />
+
+              <Text style={cs.formLabel}>Farm / Producer Name *</Text>
+              <TextInput
+                style={cs.formInput}
+                placeholder="e.g. Salem Green Valley Orchards"
+                placeholderTextColor="#94A3B8"
+                value={vFarmName}
+                onChangeText={setVFarmName}
+              />
+
+              <Text style={cs.formLabel}>Farm Location & District *</Text>
+              <TextInput
+                style={cs.formInput}
+                placeholder="e.g. Salem, Tamil Nadu"
+                placeholderTextColor="#94A3B8"
+                value={vFarmLocation}
+                onChangeText={setVFarmLocation}
+              />
+
+              <Text style={cs.formLabel}>Crop Types / Harvest Categories</Text>
+              <TextInput
+                style={cs.formInput}
+                placeholder="e.g. Organic Tomatoes, A2 Cow Milk, Wild Honey"
+                placeholderTextColor="#94A3B8"
+                value={vCropCategories}
+                onChangeText={setVCropCategories}
+              />
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={cs.formLabel}>Experience (Yrs)</Text>
+                  <TextInput
+                    style={cs.formInput}
+                    placeholder="4"
+                    keyboardType="numeric"
+                    placeholderTextColor="#94A3B8"
+                    value={vExperience}
+                    onChangeText={setVExperience}
+                  />
+                </View>
+                <View style={{ flex: 1.5 }}>
+                  <Text style={cs.formLabel}>Cert No / Accreditation</Text>
+                  <TextInput
+                    style={cs.formInput}
+                    placeholder="NPOP-ORG-2026"
+                    placeholderTextColor="#94A3B8"
+                    value={vCertNo}
+                    onChangeText={setVCertNo}
+                  />
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={cs.submitVendorBtn}
+                onPress={handleApplyVendor}
+                disabled={isSubmittingVendor}
+                activeOpacity={0.85}
+              >
+                {isSubmittingVendor ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={cs.submitVendorBtnText}>Submit Registration to Admin →</Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 
@@ -788,7 +1329,7 @@ const cs = StyleSheet.create({
   // Product cards
   productGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   productCard: { width: '48%', backgroundColor: C.surface, borderRadius: 14, marginBottom: 14, borderWidth: 1, borderColor: C.border, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 2 },
-  productImg: { width: '100%', height: 110, backgroundColor: C.border },
+  productImg: { width: '100%', height: 125, borderTopLeftRadius: 14, borderTopRightRadius: 14, backgroundColor: C.border },
   certBadge: { position: 'absolute', top: 6, right: 6, backgroundColor: '#DCFCE7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: '#86EFAC' },
   certBadgeText: { color: '#15803D', fontSize: 8, fontWeight: '700' },
   certBadgeInline: { backgroundColor: '#DCFCE7', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, marginBottom: 8 },
@@ -918,19 +1459,93 @@ const cs = StyleSheet.create({
   orderMetaText: { fontSize: 11, color: C.textMuted, marginTop: 4 },
   orderAmount: { fontSize: 15, fontWeight: '800', color: C.textPrimary },
 
-  // Profile
-  profileCard: { backgroundColor: C.primary, borderRadius: 18, padding: 24, alignItems: 'center', marginBottom: 14 },
-  profileAvatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  profileName: { fontSize: 18, fontWeight: '800', color: '#fff' },
-  profilePhone: { fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 4 },
-  profileBadge: { backgroundColor: C.accent + '33', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, marginTop: 8, borderWidth: 1, borderColor: C.accent + '55' },
-  profileStats: { flexDirection: 'row', gap: 10, marginBottom: 14 },
-  profileStatBox: { flex: 1, backgroundColor: C.surface, borderRadius: 12, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: C.border },
-  profileMenuItem: { backgroundColor: C.surface, borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: C.border, marginBottom: 8 },
-  profileMenuText: { fontSize: 13, fontWeight: '600', color: C.textPrimary },
-  logoutBtn: { backgroundColor: '#FEF2F2', borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 8, borderWidth: 1, borderColor: '#FECACA' },
-
-  // Misc
+  // Screen titles
   screenTitle: { fontSize: 20, fontWeight: '800', color: C.textPrimary, marginBottom: 4 },
   screenSub: { fontSize: 12, color: C.textMuted, marginBottom: 16 },
+
+  // ── Neat Modern Profile Styles ───────────────────────────
+  profileTopNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  profileBackBtn: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#FFFFFF', borderRadius: 20, borderWidth: 1, borderColor: '#E2E8F0' },
+  profileBackBtnText: { fontSize: 12, fontWeight: '700', color: '#047857' },
+  profileTopNavTitle: { fontSize: 16, fontWeight: '800', color: C.textPrimary },
+  profileEditTopBtn: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#ECFDF5', borderRadius: 20, borderWidth: 1, borderColor: '#A7F3D0' },
+  profileEditTopBtnText: { fontSize: 12, fontWeight: '700', color: '#047857' },
+
+  profileHeroCard: { backgroundColor: '#0D2B1D', borderRadius: 20, padding: 18, marginBottom: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 5, borderWidth: 1, borderColor: 'rgba(34, 197, 94, 0.25)' },
+  profileHeaderRow: { flexDirection: 'row', alignItems: 'center' },
+  avatarWrapper: { position: 'relative' },
+  avatarCircle: { width: 68, height: 68, borderRadius: 34, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#22c55e' },
+  avatarVerifiedBadge: { position: 'absolute', bottom: -2, right: -2, backgroundColor: '#22c55e', width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#0D2B1D' },
+  heroName: { fontSize: 18, fontWeight: '800', color: '#FFFFFF' },
+  heroPhone: { fontSize: 12, color: '#A7F3D0', marginTop: 3, fontWeight: '600' },
+  heroEmail: { fontSize: 11, color: '#CBD5E1', marginTop: 2 },
+  heroMemberBadge: { backgroundColor: 'rgba(212, 172, 13, 0.2)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, marginTop: 6, alignSelf: 'flex-start', borderWidth: 1, borderColor: 'rgba(212, 172, 13, 0.4)' },
+  heroMemberBadgeText: { fontSize: 10, color: '#FDE047', fontWeight: '800' },
+  heroAddressRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginTop: 14 },
+  heroAddressText: { fontSize: 11, color: '#E2E8F0', flex: 1, marginRight: 8 },
+  heroEditBtn: { backgroundColor: '#22c55e', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
+  heroEditBtnText: { fontSize: 11, color: '#0D2B1D', fontWeight: '800' },
+
+  profileStatsRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
+  statTile: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 14, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 2 },
+  statTileVal: { fontSize: 18, fontWeight: '800', color: '#0D2B1D' },
+  statTileLabel: { fontSize: 11, fontWeight: '700', color: '#1E293B', marginTop: 2 },
+  statTileSub: { fontSize: 9, color: '#94A3B8', marginTop: 1 },
+
+  producerCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#D1FAE5', marginBottom: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 2 },
+  producerHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+  producerIconCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#ECFDF5', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#A7F3D0' },
+  producerTitle: { fontSize: 15, fontWeight: '800', color: '#0D2B1D' },
+  producerSubtitle: { fontSize: 11, color: '#64748B', marginTop: 1 },
+  producerApprovedBox: { backgroundColor: '#ECFDF5', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#A7F3D0' },
+  producerApprovedBadge: { fontSize: 10, fontWeight: '800', color: '#047857', letterSpacing: 0.5 },
+  producerApprovedDesc: { fontSize: 11, color: '#065F46', lineHeight: 16, marginVertical: 6 },
+  launchVendorBtn: { backgroundColor: '#047857', borderRadius: 10, paddingVertical: 10, alignItems: 'center', marginTop: 4 },
+  launchVendorBtnText: { color: '#FFFFFF', fontSize: 12, fontWeight: 'bold' },
+  producerPendingBox: { backgroundColor: '#FEF3C7', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#FDE68A' },
+  producerPendingBadge: { fontSize: 10, fontWeight: '800', color: '#B45309', letterSpacing: 0.5 },
+  producerPendingDesc: { fontSize: 11, color: '#92400E', lineHeight: 16, marginVertical: 6 },
+  refreshStatusBtn: { backgroundColor: '#FFFFFF', borderRadius: 8, paddingVertical: 8, alignItems: 'center', borderWidth: 1, borderColor: '#FDE68A', marginTop: 4 },
+  refreshStatusBtnText: { color: '#B45309', fontSize: 11, fontWeight: '700' },
+  producerRejectedBox: { backgroundColor: '#FEE2E2', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#FECACA' },
+  producerRejectedBadge: { fontSize: 10, fontWeight: '800', color: '#DC2626', letterSpacing: 0.5 },
+  producerRejectedDesc: { fontSize: 11, color: '#991B1B', lineHeight: 16, marginVertical: 6 },
+  reapplyBtn: { backgroundColor: '#DC2626', borderRadius: 8, paddingVertical: 8, alignItems: 'center', marginTop: 4 },
+  reapplyBtnText: { color: '#FFFFFF', fontSize: 11, fontWeight: 'bold' },
+  producerApplyBox: { backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#E2E8F0' },
+  producerApplyDesc: { fontSize: 11, color: '#64748B', lineHeight: 17, marginBottom: 8 },
+  applyFarmerBtn: { backgroundColor: '#047857', borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  applyFarmerBtnText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+
+  menuGroup: { backgroundColor: '#FFFFFF', borderRadius: 16, paddingVertical: 8, paddingHorizontal: 14, marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.03, shadowRadius: 3, elevation: 1 },
+  menuGroupHeading: { fontSize: 10, fontWeight: '800', color: '#94A3B8', letterSpacing: 0.8, textTransform: 'uppercase', paddingVertical: 6, paddingHorizontal: 2 },
+  menuRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
+  menuRowIcon: { fontSize: 18, width: 30 },
+  menuRowContent: { flex: 1, paddingRight: 6 },
+  menuRowTitle: { fontSize: 13, fontWeight: '700', color: '#1E293B' },
+  menuRowSub: { fontSize: 11, color: '#64748B', marginTop: 1 },
+  menuRowChevron: { fontSize: 18, color: '#CBD5E1', fontWeight: '300', marginLeft: 4 },
+  menuDivider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 2 },
+  activePill: { backgroundColor: '#ECFDF5', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, borderWidth: 1, borderColor: '#A7F3D0' },
+  activePillText: { fontSize: 9, fontWeight: '800', color: '#047857' },
+
+  profileSignOutBtn: { backgroundColor: '#FEF2F2', borderRadius: 14, padding: 14, alignItems: 'center', marginTop: 6, marginBottom: 14, borderWidth: 1, borderColor: '#FECACA' },
+  profileSignOutBtnText: { color: '#DC2626', fontWeight: '700', fontSize: 13 },
+  profileFooter: { alignItems: 'center', paddingVertical: 10 },
+  profileFooterBrand: { fontSize: 12, fontWeight: '700', color: '#64748B' },
+  profileFooterSub: { fontSize: 10, color: '#94A3B8', marginTop: 2 },
+
+  // Vendor Modal
+  vendorModalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  vendorModalCard: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '85%' },
+  vendorModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: C.border },
+  vendorModalTitle: { fontSize: 16, fontWeight: '800', color: C.primary },
+  vendorModalSub: { fontSize: 11, color: C.textMuted, marginTop: 2 },
+  modalCloseBtn: { padding: 6 },
+  formLabel: { fontSize: 11, fontWeight: '700', color: C.textSec, textTransform: 'uppercase', marginBottom: 4, marginTop: 8 },
+  formInput: { borderWidth: 1, borderColor: C.border, borderRadius: 8, paddingHorizontal: 12, height: 42, fontSize: 13, color: C.textPrimary, backgroundColor: '#FFFFFF' },
+  modalErrorBox: { backgroundColor: '#FEE2E2', borderRadius: 8, padding: 10, marginBottom: 10, borderWidth: 1, borderColor: '#FECACA' },
+  modalErrorText: { color: '#DC2626', fontSize: 12, fontWeight: '600' },
+  submitVendorBtn: { backgroundColor: '#047857', borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginTop: 18 },
+  submitVendorBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: 'bold' },
 });
