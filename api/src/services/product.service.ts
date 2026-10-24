@@ -1,4 +1,5 @@
 import { prisma } from '../config/db';
+import { CloudinaryService } from './cloudinary.service';
 
 export class ProductService {
   public static formatProduct(product: any) {
@@ -58,6 +59,18 @@ export class ProductService {
       // Ignored if already existing
     }
 
+    let finalImageUrl = rest.imageUrl || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80';
+
+    // Auto-optimize directly in Cloudinary if base64 image data is provided
+    if (finalImageUrl && (finalImageUrl.startsWith('data:image/') || (!finalImageUrl.startsWith('http://') && !finalImageUrl.startsWith('https://')))) {
+      try {
+        const cloudUpload = await CloudinaryService.uploadProductImage(finalImageUrl, `prod_${rest.name || 'crop'}`);
+        finalImageUrl = cloudUpload.url;
+      } catch (err: any) {
+        console.warn('[ProductService]: Cloudinary upload failed during product create, saving image directly:', err.message || err);
+      }
+    }
+
     const product = await prisma.product.create({
       data: {
         name: rest.name || 'Organic Harvest',
@@ -71,7 +84,7 @@ export class ProductService {
         availabilityStart: rest.availabilityStart || '06:00 AM',
         availabilityEnd: rest.availabilityEnd || '09:00 PM',
         description: rest.description || `${rest.name || 'Organic product'} direct from certified organic farms.`,
-        imageUrl: rest.imageUrl || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80',
+        imageUrl: finalImageUrl,
         benefits: Array.isArray(benefits) ? JSON.stringify(benefits) : (typeof benefits === 'string' ? benefits : '["100% Organic", "Farm Fresh"]'),
         subscriptionAllowed: rest.subscriptionAllowed !== undefined ? Boolean(rest.subscriptionAllowed) : true,
         oneTimeAllowed: rest.oneTimeAllowed !== undefined ? Boolean(rest.oneTimeAllowed) : true,
@@ -92,6 +105,17 @@ export class ProductService {
     if (data.categoryName || category) {
       updateData.categoryName = data.categoryName || (typeof category === 'string' ? category : category?.name);
     }
+
+    // Auto-optimize directly in Cloudinary if base64 image data is provided in update
+    if (updateData.imageUrl && (updateData.imageUrl.startsWith('data:image/') || (!updateData.imageUrl.startsWith('http://') && !updateData.imageUrl.startsWith('https://')))) {
+      try {
+        const cloudUpload = await CloudinaryService.uploadProductImage(updateData.imageUrl, `prod_${updateData.name || id}`);
+        updateData.imageUrl = cloudUpload.url;
+      } catch (err: any) {
+        console.warn('[ProductService]: Cloudinary upload failed during product update:', err.message || err);
+      }
+    }
+
     const updated = await prisma.product.update({
       where: { id },
       data: updateData,

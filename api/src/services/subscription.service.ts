@@ -7,7 +7,7 @@ export class SubscriptionService {
       orderBy: { createdAt: 'desc' }
     });
 
-    return subs.map(s => ({
+    return subs.map((s: any) => ({
       ...s,
       product: s.product ? {
         ...s.product,

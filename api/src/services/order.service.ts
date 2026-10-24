@@ -11,9 +11,9 @@ export class OrderService {
       orderBy: { createdAt: 'desc' }
     });
 
-    return orders.map(o => ({
+    return orders.map((o: any) => ({
       ...o,
-      items: o.items.map(i => ({
+      items: o.items.map((i: any) => ({
         ...i,
         product: i.product ? {
           ...i.product,

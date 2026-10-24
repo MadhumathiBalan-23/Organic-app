@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
+import { CloudinaryService } from '../services/cloudinary.service';
 
 const router = Router();
 const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
@@ -42,6 +43,21 @@ router.post('/upload', async (req: Request, res: Response) => {
       }
     }
 
+    // 1. Primary: Upload directly to Cloudinary for automatic WebP/compression optimization
+    try {
+      const cloudinaryResult = await CloudinaryService.uploadProductImage(image, customName);
+      return res.status(201).json({
+        success: true,
+        message: 'Image uploaded and optimized successfully via Cloudinary',
+        url: cloudinaryResult.url,
+        fileName: cloudinaryResult.publicId,
+        provider: 'cloudinary'
+      });
+    } catch (cloudErr: any) {
+      console.warn('[Upload Warning]: Cloudinary upload failed, falling back to local storage:', cloudErr.message || cloudErr);
+    }
+
+    // 2. Fallback: Save to local uploads directory if Cloudinary is unavailable
     const uniqueName = customName
       ? `${Date.now()}-${customName.replace(/[^a-zA-Z0-9.-]/g, '_')}`
       : `crop-${Date.now()}-${Math.round(Math.random() * 1e6)}.${ext}`;
@@ -55,13 +71,14 @@ router.post('/upload', async (req: Request, res: Response) => {
     const host = req.get('host') || 'localhost:5050';
     const fileUrl = `${protocol}://${host}/uploads/${uniqueName}`;
 
-    console.log(`[Upload]: File saved successfully to ${filePath} -> ${fileUrl}`);
+    console.log(`[Upload]: File saved locally to ${filePath} -> ${fileUrl}`);
 
     return res.status(201).json({
       success: true,
-      message: 'Image uploaded successfully from device gallery',
+      message: 'Image uploaded successfully (local fallback)',
       url: fileUrl,
       fileName: uniqueName,
+      provider: 'local'
     });
   } catch (error: any) {
     console.error('[Upload Error]:', error);

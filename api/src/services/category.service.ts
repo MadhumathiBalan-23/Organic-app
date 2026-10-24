@@ -9,7 +9,7 @@ export class CategoryService {
         }
       }
     });
-    return list.map(c => ({
+    return list.map((c: any) => ({
       ...c,
       productCount: c._count?.products || 0
     }));

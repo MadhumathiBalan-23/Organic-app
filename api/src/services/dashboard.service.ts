@@ -12,7 +12,7 @@ export class DashboardService {
       prisma.product.count({ where: { stock: { lte: 25 } } })
     ]);
     const orders = await prisma.order.findMany({ select: { totalAmount: true } });
-    const calculatedRevenue = orders.reduce((acc, o) => acc + (o.totalAmount || 0), 0);
+    const calculatedRevenue = orders.reduce((acc: number, o: any) => acc + (o.totalAmount || 0), 0);
 
     return {
       totalRevenue: calculatedRevenue || 284500,
