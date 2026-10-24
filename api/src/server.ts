@@ -4,9 +4,11 @@ import { prisma } from './config/db';
 
 const PORT = config.port;
 
-const server = app.listen(PORT, () => {
-  console.log(`[Server]: AgriFlow AI backend is listening at http://localhost:${PORT}`);
-  console.log(`[Server]: Health endpoint available at http://localhost:${PORT}/api/health`);
+const server = app.listen(Number(PORT), '0.0.0.0', () => {
+  console.log(`[Server]: AgriFlow AI backend is listening on all interfaces at port ${PORT}`);
+  console.log(`[Server]: Local:   http://localhost:${PORT}`);
+  console.log(`[Server]: Network: http://192.23.1.52:${PORT}`);
+  console.log(`[Server]: Health:  http://localhost:${PORT}/api/health`);
 });
 
 server.on('error', (err: any) => {

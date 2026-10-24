@@ -1,8 +1,9 @@
 import React from 'react';
 import {
   View, Text, StyleSheet, Modal, TouchableOpacity,
-  ScrollView, Image, SafeAreaView
+  ScrollView, Image
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   X, LayoutDashboard, ShoppingBag, Tags, Sprout, Users,
   Package, FileText, Store, Calendar, Wallet, Home,

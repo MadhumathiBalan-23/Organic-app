@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  SafeAreaView, StyleSheet, Text, View, TextInput, 
+  StyleSheet, Text, View, TextInput, 
   TouchableOpacity, StatusBar, Alert, Modal, Image, ActivityIndicator
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { defaultProduct, Product } from './src/constants/mockData';
 import { MobileFrameWrapper } from './src/components/MobileFrameWrapper';
 import { RoleHeader, UserRole } from './src/components/RoleHeader';

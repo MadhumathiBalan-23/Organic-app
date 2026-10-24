@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Image,
-  TouchableOpacity, Alert, TextInput, Modal, SafeAreaView,
-  ActivityIndicator
+  TouchableOpacity, Alert, TextInput, Modal, ActivityIndicator
 } from 'react-native';
 import {
   Search, X, ShoppingCart, Package, Repeat, MessageSquare, Phone,
