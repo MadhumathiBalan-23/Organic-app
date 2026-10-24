@@ -10,6 +10,7 @@ interface VendorAndAdminScreensProps {
   onSwitchToCustomer?: () => void;
   showAddModal?: boolean;
   setShowAddModal?: (show: boolean) => void;
+  userPhone?: string;
 }
 
 export const VendorAndAdminScreens: React.FC<VendorAndAdminScreensProps> = ({ 
@@ -20,6 +21,7 @@ export const VendorAndAdminScreens: React.FC<VendorAndAdminScreensProps> = ({
   onSwitchToCustomer,
   showAddModal,
   setShowAddModal,
+  userPhone,
 }) => {
   if (role === 'vendor') {
     return (
@@ -30,6 +32,7 @@ export const VendorAndAdminScreens: React.FC<VendorAndAdminScreensProps> = ({
         onSwitchToCustomer={onSwitchToCustomer} 
         showAddModal={showAddModal}
         setShowAddModal={setShowAddModal}
+        userPhone={userPhone}
       />
     );
   }

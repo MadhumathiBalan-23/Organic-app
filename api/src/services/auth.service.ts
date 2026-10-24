@@ -91,6 +91,12 @@ export class AuthService {
   public static async generateVendorToken(phoneNumber: string) {
     const cleanPhone = String(phoneNumber || '').replace(/[^0-9]/g, '');
 
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      const error: any = new Error('Valid 10-digit mobile number required for Vendor authentication.');
+      error.status = 400;
+      throw error;
+    }
+
     const user = await prisma.user.findUnique({
       where: { phoneNumber: cleanPhone }
     });
@@ -100,17 +106,17 @@ export class AuthService {
     });
 
     const isApproved = user?.role === 'vendor' || user?.vendorStatus === 'APPROVED' || approvedReq !== null;
-    const isDemoBypass = cleanPhone === '8888888888' || cleanPhone === '9876543210';
+    const isDemoBypass = cleanPhone === '8888888888';
 
     if (!isApproved && !isDemoBypass) {
-      const error: any = new Error('Vendor access denied. Please submit your Vendor Registration in your Profile and await Admin approval.');
+      const error: any = new Error(`Vendor access denied for +91 ${cleanPhone}. Only mobile numbers approved by Admin have access to the Vendor Panel.`);
       error.status = 403;
       error.vendorStatus = user?.vendorStatus || 'NONE';
       throw error;
     }
 
     const vendorUser = await prisma.user.upsert({
-      where: { phoneNumber: cleanPhone.length === 10 ? cleanPhone : '8888888888' },
+      where: { phoneNumber: cleanPhone },
       update: { role: 'vendor', vendorStatus: 'APPROVED' },
       create: {
         fullName: user?.fullName || 'Organic Harvest Vendor',

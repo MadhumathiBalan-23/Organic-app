@@ -108,6 +108,19 @@ export default function App() {
 
   const triggerRefresh = () => setRefreshKey((prev) => prev + 1);
 
+  // Automatically check vendor accreditation for this specific phone number
+  useEffect(() => {
+    const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
+    if (cleanPhone.length === 10) {
+      checkVendorStatus(cleanPhone);
+      // Periodically verify status if not approved yet, so admin approval shows immediately
+      const interval = setInterval(() => {
+        checkVendorStatus(cleanPhone);
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [phone]);
+
   const handleSendOtp = async (overridePhone?: string) => {
     const cleanPhone = (overridePhone || phone).replace(/[^0-9]/g, '');
     setAuthError(null);
@@ -203,11 +216,18 @@ export default function App() {
     setIsVerifying(false);
   };
 
-  // Switch to Vendor: ONLY permitted when Admin has verified and approved the vendor request
+  // Switch to Vendor: ONLY permitted when Admin has verified and approved that specific mobile number
   const handleSwitchToVendor = async () => {
     if (isSwitchingToVendor) return;
     const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
-    const validPhone = cleanPhone.length === 10 ? cleanPhone : '9876543210';
+
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      Alert.alert(
+        'Login Required',
+        'Please log in with your 10-digit mobile number before switching to the Vendor Console.'
+      );
+      return;
+    }
 
     setIsSwitchingToVendor(true);
 
@@ -215,7 +235,7 @@ export default function App() {
       const res = await fetch(API_ENDPOINTS.vendorToken, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber: validPhone })
+        body: JSON.stringify({ phoneNumber: cleanPhone })
       });
       const data = await res.json();
 
@@ -227,16 +247,21 @@ export default function App() {
           setRole('vendor');
           setVendorTab('dashboard');
           setIsSwitchingToVendor(false);
-        }, 400);
+        }, 300);
       } else {
         setIsSwitchingToVendor(false);
+        setVendorStatus(data.status || 'PENDING');
         Alert.alert(
-          'Vendor Verification Required',
-          data.message || 'Please submit your Vendor Application in your Profile and wait for Admin approval.'
+          'Vendor Access Restricted',
+          data.message || `Mobile number +91 ${cleanPhone} has not been approved by Admin as a Vendor yet. Please submit your application in your Profile or wait for Admin approval.`
         );
       }
     } catch {
       setIsSwitchingToVendor(false);
+      Alert.alert(
+        'Connection Error',
+        'Could not verify vendor accreditation with server. Please try again.'
+      );
     }
   };
 
@@ -532,6 +557,7 @@ export default function App() {
             onSwitchToCustomer={handleSwitchToCustomer}
             showAddModal={showVendorAddProduct}
             setShowAddModal={setShowVendorAddProduct}
+            userPhone={phone}
           />
         )}
 

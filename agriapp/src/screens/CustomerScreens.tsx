@@ -89,6 +89,11 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
 
   const handleApplyVendor = async () => {
     setVApplyError(null);
+    const cleanPhone = (userPhone || '').replace(/[^0-9]/g, '');
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      setVApplyError('Please log in with a valid 10-digit mobile number first.');
+      return;
+    }
     if (!vFarmName.trim()) {
       setVApplyError('Please enter your Farm or Business Name.');
       return;
@@ -104,8 +109,8 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phoneNumber: userPhone || '9876543210',
-          userName: 'Ananya Sharma',
+          phoneNumber: cleanPhone,
+          userName: profileName || 'Partner Farmer',
           farmName: vFarmName.trim(),
           farmLocation: vFarmLocation.trim(),
           cropCategories: vCropCategories.trim() || 'Fresh Organic Vegetables & Dairy',
@@ -117,7 +122,10 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
       if (data.success) {
         setShowVendorModal(false);
         if (onRefreshVendorStatus) onRefreshVendorStatus();
-        Alert.alert('Request Submitted!', 'Your vendor application has been sent to Admin for review. Once approved, the Vendor Console and crop publisher will be unlocked.');
+        Alert.alert(
+          'Request Submitted!',
+          `Vendor application for mobile +91 ${cleanPhone} has been sent to Admin for review. Once approved, your Vendor Console will unlock automatically.`
+        );
       } else {
         setVApplyError(data.message || 'Submission failed. Please try again.');
       }
@@ -1456,10 +1464,10 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
           <View style={cs.producerApprovedBox}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
               <CircleCheck size={14} color="#047857" />
-              <Text style={cs.producerApprovedBadge}>ADMIN ACCREDITED PRODUCER</Text>
+              <Text style={cs.producerApprovedBadge}>ADMIN ACCREDITED PRODUCER · +91 {userPhone}</Text>
             </View>
             <Text style={cs.producerApprovedDesc}>
-              Your farm has been verified by Admin. You have full partner access to list crops, manage morning harvests, and dispatch depot orders.
+              Mobile number +91 {userPhone} has been verified and approved by Admin. You have full partner access to list crops, manage morning harvests, and dispatch depot orders.
             </Text>
             {onSwitchToVendor && (
               <TouchableOpacity style={[cs.launchVendorBtn, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]} onPress={onSwitchToVendor} activeOpacity={0.85}>
@@ -1472,10 +1480,10 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
           <View style={cs.producerPendingBox}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
               <Clock size={14} color="#B45309" />
-              <Text style={cs.producerPendingBadge}>APPLICATION UNDER ADMIN REVIEW</Text>
+              <Text style={cs.producerPendingBadge}>APPLICATION FOR +91 {userPhone} UNDER ADMIN REVIEW</Text>
             </View>
             <Text style={cs.producerPendingDesc}>
-              Application #TN-REQ-9042 submitted to Super Admin. Once approved, the Farmer Console will unlock automatically.
+              Application for mobile number +91 {userPhone} is under review by Admin. Once approved, the Farmer Console will unlock automatically for this account.
             </Text>
             <TouchableOpacity style={[cs.refreshStatusBtn, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]} onPress={onRefreshVendorStatus} activeOpacity={0.7}>
               <Repeat size={14} color="#B45309" />
@@ -1738,7 +1746,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
               <Text style={cs.formLabel}>Applicant Mobile</Text>
               <TextInput
                 style={[cs.formInput, { backgroundColor: '#F1F5F9', color: '#64748B' }]}
-                value={userPhone || '9876543210'}
+                value={userPhone ? `+91 ${userPhone}` : 'Please log in with mobile number'}
                 editable={false}
               />
 

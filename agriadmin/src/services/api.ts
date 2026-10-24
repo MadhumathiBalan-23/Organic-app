@@ -12,6 +12,7 @@ export const API_ENDPOINTS = {
   deliveries: `${API_BASE}/deliveries`,
   aiAlerts: `${API_BASE}/ai-alerts`,
   health: `${API_BASE}/health`,
+  vendorRequests: `${API_BASE}/vendor-requests`,
 };
 
 // Generic fetch helper
@@ -171,4 +172,24 @@ export async function getDeliveriesAPI() {
 export async function getAIAlertsAPI() {
   const data = await request<{ success: boolean; data: any[] }>(API_ENDPOINTS.aiAlerts);
   return data.success ? data.data : [];
+}
+
+// ── Vendor Requests / Approvals API ───────────────────────────
+export async function getVendorRequestsAPI(status?: string) {
+  const q = status && status !== 'ALL' ? `?status=${status}` : '';
+  const data = await request<{ success: boolean; data: any[] }>(`${API_ENDPOINTS.vendorRequests}${q}`);
+  return data.success ? data.data : [];
+}
+
+export async function approveVendorAPI(id: string) {
+  return request<{ success: boolean; message: string; data: any }>(`${API_ENDPOINTS.vendorRequests}/${id}/approve`, {
+    method: 'POST'
+  });
+}
+
+export async function rejectVendorAPI(id: string, reason?: string) {
+  return request<{ success: boolean; message: string; data: any }>(`${API_ENDPOINTS.vendorRequests}/${id}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ reason })
+  });
 }

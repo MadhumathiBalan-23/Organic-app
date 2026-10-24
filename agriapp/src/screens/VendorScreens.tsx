@@ -85,6 +85,7 @@ interface VendorScreensProps {
   onSwitchToCustomer?: () => void;
   showAddModal?: boolean;
   setShowAddModal?: (show: boolean) => void;
+  userPhone?: string;
 }
 
 export const VendorScreens: React.FC<VendorScreensProps> = ({
@@ -94,6 +95,7 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
   onSwitchToCustomer,
   showAddModal,
   setShowAddModal,
+  userPhone,
 }) => {
   const [internalTab, setInternalTab] = useState<VendorTabKey>('dashboard');
   const activeTab: VendorTabKey = ((propActiveTab as VendorTabKey) || internalTab);
@@ -103,13 +105,38 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
     if (onSelectTab) onSelectTab(tab);
   };
 
-  // State for products and deliveries loaded live from API
+  // State for products, deliveries, and active vendor profile loaded live from API
   const [productList, setProductList] = useState<Product[]>([]);
   const [deliveriesList, setDeliveriesList] = useState<any[]>([]);
+  const [vendorProfile, setVendorProfile] = useState<{
+    farmName?: string;
+    farmLocation?: string;
+    cropCategories?: string;
+    userName?: string;
+  } | null>(null);
 
-  // Load products and deliveries from Prisma SQLite DB on mount
+  // Load products, deliveries, and this vendor's accredited farm details on mount
   useEffect(() => {
     let isMounted = true;
+
+    // Fetch this particular phone number's vendor registration details
+    const cleanPhone = (userPhone || '').replace(/[^0-9]/g, '');
+    if (cleanPhone.length === 10) {
+      fetch(API_ENDPOINTS.vendorStatus(cleanPhone))
+        .then((res) => res.json())
+        .then((json) => {
+          if (isMounted && json.success && json.request) {
+            setVendorProfile({
+              farmName: json.request.farmName,
+              farmLocation: json.request.farmLocation,
+              cropCategories: json.request.cropCategories,
+              userName: json.request.userName,
+            });
+          }
+        })
+        .catch(() => {});
+    }
+
     fetch(API_ENDPOINTS.products)
       .then((res) => res.json())
       .then((json) => {
@@ -135,7 +162,7 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [userPhone]);
 
   // Crops search and category filter
   const [cropSearch, setCropSearch] = useState('');
@@ -371,10 +398,16 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
         <View style={styles.vendorInfo}>
           <View style={[styles.vendorBadge, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
             <Sprout size={12} color={VC.accent} />
-            <Text style={styles.vendorBadgeText}>SALEM ORGANIC FARM HUB</Text>
+            <Text style={styles.vendorBadgeText}>
+              {userPhone ? `APPROVED VENDOR · +91 ${userPhone}` : 'SALEM ORGANIC FARM HUB'}
+            </Text>
           </View>
-          <Text style={styles.vendorTitle} numberOfLines={1}>Direct Partner Producer</Text>
-          <Text style={styles.vendorSub}>Token Verified · SQLite Prisma Sync</Text>
+          <Text style={styles.vendorTitle} numberOfLines={1}>
+            {vendorProfile?.farmName || (vendorProfile?.userName ? `${vendorProfile.userName}'s Farm` : 'Salem Organic Producer Hub')}
+          </Text>
+          <Text style={styles.vendorSub}>
+            {vendorProfile?.farmLocation ? `${vendorProfile.farmLocation} · Verified Producer` : 'Admin Approved Partner · Verified Mobile Identity'}
+          </Text>
         </View>
 
         {onSwitchToCustomer && (
@@ -439,6 +472,29 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
       {/* ── TAB 1: DASHBOARD (KEY METRICS & PREVIEWS) ── */}
       {activeTab === 'dashboard' && (
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {/* Active Vendor Verification Banner */}
+          <View style={{
+            backgroundColor: '#ECFDF5',
+            borderColor: '#A7F3D0',
+            borderWidth: 1,
+            borderRadius: 12,
+            padding: 12,
+            marginBottom: 14,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+          }}>
+            <CircleCheck size={20} color="#047857" />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#064E3B' }}>
+                Vendor Panel · +91 {userPhone || 'Verified'}
+              </Text>
+              <Text style={{ fontSize: 11, color: '#047857', marginTop: 2 }}>
+                {vendorProfile?.farmName ? `${vendorProfile.farmName} (${vendorProfile.farmLocation || 'Tamil Nadu'})` : 'Admin approved direct supply partner'}
+              </Text>
+            </View>
+          </View>
+
           {/* Quick Metrics 2x2 Grid */}
           <View style={styles.metricsGrid}>
             <TouchableOpacity
