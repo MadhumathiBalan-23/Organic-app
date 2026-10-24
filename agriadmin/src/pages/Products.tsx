@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, X, Package } from 'lucide-react';
-import { Product, fetchProductsFromDB, fetchCategoriesFromDB, fetchBrandsFromDB } from '../data/mockData';
+import { Product, ORGANIC_PRODUCT_PRESETS, fetchProductsFromDB, fetchCategoriesFromDB, fetchBrandsFromDB } from '../data/mockData';
 import { createProductAPI, updateProductAPI, deleteProductAPI } from '../services/api';
 
 const statusChip = (status: string) => {
@@ -8,8 +8,26 @@ const statusChip = (status: string) => {
   return map[status] ?? 'chip-default';
 };
 
-const defaultForm: { name: string; category: string; brand: string; price: number; stock: number; unit: string; status: Product['status']; emoji: string } = {
-  name: '', category: 'Dairy & Pure Ghee', brand: 'NatureFarm', price: 0, stock: 0, unit: 'Kg', status: 'Active', emoji: ''
+const defaultForm: {
+  name: string;
+  category: string;
+  brand: string;
+  price: number;
+  stock: number;
+  unit: string;
+  status: Product['status'];
+  emoji: string;
+  imageUrl: string;
+} = {
+  name: '',
+  category: 'Dairy & Pure Ghee',
+  brand: 'NatureFarm',
+  price: 0,
+  stock: 0,
+  unit: 'Kg',
+  status: 'Active',
+  emoji: '',
+  imageUrl: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=600'
 };
 
 const Products: React.FC = () => {
@@ -50,7 +68,8 @@ const Products: React.FC = () => {
     setForm({
       ...defaultForm,
       category: categoryNames[0] || 'Dairy & Pure Ghee',
-      brand: brandNames[0] || 'NatureFarm'
+      brand: brandNames[0] || 'NatureFarm',
+      imageUrl: ORGANIC_PRODUCT_PRESETS[0]?.url || 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=600'
     });
     setEditing(null);
     setModal('add');
@@ -65,7 +84,8 @@ const Products: React.FC = () => {
       stock: p.stock,
       unit: p.unit,
       status: p.status,
-      emoji: p.emoji
+      emoji: p.emoji,
+      imageUrl: p.imageUrl || ORGANIC_PRODUCT_PRESETS[0]?.url || 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=600'
     });
     setEditing(p);
     setModal('edit');
@@ -87,7 +107,8 @@ const Products: React.FC = () => {
           brand: form.brand,
           price: form.price,
           stock: form.stock,
-          unit: form.unit
+          unit: form.unit,
+          imageUrl: form.imageUrl
         });
       } catch (e) {
         console.warn('API update error:', e);
@@ -101,7 +122,8 @@ const Products: React.FC = () => {
           brand: form.brand,
           price: form.price,
           stock: form.stock,
-          unit: form.unit
+          unit: form.unit,
+          imageUrl: form.imageUrl
         });
         const createdProd: Product = res.data ? {
           id: res.data.id,
@@ -114,7 +136,7 @@ const Products: React.FC = () => {
           status: form.status,
           sales: 0,
           emoji: '',
-          imageUrl: res.data.imageUrl,
+          imageUrl: res.data.imageUrl || form.imageUrl,
           benefits: ['100% Organic', 'Farm Fresh']
         } : { id: 'p_' + Date.now(), ...form, sales: 0, benefits: ['100% Organic', 'Farm Fresh'] };
         setItems(prev => [createdProd, ...prev]);
@@ -274,6 +296,109 @@ const Products: React.FC = () => {
                 <option value="Low Stock">Low Stock</option>
                 <option value="Inactive">Inactive</option>
               </select>
+            </div>
+
+            {/* Live HD Image Preview & Selection */}
+            <div className="form-group" style={{ marginBottom: 16 }}>
+              <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Product Photo (HD Clean Image)</span>
+                <span style={{ fontSize: '0.75rem', color: '#047857', fontWeight: 600 }}>✓ Verified Food-Grade Preview</span>
+              </label>
+
+              {/* Preview Card */}
+              <div style={{
+                position: 'relative',
+                width: '100%',
+                height: 120,
+                borderRadius: 10,
+                overflow: 'hidden',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-main)',
+                marginBottom: 10,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                {form.imageUrl ? (
+                  <img
+                    src={form.imageUrl}
+                    alt="Preview"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&q=80&w=600';
+                    }}
+                  />
+                ) : (
+                  <Package size={32} color="var(--text-muted)" />
+                )}
+                <div style={{
+                  position: 'absolute',
+                  bottom: 8,
+                  left: 8,
+                  backgroundColor: 'rgba(0, 0, 0, 0.65)',
+                  color: '#fff',
+                  fontSize: '0.75rem',
+                  padding: '3px 8px',
+                  borderRadius: 6,
+                  backdropFilter: 'blur(4px)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}>
+                  <span>🌿 Live DB Image Preview</span>
+                </div>
+              </div>
+
+              {/* Photo Presets Quick Picker */}
+              <label style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: 6, display: 'block' }}>
+                Select from Curated Organic Presets:
+              </label>
+              <div style={{
+                display: 'flex',
+                gap: 8,
+                overflowX: 'auto',
+                paddingBottom: 6,
+                marginBottom: 8,
+                maxWidth: '100%'
+              }}>
+                {ORGANIC_PRODUCT_PRESETS.map((p) => {
+                  const isSelected = form.imageUrl === p.url;
+                  return (
+                    <button
+                      key={p.label}
+                      type="button"
+                      onClick={() => setForm({ ...form, imageUrl: p.url })}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '4px 8px',
+                        borderRadius: 8,
+                        border: isSelected ? '2px solid #047857' : '1px solid var(--border-color)',
+                        backgroundColor: isSelected ? '#ECFDF5' : 'var(--bg-card, #FFFFFF)',
+                        color: isSelected ? '#047857' : 'var(--text-primary)',
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        fontSize: '0.78rem',
+                        fontWeight: isSelected ? 600 : 400
+                      }}
+                      title={`${p.label} (${p.category})`}
+                    >
+                      <img src={p.url} alt={p.label} style={{ width: 22, height: 22, borderRadius: 4, objectFit: 'cover' }} />
+                      <span>{p.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Custom Image URL input */}
+              <input
+                className="form-input"
+                placeholder="Or paste custom image URL (https://...)"
+                value={form.imageUrl}
+                onChange={e => setForm({ ...form, imageUrl: e.target.value })}
+                style={{ fontSize: '0.82rem' }}
+              />
             </div>
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={closeModal}>Cancel</button>

@@ -33,7 +33,7 @@ import {
   ShieldAlert,
   ShieldCheck,
 } from 'lucide-react-native';
-import { Product, Categories } from '../constants/mockData';
+import { Product, Categories, ORGANIC_PRODUCT_PRESETS } from '../constants/mockData';
 import { API_ENDPOINTS } from '../services/api';
 
 // ── Theme Palette (Mathira Organic Farmer / Vendor Portal) ──
@@ -68,14 +68,7 @@ export const getCategoryName = (cat: any): string => {
 };
 
 // Preset images for realistic organic crops
-const IMAGE_PRESETS = [
-  { label: 'Desi Cow Milk', url: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=600' },
-  { label: 'Farm Tomatoes', url: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&q=80&w=600' },
-  { label: 'Wild Honey', url: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&q=80&w=600' },
-  { label: 'Fresh Spinach', url: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&q=80&w=600' },
-  { label: 'Shimla Apples', url: 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&q=80&w=600' },
-  { label: 'Basmati Rice', url: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=80&w=600' },
-];
+const IMAGE_PRESETS = ORGANIC_PRODUCT_PRESETS;
 
 const AVAILABLE_UNITS = ['Kg', 'Litre', '500g', '250g', 'Bunch', 'Jar', 'Dozen', 'Crate'];
 const BENEFIT_OPTIONS = ['100% Pesticide Free', 'Daily Farm Fresh Harvest', 'Non-GMO & Natural', 'Rich in Nutrients', 'Certified Organic'];
@@ -1168,15 +1161,41 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
                 })}
               </ScrollView>
 
-              {/* Photo Presets */}
-              <Text style={styles.inputLabel}>Select Photo Preset</Text>
+              {/* Product Photo Selection & Live Preview */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, marginBottom: 4 }}>
+                <Text style={styles.inputLabel}>Product Photo (Database Image)</Text>
+                <Text style={{ fontSize: 11, color: VC.sub, fontWeight: '700' }}>✓ Verified Food-Grade</Text>
+              </View>
+
+              {/* Live Image Preview Card */}
+              <View style={styles.liveImagePreviewContainer}>
+                <Image
+                  source={{ uri: pImageUrl.trim() || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&q=80&w=600' }}
+                  style={styles.liveImagePreviewImg}
+                  resizeMode="cover"
+                />
+                <View style={styles.liveImagePreviewBadge}>
+                  <Sprout size={11} color="#A7F3D0" />
+                  <Text style={styles.liveImagePreviewBadgeText}>Live Food Photography Preview</Text>
+                </View>
+              </View>
+
+              {/* Photo Presets Horizontal Row */}
+              <Text style={{ fontSize: 11, color: VC.textMuted, marginBottom: 4, fontWeight: '600' }}>
+                Quick Presets (Sorted for {pCategory}):
+              </Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.presetRow}>
                 {IMAGE_PRESETS.map((item) => {
                   const isSelected = pImageUrl === item.url;
+                  const isMatchCat = item.category === pCategory;
                   return (
                     <TouchableOpacity
                       key={item.label}
-                      style={[styles.presetChip, isSelected && styles.presetChipActive]}
+                      style={[
+                        styles.presetChip,
+                        isSelected && styles.presetChipActive,
+                        isMatchCat && !isSelected && { borderColor: '#A7F3D0', backgroundColor: '#F0FDF4' }
+                      ]}
                       onPress={() => setPImageUrl(item.url)}
                     >
                       <Image source={{ uri: item.url }} style={styles.presetThumb} />
@@ -1187,6 +1206,15 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
                   );
                 })}
               </ScrollView>
+
+              {/* Custom Image URL Option */}
+              <TextInput
+                style={[styles.textInput, { fontSize: 12, marginTop: 4, marginBottom: 12 }]}
+                value={pImageUrl}
+                onChangeText={setPImageUrl}
+                placeholder="Or paste custom image link (https://...)"
+                placeholderTextColor="#94A3B8"
+              />
 
               {/* Key Organic Benefits */}
               <Text style={styles.inputLabel}>Key Organic Benefits</Text>
@@ -2132,6 +2160,39 @@ const styles = StyleSheet.create({
   catChipTextActive: {
     color: '#FFFFFF',
     fontWeight: 'bold',
+  },
+  liveImagePreviewContainer: {
+    height: 125,
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    marginVertical: 8,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  liveImagePreviewImg: {
+    width: '100%',
+    height: '100%',
+  },
+  liveImagePreviewBadge: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    backgroundColor: 'rgba(6, 78, 59, 0.85)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  liveImagePreviewBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
   },
   presetRow: {
     flexDirection: 'row',

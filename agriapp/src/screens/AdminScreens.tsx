@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Modal, Alert, DimensionValue
+  TextInput, Modal, Alert, DimensionValue, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -12,7 +12,7 @@ import {
   LogIn, LogOut, Activity, Sprout, Store, ShoppingBag
 } from 'lucide-react-native';
 import {
-  Categories, Product,
+  Categories, Product, ORGANIC_PRODUCT_PRESETS,
   AdminCategory, AdminBrand, AdminCustomer, AdminOrder, AdminUserLog
 } from '../constants/mockData';
 import { API_ENDPOINTS } from '../services/api';
@@ -468,7 +468,15 @@ const ProductsTab: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState<'add' | 'edit' | null>(null);
-  const [form, setForm] = useState({ name: '', price: '', stock: '', category: 'Dairy & Pure Ghee', unit: 'Kg', emoji: '' });
+  const [form, setForm] = useState({
+    name: '',
+    price: '',
+    stock: '',
+    category: 'Dairy & Pure Ghee',
+    unit: 'Kg',
+    emoji: '',
+    imageUrl: ORGANIC_PRODUCT_PRESETS[0]?.url || 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=600'
+  });
   const [editId, setEditId] = useState<string | null>(null);
 
   const loadProducts = () => {
@@ -489,11 +497,33 @@ const ProductsTab: React.FC = () => {
     return p.name.toLowerCase().includes(search.toLowerCase()) || catName.toLowerCase().includes(search.toLowerCase());
   });
 
-  const openAdd = () => { setForm({ name: '', price: '', stock: '', category: 'Dairy & Pure Ghee', unit: 'Kg', emoji: '' }); setEditId(null); setModal('add'); };
+  const openAdd = () => {
+    setForm({
+      name: '',
+      price: '',
+      stock: '',
+      category: 'Dairy & Pure Ghee',
+      unit: 'Kg',
+      emoji: '',
+      imageUrl: ORGANIC_PRODUCT_PRESETS[0]?.url || 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=600'
+    });
+    setEditId(null);
+    setModal('add');
+  };
+
   const openEdit = (p: Product) => {
     const catName = typeof p.category === 'object' && p.category !== null ? (p.category as any).name : String(p.category || 'Dairy & Pure Ghee');
-    setForm({ name: p.name, price: String(p.price), stock: String(p.stock), category: catName, unit: p.unit, emoji: '' });
-    setEditId(p.id); setModal('edit');
+    setForm({
+      name: p.name,
+      price: String(p.price),
+      stock: String(p.stock),
+      category: catName,
+      unit: p.unit,
+      emoji: '',
+      imageUrl: p.imageUrl || ORGANIC_PRODUCT_PRESETS[0]?.url || 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=600'
+    });
+    setEditId(p.id);
+    setModal('edit');
   };
 
   const handleSave = async () => {
@@ -508,7 +538,8 @@ const ProductsTab: React.FC = () => {
             price: parseFloat(form.price),
             stock: parseInt(form.stock || '0'),
             categoryName: form.category,
-            unit: form.unit
+            unit: form.unit,
+            imageUrl: form.imageUrl
           })
         });
       } catch (e) {}
@@ -524,7 +555,7 @@ const ProductsTab: React.FC = () => {
             stock: parseInt(form.stock || '0'),
             unit: form.unit,
             description: `Fresh organic ${form.name}`,
-            imageUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=600'
+            imageUrl: form.imageUrl || ORGANIC_PRODUCT_PRESETS[0]?.url || 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=600'
           })
         });
       } catch (e) {}
@@ -558,6 +589,12 @@ const ProductsTab: React.FC = () => {
       <ScrollView showsVerticalScrollIndicator={false}>
         {filtered.map(p => (
           <View key={p.id} style={s.tableRow}>
+            {/* Neat Product Photo Thumbnail */}
+            <Image
+              source={{ uri: p.imageUrl || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&q=80&w=600' }}
+              style={{ width: 48, height: 48, borderRadius: 10, marginRight: 10, backgroundColor: '#E2EBE6' }}
+              resizeMode="cover"
+            />
             <View style={{ flex: 1 }}>
               <Text style={s.tableRowTitle} numberOfLines={1}>{p.name}</Text>
               <Text style={s.tableRowSub}>{typeof p.category === 'object' && p.category !== null ? (p.category as any).name : String(p.category || 'Organic')}</Text>
@@ -617,6 +654,91 @@ const ProductsTab: React.FC = () => {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
+
+              {/* Product Photo Selection & Live Preview */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 4 }}>
+                <Text style={s.formLabel}>Product Photo (Database Image)</Text>
+                <Text style={{ fontSize: 11, color: C.primaryLight, fontWeight: '700' }}>✓ Verified Food-Grade</Text>
+              </View>
+
+              {/* Live Image Preview Card */}
+              <View style={{
+                height: 120,
+                borderRadius: 12,
+                overflow: 'hidden',
+                backgroundColor: '#F1F5F9',
+                borderWidth: 1,
+                borderColor: C.border,
+                marginBottom: 8,
+                position: 'relative'
+              }}>
+                <Image
+                  source={{ uri: form.imageUrl || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&q=80&w=600' }}
+                  style={{ width: '100%', height: '100%' }}
+                  resizeMode="cover"
+                />
+                <View style={{
+                  position: 'absolute',
+                  bottom: 6,
+                  left: 6,
+                  backgroundColor: 'rgba(13, 43, 29, 0.85)',
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 6,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4
+                }}>
+                  <Sprout size={10} color="#A7F3D0" />
+                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>Live HD Food Photo Preview</Text>
+                </View>
+              </View>
+
+              {/* Quick Presets Row */}
+              <Text style={{ fontSize: 11, color: C.textMuted, marginBottom: 4, fontWeight: '600' }}>
+                Select Curated Organic Preset:
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+                {ORGANIC_PRODUCT_PRESETS.map((item) => {
+                  const isSelected = form.imageUrl === item.url;
+                  const isMatchCat = item.category === form.category;
+                  return (
+                    <TouchableOpacity
+                      key={item.label}
+                      style={[
+                        {
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 6,
+                          paddingHorizontal: 8,
+                          paddingVertical: 5,
+                          borderRadius: 10,
+                          borderWidth: 1,
+                          borderColor: isSelected ? C.primaryLight : isMatchCat ? '#A7F3D0' : C.border,
+                          backgroundColor: isSelected ? '#E8F5E9' : isMatchCat ? '#F0FDF4' : '#fff',
+                          marginRight: 8
+                        }
+                      ]}
+                      onPress={() => setForm({ ...form, imageUrl: item.url })}
+                    >
+                      <Image source={{ uri: item.url }} style={{ width: 20, height: 20, borderRadius: 10 }} />
+                      <Text style={{ fontSize: 11, color: isSelected ? C.primaryLight : C.textPrimary, fontWeight: isSelected ? '700' : '500' }}>
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              {/* Custom Image URL Option */}
+              <TextInput
+                style={[s.formInput, { fontSize: 12, marginBottom: 12 }]}
+                value={form.imageUrl}
+                onChangeText={v => setForm({ ...form, imageUrl: v })}
+                placeholder="Or paste custom image link (https://...)"
+                placeholderTextColor={C.textMuted}
+              />
+
               <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
                 <TouchableOpacity style={[s.modalBtn, s.modalBtnGhost]} onPress={() => setModal(null)}><Text style={{ color: C.textSec, fontWeight: '600' }}>Cancel</Text></TouchableOpacity>
                 <TouchableOpacity style={[s.modalBtn, s.modalBtnPrimary]} onPress={handleSave}><Text style={{ color: '#fff', fontWeight: '700' }}>Save</Text></TouchableOpacity>

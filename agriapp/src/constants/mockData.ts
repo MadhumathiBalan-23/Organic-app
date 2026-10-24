@@ -34,6 +34,41 @@ export const Categories = [
   'Dry Fruits & Snacks'
 ];
 
+export const ORGANIC_PRODUCT_PRESETS = [
+  // Dairy & Pure Ghee
+  { label: 'A2 Cow Milk', category: 'Dairy & Pure Ghee', url: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=600' },
+  { label: 'Bilona Cow Ghee', category: 'Dairy & Pure Ghee', url: 'https://images.unsplash.com/photo-1627308595229-7830a5c91f9f?auto=format&fit=crop&q=80&w=600' },
+  { label: 'Fresh Malai Paneer', category: 'Dairy & Pure Ghee', url: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&q=80&w=600' },
+  { label: 'Country Eggs', category: 'Dairy & Pure Ghee', url: 'https://images.unsplash.com/photo-1506976785307-8732e854ad03?auto=format&fit=crop&q=80&w=600' },
+  { label: 'Clay Pot Curd', category: 'Dairy & Pure Ghee', url: 'https://images.unsplash.com/photo-1571212515416-fef01fc43637?auto=format&fit=crop&q=80&w=600' },
+
+  // Fresh Vegetables
+  { label: 'Vine Fresh Tomatoes', category: 'Fresh Vegetables', url: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&q=80&w=600' },
+  { label: 'Baby Spinach (Palak)', category: 'Fresh Vegetables', url: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&q=80&w=600' },
+  { label: 'Mountain Carrots', category: 'Fresh Vegetables', url: 'https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?auto=format&fit=crop&q=80&w=600' },
+  { label: 'Green Bell Peppers', category: 'Fresh Vegetables', url: 'https://images.unsplash.com/photo-1563565375-f3fdfdbefa83?auto=format&fit=crop&q=80&w=600' },
+  { label: 'Fresh Broccoli', category: 'Fresh Vegetables', url: 'https://images.unsplash.com/photo-1459411621453-7b03977f4bfc?auto=format&fit=crop&q=80&w=600' },
+  { label: 'Button Mushrooms', category: 'Fresh Vegetables', url: 'https://images.unsplash.com/photo-1504544750208-dc0358e63f7f?auto=format&fit=crop&q=80&w=600' },
+  { label: 'Baby Potatoes', category: 'Fresh Vegetables', url: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&q=80&w=600' },
+
+  // Fresh Fruits
+  { label: 'Robusta Bananas', category: 'Fresh Fruits', url: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&q=80&w=600' },
+  { label: 'Shimla Royal Apples', category: 'Fresh Fruits', url: 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&q=80&w=600' },
+  { label: 'Ruby Pomegranates', category: 'Fresh Fruits', url: 'https://images.unsplash.com/photo-1541344999736-83eca872f241?auto=format&fit=crop&q=80&w=600' },
+  { label: 'Organic Strawberries', category: 'Fresh Fruits', url: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?auto=format&fit=crop&q=80&w=600' },
+  { label: 'Sweet Farm Oranges', category: 'Fresh Fruits', url: 'https://images.unsplash.com/photo-1611080626919-7cf5a9dbab5b?auto=format&fit=crop&q=80&w=600' },
+
+  // Groceries & Grains
+  { label: 'Basmati Brown Rice', category: 'Groceries & Grains', url: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=80&w=600' },
+  { label: 'Organic Wheat Grain', category: 'Groceries & Grains', url: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&q=80&w=600' },
+
+  // Oils & Dry Fruits
+  { label: 'Cold-Pressed Groundnut Oil', category: 'Organic Oils', url: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&q=80&w=600' },
+  { label: 'Virgin Coconut Oil', category: 'Organic Oils', url: 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600' },
+  { label: 'Wild Forest Raw Honey', category: 'Dry Fruits & Snacks', url: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&q=80&w=600' },
+  { label: 'Raw California Almonds', category: 'Dry Fruits & Snacks', url: 'https://images.unsplash.com/photo-1508061253366-f7da158b6d46?auto=format&fit=crop&q=80&w=600' },
+];
+
 export const defaultProduct: Product = {
   id: 'p-default',
   name: 'Organic Desi Produce',
