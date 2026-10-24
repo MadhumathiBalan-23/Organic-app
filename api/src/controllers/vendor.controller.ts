@@ -87,4 +87,13 @@ export class VendorController {
       return res.status(500).json({ success: false, error: error.message });
     }
   }
+
+  public static async delete(req: Request, res: Response) {
+    try {
+      const result = await VendorService.deleteVendorRequest(req.params.id);
+      return res.json({ success: true, message: result.message });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  }
 }

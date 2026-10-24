@@ -168,4 +168,23 @@ export class VendorService {
       data: updatedReq
     };
   }
+
+  public static async deleteVendorRequest(id: string) {
+    const request = await prisma.vendorRequest.findUnique({ where: { id } });
+    if (!request) {
+      throw new Error('Vendor request not found.');
+    }
+
+    await prisma.vendorRequest.delete({ where: { id } });
+    await prisma.user.updateMany({
+      where: { phoneNumber: request.phoneNumber },
+      data: { role: 'customer', vendorStatus: 'NONE' }
+    });
+
+    console.log(`[Admin]: Removed vendor request ${id} for +91 ${request.phoneNumber} (${request.farmName})`);
+
+    return {
+      message: `Vendor request for "${request.farmName}" was permanently removed.`
+    };
+  }
 }

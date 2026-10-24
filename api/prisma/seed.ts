@@ -387,7 +387,7 @@ const initialProducts = [
 
 const initialUsers = [
   { id: 'usr-admin', fullName: 'AgriFlow Admin', email: 'admin@agriflow.org', phoneNumber: '9999999999', role: 'admin', passwordHash: 'OTP_VERIFIED', location: 'Chennai, TN', status: 'Active', totalOrders: 0, totalSpend: 0 },
-  { id: 'usr-vendor', fullName: 'Organic Harvest Vendor', email: 'vendor@agriflow.org', phoneNumber: '8888888888', role: 'vendor', passwordHash: 'OTP_VERIFIED', location: 'Salem, TN', status: 'Active', totalOrders: 0, totalSpend: 0 },
+  { id: 'usr-vendor-jeena', fullName: 'Jeena Farming', email: 'jeenafarming@gmail.com', phoneNumber: '9025255639', role: 'vendor', passwordHash: 'OTP_VERIFIED', location: 'Dharmapuri, TN', status: 'Active', totalOrders: 0, totalSpend: 0 },
   { id: 'usr-c1', fullName: 'Priya Sharma', email: 'priya.sharma@gmail.com', phoneNumber: '9876543210', role: 'customer', passwordHash: 'OTP_VERIFIED', location: 'Chennai, TN', status: 'VIP', totalOrders: 34, totalSpend: 12800 },
   { id: 'usr-c2', fullName: 'Arjun Menon', email: 'arjun.menon@email.com', phoneNumber: '9123456789', role: 'customer', passwordHash: 'OTP_VERIFIED', location: 'Kochi, KL', status: 'Active', totalOrders: 18, totalSpend: 7400 },
   { id: 'usr-c3', fullName: 'Deepika Nair', email: 'deepika.n@email.com', phoneNumber: '8765432109', role: 'customer', passwordHash: 'OTP_VERIFIED', location: 'Bangalore, KA', status: 'VIP', totalOrders: 52, totalSpend: 21000 },
@@ -655,6 +655,23 @@ export async function main() {
     });
   }
   console.log(`✓ Seeded ${initialUsers.length} Users/Customers into Prisma.`);
+
+  // 4b. Single Authorized Vendor: Jeena Farming
+  await prisma.vendorRequest.deleteMany({});
+  await prisma.vendorRequest.create({
+    data: {
+      id: 'vr-jeena-01',
+      userName: 'Jeena Farming',
+      phoneNumber: '9025255639',
+      farmName: 'Jeena Farming',
+      farmLocation: 'Dharmapuri, Tamil Nadu',
+      cropCategories: 'Organic Vegetables, Dairy & Natural Crops',
+      experienceYears: '5',
+      certificateNo: 'TN-ORG-JEENA-2026',
+      status: 'APPROVED',
+    }
+  });
+  console.log(`✓ Seeded single authorized vendor: Jeena Farming (9025255639)`);
 
   // 5. Subscriptions
   for (const s of initialSubscriptions) {

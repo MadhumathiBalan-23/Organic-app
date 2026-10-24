@@ -522,14 +522,14 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
           <View style={[styles.vendorBadge, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
             <Sprout size={12} color={VC.accent} />
             <Text style={styles.vendorBadgeText}>
-              {userPhone ? `APPROVED VENDOR · +91 ${userPhone}` : 'SALEM ORGANIC FARM HUB'}
+              {userPhone ? `APPROVED VENDOR · +91 ${userPhone}` : 'JEENA FARMING HUB'}
             </Text>
           </View>
           <Text style={styles.vendorTitle} numberOfLines={1}>
-            {vendorProfile?.farmName || (vendorProfile?.userName ? `${vendorProfile.userName}'s Farm` : 'Salem Organic Producer Hub')}
+            {vendorProfile?.farmName || 'Jeena Farming'}
           </Text>
           <Text style={styles.vendorSub}>
-            {vendorProfile?.farmLocation ? `${vendorProfile.farmLocation} · Verified Producer` : 'Admin Approved Partner · Verified Mobile Identity'}
+            {vendorProfile?.farmLocation ? `${vendorProfile.farmLocation} · Verified Producer` : 'Dharmapuri, Tamil Nadu · Verified Producer'}
           </Text>
         </View>
 

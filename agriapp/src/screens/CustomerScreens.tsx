@@ -9,10 +9,11 @@ import {
   Briefcase, Clock, Calendar, Pencil, LogOut, Sprout, Check,
   CircleCheck, Sparkles, Star, Leaf, Droplets,
   Apple, Wheat, Milk, ChevronRight, Zap, Gift, User, Store,
-  Truck, Trash, Plus, Minus, Mail, FileText
+  Truck, Trash, Plus, Minus, Mail, FileText, Camera, Upload
 } from 'lucide-react-native';
-import { Product } from '../constants/mockData';
-import { API_ENDPOINTS } from '../services/api';
+import * as ImagePicker from 'expo-image-picker';
+import { Product, ORGANIC_PRODUCT_PRESETS } from '../constants/mockData';
+import { API_ENDPOINTS, uploadImageFile } from '../services/api';
 
 // ── Colour Palette ───────────────────────────────────────
 const C = {
@@ -280,9 +281,73 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
   const [newProdUnit, setNewProdUnit] = useState('Kg');
   const [newProdStock, setNewProdStock] = useState('50');
   const [newProdDesc, setNewProdDesc] = useState('Hand-picked farm fresh organic produce directly from certified local farmers.');
-  const [newProdImage, setNewProdImage] = useState('https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80');
+  const [newProdImage, setNewProdImage] = useState(ORGANIC_PRODUCT_PRESETS[0]?.url || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80');
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [addProdError, setAddProdError] = useState<string | null>(null);
+
+  // Pick Crop Photo from Phone / Device Gallery
+  const handlePickFromGallery = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Please grant photo gallery permission to choose product photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setIsUploadingImage(true);
+        const dataUri = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+        const uploadedUrl = await uploadImageFile(dataUri, `cust-gal-${Date.now()}.jpg`);
+        setNewProdImage(uploadedUrl);
+      }
+    } catch (err: any) {
+      console.warn('Gallery pick error:', err);
+      Alert.alert('Gallery Error', 'Could not open device photo gallery.');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  // Capture Live Photo with Camera
+  const handleTakePhoto = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Please grant camera permission to take product photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setIsUploadingImage(true);
+        const dataUri = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+        const uploadedUrl = await uploadImageFile(dataUri, `cust-cam-${Date.now()}.jpg`);
+        setNewProdImage(uploadedUrl);
+      }
+    } catch (err: any) {
+      console.warn('Camera capture error:', err);
+      Alert.alert('Camera Error', 'Could not access device camera.');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
 
   const fetchProducts = async () => {
     setIsLoadingProducts(true);
@@ -575,33 +640,136 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
               numberOfLines={2}
             />
 
-            <Text style={cs.formLabel}>Image Preset / URL</Text>
-            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
-              {[
-                { name: 'Veggies', url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80' },
-                { name: 'A2 Milk', url: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&auto=format&fit=crop&q=80' },
-                { name: 'Apples', url: 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=600&auto=format&fit=crop&q=80' },
-                { name: 'Ghee', url: 'https://images.unsplash.com/photo-1589927986089-35812388d1f4?w=600&auto=format&fit=crop&q=80' }
-              ].map(img => (
-                <TouchableOpacity
-                  key={img.name}
-                  onPress={() => setNewProdImage(img.url)}
-                  style={{
-                    paddingHorizontal: 8,
-                    paddingVertical: 4,
-                    borderRadius: 6,
-                    backgroundColor: newProdImage === img.url ? '#2D6A4F' : '#E2EBE6'
-                  }}
-                >
-                  <Text style={{ fontSize: 10, color: newProdImage === img.url ? '#fff' : '#2D6A4F', fontWeight: 'bold' }}>
-                    {img.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+            {/* Product Photo Selection & Live Preview */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 4 }}>
+              <Text style={cs.formLabel}>Product Photo (Gallery or Camera)</Text>
+              {isUploadingImage ? (
+                <Text style={{ fontSize: 10, color: C.light, fontWeight: '700' }}>Uploading...</Text>
+              ) : (
+                <Text style={{ fontSize: 10, color: C.light, fontWeight: '700' }}>✓ Verified Food-Grade</Text>
+              )}
             </View>
+
+            {/* Gallery & Camera Upload Action Buttons */}
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  paddingHorizontal: 8,
+                  paddingVertical: 8,
+                  borderRadius: 10,
+                  backgroundColor: '#ECFDF5',
+                  borderWidth: 1.5,
+                  borderColor: '#A7F3D0'
+                }}
+                onPress={handlePickFromGallery}
+                disabled={isUploadingImage}
+                activeOpacity={0.8}
+              >
+                <Upload size={14} color={C.light} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: C.light }}>Choose Gallery</Text>
+                  <Text style={{ fontSize: 9, color: C.textMuted }}>Pick from photos</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  paddingHorizontal: 8,
+                  paddingVertical: 8,
+                  borderRadius: 10,
+                  backgroundColor: '#F0F9FF',
+                  borderWidth: 1.5,
+                  borderColor: '#BAE6FD'
+                }}
+                onPress={handleTakePhoto}
+                disabled={isUploadingImage}
+                activeOpacity={0.8}
+              >
+                <Camera size={14} color="#0284C7" />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#0284C7' }}>Take Photo</Text>
+                  <Text style={{ fontSize: 9, color: C.textMuted }}>Snap fresh crop</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            {/* Live Image Preview Card */}
+            <View style={{
+              height: 120,
+              borderRadius: 12,
+              overflow: 'hidden',
+              backgroundColor: '#F1F5F9',
+              borderWidth: 1,
+              borderColor: C.border,
+              marginBottom: 8,
+              position: 'relative'
+            }}>
+              <Image
+                source={{ uri: newProdImage.trim() || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&q=80&w=600' }}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="cover"
+              />
+              <View style={{
+                position: 'absolute',
+                bottom: 6,
+                left: 6,
+                backgroundColor: 'rgba(13, 43, 29, 0.85)',
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+                borderRadius: 6,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4
+              }}>
+                <Sprout size={10} color="#A7F3D0" />
+                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>Live DB Preview</Text>
+              </View>
+            </View>
+
+            <Text style={{ fontSize: 11, color: C.textMuted, marginBottom: 4, fontWeight: '600' }}>
+              Or Select Curated Preset:
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+              {ORGANIC_PRODUCT_PRESETS.map((item) => {
+                const isSelected = newProdImage === item.url;
+                const isMatchCat = item.category === newProdCategory;
+                return (
+                  <TouchableOpacity
+                    key={item.label}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 6,
+                      paddingHorizontal: 8,
+                      paddingVertical: 5,
+                      borderRadius: 10,
+                      borderWidth: 1,
+                      borderColor: isSelected ? C.light : isMatchCat ? '#A7F3D0' : C.border,
+                      backgroundColor: isSelected ? '#E8F5E9' : isMatchCat ? '#F0FDF4' : '#fff',
+                      marginRight: 8
+                    }}
+                    onPress={() => setNewProdImage(item.url)}
+                  >
+                    <Image source={{ uri: item.url }} style={{ width: 18, height: 18, borderRadius: 9 }} />
+                    <Text style={{ fontSize: 11, color: isSelected ? C.light : C.textPrimary, fontWeight: isSelected ? '700' : '500' }}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
             <TextInput
-              style={cs.formInput}
-              placeholder="https://..."
+              style={[cs.formInput, { fontSize: 12, marginBottom: 12 }]}
+              placeholder="Or paste custom image URL (https://...)"
               placeholderTextColor="#94A3B8"
               value={newProdImage}
               onChangeText={setNewProdImage}
@@ -644,7 +812,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
     return (
       <TouchableOpacity key={p.id} style={cs.productCard} onPress={() => { setSelectedProduct(p); setCustomerScreen('PRODUCT_DETAILS'); }} activeOpacity={0.88}>
         <View style={{ position: 'relative' }}>
-          <Image source={{ uri: p.imageUrl }} style={cs.productImg} resizeMode="cover" />
+          <Image source={{ uri: p.imageUrl || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&q=80&w=600' }} style={cs.productImg} resizeMode="cover" />
           {p.organicCertified && (
             <View style={[cs.certBadge, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
               <ShieldCheck size={11} color="#fff" />
