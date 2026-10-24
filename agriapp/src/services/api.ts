@@ -111,6 +111,24 @@ export const API_ENDPOINTS = {
   get userLogs() { return `${getApiBase()}/user-logs`; },
   get dashboardStats() { return `${getApiBase()}/dashboard/stats`; },
   get health() { return `${getApiBase()}/health`; },
+  get upload() { return `${getApiBase()}/upload`; },
+};
+
+export const uploadImageFile = async (base64OrUri: string, fileName?: string): Promise<string> => {
+  try {
+    const res = await fetch(`${getApiBase()}/upload`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: base64OrUri, fileName })
+    });
+    const json = await res.json();
+    if (json.success && json.url) {
+      return json.url;
+    }
+  } catch (err) {
+    console.warn('[uploadImageFile] failed, fallback to base64 uri:', err);
+  }
+  return base64OrUri;
 };
 
 export default {

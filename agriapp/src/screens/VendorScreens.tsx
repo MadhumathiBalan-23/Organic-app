@@ -32,9 +32,12 @@ import {
   Lock,
   ShieldAlert,
   ShieldCheck,
+  Camera,
+  Upload,
 } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Product, Categories, ORGANIC_PRODUCT_PRESETS } from '../constants/mockData';
-import { API_ENDPOINTS } from '../services/api';
+import { API_ENDPOINTS, uploadImageFile } from '../services/api';
 
 // ── Theme Palette (Mathira Organic Farmer / Vendor Portal) ──
 const VC = {
@@ -198,9 +201,75 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
   const [pUnit, setPUnit] = useState('Kg');
   const [pDescription, setPDescription] = useState('Fresh organic harvest direct from Salem farm.');
   const [pImageUrl, setPImageUrl] = useState(IMAGE_PRESETS[1].url);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [selectedBenefits, setSelectedBenefits] = useState<string[]>([BENEFIT_OPTIONS[0], BENEFIT_OPTIONS[1]]);
   const [modalError, setModalError] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
+
+  // Pick Crop Photo from Phone / Device Gallery
+  const handlePickFromGallery = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Please grant photo gallery permission to choose product photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setIsUploadingImage(true);
+        const dataUri = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+        const uploadedUrl = await uploadImageFile(dataUri, `crop-gal-${Date.now()}.jpg`);
+        setPImageUrl(uploadedUrl);
+        showToast('Photo chosen from gallery successfully!');
+      }
+    } catch (err: any) {
+      console.warn('Gallery pick error:', err);
+      Alert.alert('Gallery Error', 'Could not open device photo gallery.');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  // Capture Fresh Crop Photo with Camera
+  const handleTakePhoto = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Please grant camera permission to snap fresh crop photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setIsUploadingImage(true);
+        const dataUri = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+        const uploadedUrl = await uploadImageFile(dataUri, `crop-cam-${Date.now()}.jpg`);
+        setPImageUrl(uploadedUrl);
+        showToast('Fresh camera photo captured and saved!');
+      }
+    } catch (err: any) {
+      console.warn('Camera capture error:', err);
+      Alert.alert('Camera Error', 'Could not open camera.');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
 
   const toggleBenefit = (b: string) => {
     setSelectedBenefits((prev) =>
@@ -1163,8 +1232,44 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
 
               {/* Product Photo Selection & Live Preview */}
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, marginBottom: 4 }}>
-                <Text style={styles.inputLabel}>Product Photo (Database Image)</Text>
-                <Text style={{ fontSize: 11, color: VC.sub, fontWeight: '700' }}>✓ Verified Food-Grade</Text>
+                <Text style={styles.inputLabel}>Product Photo (Gallery / Camera)</Text>
+                {isUploadingImage ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <ActivityIndicator size="small" color={VC.primary} />
+                    <Text style={{ fontSize: 10, color: VC.primary, fontWeight: '700' }}>Uploading...</Text>
+                  </View>
+                ) : (
+                  <Text style={{ fontSize: 11, color: VC.sub, fontWeight: '700' }}>✓ Verified Food-Grade</Text>
+                )}
+              </View>
+
+              {/* Gallery & Camera Upload Buttons */}
+              <View style={styles.uploadButtonsRow}>
+                <TouchableOpacity
+                  style={[styles.uploadChoiceBtn, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}
+                  onPress={handlePickFromGallery}
+                  disabled={isUploadingImage}
+                  activeOpacity={0.8}
+                >
+                  <Upload size={16} color={VC.primary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.uploadChoiceBtnText, { color: VC.primary }]}>Choose from Gallery</Text>
+                    <Text style={styles.uploadChoiceBtnSub}>Pick from phone photos</Text>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.uploadChoiceBtn, { backgroundColor: '#F0F9FF', borderColor: '#BAE6FD' }]}
+                  onPress={handleTakePhoto}
+                  disabled={isUploadingImage}
+                  activeOpacity={0.8}
+                >
+                  <Camera size={16} color="#0284C7" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.uploadChoiceBtnText, { color: '#0284C7' }]}>Take Camera Photo</Text>
+                    <Text style={styles.uploadChoiceBtnSub}>Snap fresh harvest</Text>
+                  </View>
+                </TouchableOpacity>
               </View>
 
               {/* Live Image Preview Card */}
@@ -1176,13 +1281,13 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
                 />
                 <View style={styles.liveImagePreviewBadge}>
                   <Sprout size={11} color="#A7F3D0" />
-                  <Text style={styles.liveImagePreviewBadgeText}>Live Food Photography Preview</Text>
+                  <Text style={styles.liveImagePreviewBadgeText}>Live Preview (Stored in DB)</Text>
                 </View>
               </View>
 
               {/* Photo Presets Horizontal Row */}
               <Text style={{ fontSize: 11, color: VC.textMuted, marginBottom: 4, fontWeight: '600' }}>
-                Quick Presets (Sorted for {pCategory}):
+                Or Select from Organic Presets:
               </Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.presetRow}>
                 {IMAGE_PRESETS.map((item) => {
@@ -2160,6 +2265,30 @@ const styles = StyleSheet.create({
   catChipTextActive: {
     color: '#FFFFFF',
     fontWeight: 'bold',
+  },
+  uploadButtonsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginVertical: 6,
+  },
+  uploadChoiceBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
+  },
+  uploadChoiceBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  uploadChoiceBtnSub: {
+    fontSize: 9,
+    color: '#64748B',
+    marginTop: 1,
   },
   liveImagePreviewContainer: {
     height: 125,

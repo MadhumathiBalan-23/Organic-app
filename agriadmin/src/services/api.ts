@@ -13,7 +13,16 @@ export const API_ENDPOINTS = {
   aiAlerts: `${API_BASE}/ai-alerts`,
   health: `${API_BASE}/health`,
   vendorRequests: `${API_BASE}/vendor-requests`,
+  upload: `${API_BASE}/upload`,
 };
+
+export async function uploadImageAPI(base64Data: string, fileName?: string): Promise<string> {
+  const res = await request<{ success: boolean; url: string }>(API_ENDPOINTS.upload, {
+    method: 'POST',
+    body: JSON.stringify({ image: base64Data, fileName })
+  });
+  return res.url;
+}
 
 // Generic fetch helper
 async function request<T>(url: string, options?: RequestInit): Promise<T> {

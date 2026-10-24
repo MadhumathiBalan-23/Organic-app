@@ -11,6 +11,7 @@ import logRoutes from './log.routes';
 import dashboardRoutes from './dashboard.routes';
 import authRoutes from './auth.routes';
 import vendorRoutes from './vendor.routes';
+import uploadRoutes from './upload.routes';
 
 const router = Router();
 
@@ -27,5 +28,6 @@ router.use(logRoutes);
 router.use(dashboardRoutes);
 router.use(authRoutes);
 router.use(vendorRoutes);
+router.use(uploadRoutes);
 
 export default router;

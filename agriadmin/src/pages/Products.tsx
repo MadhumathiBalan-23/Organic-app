@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, X, Package } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, Search, Edit2, Trash2, X, Package, Upload } from 'lucide-react';
 import { Product, ORGANIC_PRODUCT_PRESETS, fetchProductsFromDB, fetchCategoriesFromDB, fetchBrandsFromDB } from '../data/mockData';
-import { createProductAPI, updateProductAPI, deleteProductAPI } from '../services/api';
+import { createProductAPI, updateProductAPI, deleteProductAPI, uploadImageAPI } from '../services/api';
 
 const statusChip = (status: string) => {
   const map: Record<string, string> = { Active: 'chip-success', Inactive: 'chip-danger', 'Low Stock': 'chip-warning' };
@@ -41,6 +41,29 @@ const Products: React.FC = () => {
   const [form, setForm] = useState<typeof defaultForm>(defaultForm);
   const [deleteConf, setDeleteConf] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const base64Data = reader.result as string;
+        const uploadedUrl = await uploadImageAPI(base64Data, file.name);
+        setForm(prev => ({ ...prev, imageUrl: uploadedUrl }));
+      } catch (err) {
+        console.warn('Upload error, fallback to base64:', err);
+        setForm(prev => ({ ...prev, imageUrl: reader.result as string }));
+      } finally {
+        setUploadingImage(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -301,9 +324,47 @@ const Products: React.FC = () => {
             {/* Live HD Image Preview & Selection */}
             <div className="form-group" style={{ marginBottom: 16 }}>
               <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>Product Photo (HD Clean Image)</span>
-                <span style={{ fontSize: '0.75rem', color: '#047857', fontWeight: 600 }}>✓ Verified Food-Grade Preview</span>
+                <span>Product Photo (Gallery or Upload)</span>
+                {uploadingImage ? (
+                  <span style={{ fontSize: '0.75rem', color: '#047857', fontWeight: 600 }}>Uploading image...</span>
+                ) : (
+                  <span style={{ fontSize: '0.75rem', color: '#047857', fontWeight: 600 }}>✓ Verified Food-Grade Preview</span>
+                )}
               </label>
+
+              {/* Choose from Gallery / Computer Button */}
+              <div style={{ marginBottom: 10 }}>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={handleFileUpload}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingImage}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    padding: '9px 12px',
+                    border: '1.5px dashed #047857',
+                    backgroundColor: '#ECFDF5',
+                    color: '#047857',
+                    fontWeight: 600,
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  <Upload size={16} />
+                  <span>{uploadingImage ? 'Uploading Image...' : 'Choose Photo from Device Gallery / Computer'}</span>
+                </button>
+              </div>
 
               {/* Preview Card */}
               <div style={{

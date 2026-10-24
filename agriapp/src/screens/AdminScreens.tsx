@@ -9,13 +9,15 @@ import {
   ShoppingCart, FileText, Search, Pencil, Trash2, Plus,
   Check, X, CheckCircle2, XCircle, Clock, Star, Crown,
   MapPin, Phone, Calendar, CreditCard, TrendingUp, Eye,
-  LogIn, LogOut, Activity, Sprout, Store, ShoppingBag
+  LogIn, LogOut, Activity, Sprout, Store, ShoppingBag,
+  Camera, Upload
 } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
 import {
   Categories, Product, ORGANIC_PRODUCT_PRESETS,
   AdminCategory, AdminBrand, AdminCustomer, AdminOrder, AdminUserLog
 } from '../constants/mockData';
-import { API_ENDPOINTS } from '../services/api';
+import { API_ENDPOINTS, uploadImageFile } from '../services/api';
 
 // ── Colour tokens ───────────────────────────────────────
 const C = {
@@ -468,6 +470,7 @@ const ProductsTab: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState<'add' | 'edit' | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [form, setForm] = useState({
     name: '',
     price: '',
@@ -478,6 +481,69 @@ const ProductsTab: React.FC = () => {
     imageUrl: ORGANIC_PRODUCT_PRESETS[0]?.url || 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=600'
   });
   const [editId, setEditId] = useState<string | null>(null);
+
+  // Pick from Device Gallery / Photos
+  const handlePickFromGallery = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Please grant photo gallery permission to choose product photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setIsUploadingImage(true);
+        const dataUri = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+        const uploadedUrl = await uploadImageFile(dataUri, `admin-gal-${Date.now()}.jpg`);
+        setForm(prev => ({ ...prev, imageUrl: uploadedUrl }));
+      }
+    } catch (err: any) {
+      console.warn('Gallery pick error:', err);
+      Alert.alert('Gallery Error', 'Could not open device photo gallery.');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  // Capture Live Photo with Camera
+  const handleTakePhoto = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Please grant camera permission to take product photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setIsUploadingImage(true);
+        const dataUri = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+        const uploadedUrl = await uploadImageFile(dataUri, `admin-cam-${Date.now()}.jpg`);
+        setForm(prev => ({ ...prev, imageUrl: uploadedUrl }));
+      }
+    } catch (err: any) {
+      console.warn('Camera capture error:', err);
+      Alert.alert('Camera Error', 'Could not access device camera.');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
 
   const loadProducts = () => {
     fetch(API_ENDPOINTS.products)
@@ -657,8 +723,63 @@ const ProductsTab: React.FC = () => {
 
               {/* Product Photo Selection & Live Preview */}
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 4 }}>
-                <Text style={s.formLabel}>Product Photo (Database Image)</Text>
-                <Text style={{ fontSize: 11, color: C.primaryLight, fontWeight: '700' }}>✓ Verified Food-Grade</Text>
+                <Text style={s.formLabel}>Product Photo (Gallery or Camera)</Text>
+                {isUploadingImage ? (
+                  <Text style={{ fontSize: 10, color: C.primaryLight, fontWeight: '700' }}>Uploading...</Text>
+                ) : (
+                  <Text style={{ fontSize: 11, color: C.primaryLight, fontWeight: '700' }}>✓ Verified Food-Grade</Text>
+                )}
+              </View>
+
+              {/* Gallery & Camera Upload Buttons */}
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    paddingHorizontal: 8,
+                    paddingVertical: 8,
+                    borderRadius: 10,
+                    backgroundColor: '#ECFDF5',
+                    borderWidth: 1.5,
+                    borderColor: '#A7F3D0'
+                  }}
+                  onPress={handlePickFromGallery}
+                  disabled={isUploadingImage}
+                  activeOpacity={0.8}
+                >
+                  <Upload size={14} color={C.primaryLight} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: C.primaryLight }}>Choose from Gallery</Text>
+                    <Text style={{ fontSize: 9, color: C.textMuted }}>Pick from photos</Text>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    paddingHorizontal: 8,
+                    paddingVertical: 8,
+                    borderRadius: 10,
+                    backgroundColor: '#F0F9FF',
+                    borderWidth: 1.5,
+                    borderColor: '#BAE6FD'
+                  }}
+                  onPress={handleTakePhoto}
+                  disabled={isUploadingImage}
+                  activeOpacity={0.8}
+                >
+                  <Camera size={14} color="#0284C7" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#0284C7' }}>Take Camera Photo</Text>
+                    <Text style={{ fontSize: 9, color: C.textMuted }}>Snap fresh produce</Text>
+                  </View>
+                </TouchableOpacity>
               </View>
 
               {/* Live Image Preview Card */}
