@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput } from 'react-native';
+import {
+  Sprout, Zap, Mic, Send, Play, Pause, Bot,
+  Volume2, PhoneOff, Milk, CircleCheck, Clock, ArrowLeft
+} from 'lucide-react-native';
 
 interface AIScreensProps {
   customerScreen: string;
@@ -11,8 +15,8 @@ export const AIScreens: React.FC<AIScreensProps> = ({ customerScreen, setCustome
   // 1. WHATSAPP AI ASSISTANT VIEW
   const WhatsAppAIView = () => {
     const [wsMessages, setWsMessages] = useState<any[]>([
-      { id: 'm1', sender: 'AI', isVoice: false, text: 'Hi Ananya! 👋 Fresh organic A2 Milk (2L) is packed for tomorrow\'s 6:30 AM drop. Would you like to confirm delivery or send a voice note?', time: '9:00 PM' },
-      { id: 'm2', sender: 'AI', isVoice: true, duration: '0:04', text: '🎙️ Voice Note: "Hello Ananya, milk dispatch ready for 6:30 AM."', time: '9:01 PM' }
+      { id: 'm1', sender: 'AI', isVoice: false, text: 'Hi Ananya! Fresh organic A2 Milk (2L) is packed for tomorrow\'s 6:30 AM drop. Would you like to confirm delivery or send a voice note?', time: '9:00 PM' },
+      { id: 'm2', sender: 'AI', isVoice: true, duration: '0:04', text: 'Voice Note: "Hello Ananya, milk dispatch ready for 6:30 AM."', time: '9:01 PM' }
     ]);
     const [intentLog, setIntentLog] = useState<string | null>('PYTHON WHISPER ASR & NLP READY');
     const [customInput, setCustomInput] = useState('');
@@ -27,16 +31,16 @@ export const AIScreens: React.FC<AIScreensProps> = ({ customerScreen, setCustome
 
       if (lower.includes('confirm') || lower.includes('yes') || lower.includes('send')) {
         intent = 'PYTHON WHISPER ASR -> INTENT: CONFIRM_DISPATCH (99.6% confidence)';
-        replyText = '✅ Great! Your 2L Organic A2 Milk delivery is confirmed for 6:30 AM tomorrow. Track drop status live in app!';
+        replyText = 'Great! Your 2L Organic A2 Milk delivery is confirmed for 6:30 AM tomorrow. Track drop status live in app!';
       } else if (lower.includes('skip') || lower.includes('no') || lower.includes('stop')) {
         intent = 'PYTHON WHISPER ASR -> INTENT: SKIP_DELIVERY (98.9% confidence)';
-        replyText = '⏭️ Understood! Tomorrow\'s milk drop has been skipped. Your wallet will not be charged.';
+        replyText = 'Understood! Tomorrow\'s milk drop has been skipped. Your wallet will not be charged.';
       } else if (lower.includes('price') || lower.includes('rate') || lower.includes('cost')) {
         intent = 'INTENT: PRODUCT_PRICE_QUERY';
-        replyText = '🥛 Organic A2 Cow Milk is ₹85/L. Pure Desi Cow Ghee is ₹680/500ml. Certified 100% pure!';
+        replyText = 'Organic A2 Cow Milk is ₹85/L. Pure Desi Cow Ghee is ₹680/500ml. Certified 100% pure!';
       } else {
         intent = 'INTENT: CUSTOM_NLP_PARSED';
-        replyText = `🌱 Thanks! I've noted: "${text}". Our farm team will update your account shortly.`;
+        replyText = `Thanks! I've noted: "${text}". Our farm team will update your account shortly.`;
       }
 
       const userMsgId = 'usr_' + Date.now();
@@ -47,7 +51,7 @@ export const AIScreens: React.FC<AIScreensProps> = ({ customerScreen, setCustome
           sender: 'USER',
           isVoice: isVoiceInput,
           duration: isVoiceInput ? `0:0${recordingSecs}` : undefined,
-          text: isVoiceInput ? `🎙️ Voice Note Transcript: "${text}"` : text,
+          text: isVoiceInput ? `Voice Note Transcript: "${text}"` : text,
           time: 'Now'
         }
       ]);
@@ -63,7 +67,7 @@ export const AIScreens: React.FC<AIScreensProps> = ({ customerScreen, setCustome
             sender: 'AI',
             isVoice: isVoiceInput,
             duration: isVoiceInput ? '0:04' : undefined,
-            text: isVoiceInput ? `🎙️ AI Audio Reply: ${replyText}` : replyText,
+            text: isVoiceInput ? `AI Audio Reply: ${replyText}` : replyText,
             time: 'Now'
           }
         ]);
@@ -98,10 +102,15 @@ export const AIScreens: React.FC<AIScreensProps> = ({ customerScreen, setCustome
           <TouchableOpacity onPress={() => setCustomerScreen('HOME')} style={{ paddingRight: 8 }}>
             <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' }}>←</Text>
           </TouchableOpacity>
-          <Text style={{ fontSize: 24, marginLeft: 4 }}>🌱</Text>
-          <View style={{ marginLeft: 8, flex: 1 }}>
+          <View style={{ marginLeft: 4, marginRight: 6 }}>
+            <Sprout size={24} color="#A7F3D0" />
+          </View>
+          <View style={{ flex: 1 }}>
             <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: 'bold' }}>Mathira Organic AI Bot</Text>
-            <Text style={{ color: '#A7F3D0', fontSize: 10 }}>⚡ Automated Voice & Text Assistant | Verified</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Zap size={10} color="#A7F3D0" />
+              <Text style={{ color: '#A7F3D0', fontSize: 10 }}>Automated Voice & Text Assistant | Verified</Text>
+            </View>
           </View>
         </View>
 
@@ -123,9 +132,11 @@ export const AIScreens: React.FC<AIScreensProps> = ({ customerScreen, setCustome
                       style={[styles.voicePlayBtn, { backgroundColor: m.sender === 'AI' ? '#075E54' : '#128C7E' }]}
                       onPress={() => toggleAudioPlay(m.id)}
                     >
-                      <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold' }}>
-                        {playingAudioId === m.id ? '⏸' : '▶'}
-                      </Text>
+                      {playingAudioId === m.id ? (
+                        <Pause size={12} color="#FFF" />
+                      ) : (
+                        <Play size={12} color="#FFF" />
+                      )}
                     </TouchableOpacity>
 
                     {/* Audio Waveform Bars */}
@@ -160,9 +171,12 @@ export const AIScreens: React.FC<AIScreensProps> = ({ customerScreen, setCustome
         {/* AI Intent Engine Log */}
         {intentLog && (
           <View style={styles.intentLogBar}>
-            <Text style={styles.intentLogText}>
-              🤖 [WHISPER ASR / INTENT]: {intentLog}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Bot size={13} color="#15803D" />
+              <Text style={styles.intentLogText}>
+                [WHISPER ASR / INTENT]: {intentLog}
+              </Text>
+            </View>
           </View>
         )}
 
@@ -193,8 +207,9 @@ export const AIScreens: React.FC<AIScreensProps> = ({ customerScreen, setCustome
             <TouchableOpacity style={styles.cancelRecBtn} onPress={() => setIsRecordingVoice(false)}>
               <Text style={{ color: '#64748B', fontSize: 12, fontWeight: 'bold' }}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.sendVoiceNoteBtn} onPress={handleSendVoiceNote}>
-              <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 12 }}>Send Voice 📤</Text>
+            <TouchableOpacity style={[styles.sendVoiceNoteBtn, { flexDirection: 'row', alignItems: 'center', gap: 6 }]} onPress={handleSendVoiceNote}>
+              <Send size={12} color="#FFF" />
+              <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 12 }}>Send Voice</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -207,10 +222,11 @@ export const AIScreens: React.FC<AIScreensProps> = ({ customerScreen, setCustome
               placeholderTextColor="#94A3B8"
             />
             <TouchableOpacity style={styles.micBtn} onPress={() => setIsRecordingVoice(true)}>
-              <Text style={{ fontSize: 16 }}>🎙️</Text>
+              <Mic size={17} color="#075E54" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.sendBtn} onPress={handleSendCustom}>
-              <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 14 }}>Send</Text>
+            <TouchableOpacity style={[styles.sendBtn, { flexDirection: 'row', alignItems: 'center', gap: 4 }]} onPress={handleSendCustom}>
+              <Send size={14} color="#FFF" />
+              <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 13 }}>Send</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -258,12 +274,15 @@ export const AIScreens: React.FC<AIScreensProps> = ({ customerScreen, setCustome
         
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <View style={styles.voiceAvatarCircle}>
-            <Text style={{ fontSize: 44 }}>🎙️</Text>
+            <Mic size={40} color="#FFFFFF" />
           </View>
           <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: 'bold', marginTop: 12 }}>Mathira Voice AI Assistant</Text>
-          <Text style={{ color: '#A7F3D0', fontSize: 12, marginTop: 4 }}>
-            {callActive ? '⚡ Real-time Neural Voice Dispatch Active' : 'Call Ended'}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+            {callActive && <Zap size={12} color="#A7F3D0" />}
+            <Text style={{ color: '#A7F3D0', fontSize: 12 }}>
+              {callActive ? 'Real-time Neural Voice Dispatch Active' : 'Call Ended'}
+            </Text>
+          </View>
           
           {callActive && (
             <View style={styles.waveVisualizerRow}>
@@ -283,31 +302,34 @@ export const AIScreens: React.FC<AIScreensProps> = ({ customerScreen, setCustome
           {callActive ? (
             <>
               <TouchableOpacity 
-                style={styles.simulateReplyBtn}
+                style={[styles.simulateReplyBtn, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
                 onPress={() => {
                   setDialogue('Customer Speech Detected: "Yes, confirm tomorrow delivery"');
                   setTimeout(() => {
-                    setDialogue('Voice AI: "✅ Thank you! 2L Organic Milk is confirmed for 6:30 AM tomorrow. Have a great day!"');
+                    setDialogue('Voice AI: "Thank you! 2L Organic Milk is confirmed for 6:30 AM tomorrow. Have a great day!"');
                   }, 1200);
                 }}
               >
-                <Text style={{ color: '#0D2B1D', fontWeight: 'bold', fontSize: 13 }}>🗣️ Voice Response ("Yes, Confirm Delivery")</Text>
+                <Volume2 size={15} color="#0D2B1D" />
+                <Text style={{ color: '#0D2B1D', fontWeight: 'bold', fontSize: 13 }}>Voice Response ("Yes, Confirm Delivery")</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={[styles.simulateReplyBtn, { backgroundColor: '#FEF3C7' }]}
+                style={[styles.simulateReplyBtn, { backgroundColor: '#FEF3C7', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
                 onPress={() => {
                   setDialogue('Customer Speech Detected: "Skip tomorrow drop"');
                   setTimeout(() => {
-                    setDialogue('Voice AI: "⏭️ Understood! Tomorrow\'s drop is cancelled. Your account won\'t be charged."');
+                    setDialogue('Voice AI: "Understood! Tomorrow\'s drop is cancelled. Your account won\'t be charged."');
                   }, 1200);
                 }}
               >
-                <Text style={{ color: '#B45309', fontWeight: 'bold', fontSize: 13 }}>🗣️ Voice Response ("Skip Tomorrow Drop")</Text>
+                <Volume2 size={15} color="#B45309" />
+                <Text style={{ color: '#B45309', fontWeight: 'bold', fontSize: 13 }}>Voice Response ("Skip Tomorrow Drop")</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.endCallBtn} onPress={() => setCallActive(false)}>
-                <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 }}>Hang Up 📞</Text>
+              <TouchableOpacity style={[styles.endCallBtn, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]} onPress={() => setCallActive(false)}>
+                <PhoneOff size={16} color="#FFFFFF" />
+                <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 }}>Hang Up</Text>
               </TouchableOpacity>
             </>
           ) : (
@@ -338,7 +360,7 @@ export const AIScreens: React.FC<AIScreensProps> = ({ customerScreen, setCustome
         
         <View style={{ alignItems: 'center', paddingVertical: 20 }}>
           <View style={styles.confirmIconCircle}>
-            <Text style={{ fontSize: 40 }}>🥛</Text>
+            <Milk size={38} color="#15803D" />
           </View>
           <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#0F172A', marginTop: 12 }}>Tomorrow's Milk Dispatch</Text>
           <Text style={{ fontSize: 13, color: '#64748B', textAlign: 'center', marginVertical: 12, lineHeight: 20 }}>
@@ -364,7 +386,7 @@ export const AIScreens: React.FC<AIScreensProps> = ({ customerScreen, setCustome
 
           {dailyStatus === 'CONFIRMED' && (
             <View style={styles.statusBoxGreen}>
-              <Text style={{ fontSize: 28 }}>✅</Text>
+              <CircleCheck size={32} color="#15803D" />
               <Text style={{ color: '#15803D', fontWeight: 'bold', fontSize: 15, marginVertical: 4 }}>Delivery Confirmed</Text>
               <Text style={{ color: '#475569', fontSize: 12 }}>Order dispatched under code RECUR-4921</Text>
             </View>
@@ -372,7 +394,7 @@ export const AIScreens: React.FC<AIScreensProps> = ({ customerScreen, setCustome
 
           {dailyStatus === 'SKIPPED' && (
             <View style={styles.statusBoxOrange}>
-              <Text style={{ fontSize: 28 }}>⏭️</Text>
+              <Clock size={32} color="#D97706" />
               <Text style={{ color: '#D97706', fontWeight: 'bold', fontSize: 15, marginVertical: 4 }}>Delivery Skipped</Text>
               <Text style={{ color: '#D97706', fontSize: 12 }}>You will not be charged. Subscription remains active.</Text>
             </View>

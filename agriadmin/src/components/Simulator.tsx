@@ -1,5 +1,28 @@
-import React, { useState } from 'react';
-import { Product, MockProducts } from '../../../agriapp/src/constants/mockData';
+import React, { useState, useEffect } from 'react';
+import { Smartphone, Wifi, Battery, Home, Package, Calendar, User, Activity } from 'lucide-react';
+import { Product, fetchProductsFromDB } from '../data/mockData';
+
+const defaultSimProduct: Product = {
+  id: 'p1',
+  name: 'Organic A2 Desi Cow Milk',
+  category: 'Dairy & Milk',
+  brand: 'NatureFarm',
+  price: 85,
+  unit: '1 Litre',
+  status: 'Active',
+  sales: 140,
+  emoji: '',
+  imageUrl: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=600',
+  description: 'Pure, fresh, farm-procured organic A2 milk from grass-fed indigenous Gir cows.',
+  farmOrigin: 'Vedic Farms, Dindigul',
+  stock: 120,
+  minStock: 20,
+  featured: true,
+  rating: 4.9,
+  reviewsCount: 342,
+  tags: ['Organic', 'A2 Beta-casein', 'Glass Bottle', 'Farm Fresh'],
+  benefits: ['100% Organic A2 Milk', 'Grass Fed Cows']
+};
 
 // Import screens from submodules
 import { 
@@ -37,9 +60,9 @@ import {
 
 export default function Simulator() {
   const [activeScreen, setActiveScreen] = useState<string>('WELCOME');
-  const [selectedProduct, setSelectedProduct] = useState<Product>(MockProducts[0]);
+  const [selectedProduct, setSelectedProduct] = useState<Product>(defaultSimProduct);
   const [activeSubscriptionData, setActiveSubscriptionData] = useState<any>({
-    product: MockProducts[0],
+    product: defaultSimProduct,
     qty: 2,
     freq: 'Daily',
     duration: 30,
@@ -47,9 +70,22 @@ export default function Simulator() {
     priceTotal: 5100
   });
 
+  useEffect(() => {
+    fetchProductsFromDB().then(res => {
+      if (res && res.length > 0) {
+        setSelectedProduct(res[0]);
+        setActiveSubscriptionData((prev: any) => ({
+          ...prev,
+          product: res[0],
+          priceTotal: (res[0].price || 85) * 2 * 30
+        }));
+      }
+    });
+  }, []);
+
   // Track simulated transaction/action logs
   const [actionLogs, setActionLogs] = useState<string[]>([
-    'System initialized. Mock database seeded.',
+    'System initialized. Connected to live API.',
     'Ready for screen transitions...'
   ]);
 
@@ -168,7 +204,7 @@ export default function Simulator() {
         gap: '6px'
       }}
     >
-      <span style={{ fontSize: '10px' }}>{activeScreen === screen ? '🟢' : '⚪'}</span>
+      <span style={{ width: 8, height: 8, borderRadius: '50%', background: activeScreen === screen ? '#2E7D32' : '#ccc', display: 'inline-block' }} />
       {label}
     </button>
   );
@@ -178,7 +214,9 @@ export default function Simulator() {
       
       {/* LEFT: Navigation Board */}
       <div style={{ width: '280px', display: 'flex', flexDirection: 'column', gap: '16px', backgroundColor: '#fff', borderRadius: '14px', padding: '20px', border: '1px solid #EFEBE9', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
-        <h4 style={{ margin: '0 0 10px 0', borderBottom: '1px solid #EFEBE9', paddingBottom: '8px', color: '#2E7D32', fontSize: '14px' }}>📱 Phone View Navigator</h4>
+        <h4 style={{ margin: '0 0 10px 0', borderBottom: '1px solid #EFEBE9', paddingBottom: '8px', color: '#2E7D32', fontSize: '14px', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Smartphone size={16} /> Phone View Navigator
+        </h4>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', overflowY: 'auto', maxHeight: '420px', paddingRight: '4px' }}>
           <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#888', marginTop: '4px' }}>STARTUP</span>
@@ -246,9 +284,9 @@ export default function Simulator() {
             {/* Top Status Bar Mock */}
             <div style={{ height: '24px', backgroundColor: 'rgba(0,0,0,0.03)', padding: '0 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '9px', fontWeight: 'bold', color: '#444' }}>
               <span>9:41 AM</span>
-              <div style={{ display: 'flex', gap: '4px' }}>
-                <span>📶</span>
-                <span>🔋 100%</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Wifi size={10} />
+                <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}><Battery size={10} /> 100%</span>
               </div>
             </div>
 
@@ -270,17 +308,17 @@ export default function Simulator() {
                 fontWeight: 'bold',
                 color: '#7A8C7F'
               }}>
-                <div onClick={() => handleNavigation('HOME')} style={{ cursor: 'pointer', textAlign: 'center', color: activeScreen === 'HOME' ? '#2E7D32' : '#7A8C7F' }}>
-                  <div style={{ fontSize: '13px' }}>🏠</div>Home
+                <div onClick={() => handleNavigation('HOME')} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, color: activeScreen === 'HOME' ? '#2E7D32' : '#7A8C7F' }}>
+                  <Home size={15} /><span>Home</span>
                 </div>
-                <div onClick={() => handleNavigation('ALL_PRODUCTS')} style={{ cursor: 'pointer', textAlign: 'center', color: activeScreen === 'ALL_PRODUCTS' ? '#2E7D32' : '#7A8C7F' }}>
-                  <div style={{ fontSize: '13px' }}>📦</div>Shop
+                <div onClick={() => handleNavigation('ALL_PRODUCTS')} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, color: activeScreen === 'ALL_PRODUCTS' ? '#2E7D32' : '#7A8C7F' }}>
+                  <Package size={15} /><span>Shop</span>
                 </div>
-                <div onClick={() => handleNavigation('MY_SUBSCRIPTIONS')} style={{ cursor: 'pointer', textAlign: 'center', color: activeScreen === 'MY_SUBSCRIPTIONS' ? '#2E7D32' : '#7A8C7F' }}>
-                  <div style={{ fontSize: '13px' }}>📅</div>Plans
+                <div onClick={() => handleNavigation('MY_SUBSCRIPTIONS')} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, color: activeScreen === 'MY_SUBSCRIPTIONS' ? '#2E7D32' : '#7A8C7F' }}>
+                  <Calendar size={15} /><span>Plans</span>
                 </div>
-                <div onClick={() => handleNavigation('PROFILE')} style={{ cursor: 'pointer', textAlign: 'center', color: activeScreen === 'PROFILE' ? '#2E7D32' : '#7A8C7F' }}>
-                  <div style={{ fontSize: '13px' }}>👤</div>Profile
+                <div onClick={() => handleNavigation('PROFILE')} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, color: activeScreen === 'PROFILE' ? '#2E7D32' : '#7A8C7F' }}>
+                  <User size={15} /><span>Profile</span>
                 </div>
               </div>
             )}
@@ -290,7 +328,9 @@ export default function Simulator() {
 
       {/* RIGHT: System Event Log */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px', backgroundColor: '#fff', borderRadius: '14px', padding: '20px', border: '1px solid #EFEBE9' }}>
-        <h4 style={{ margin: '0', color: '#2E7D32', fontSize: '14px', borderBottom: '1px solid #EFEBE9', paddingBottom: '8px' }}>📡 AI-Server Operations logs</h4>
+        <h4 style={{ margin: '0', color: '#2E7D32', fontSize: '14px', borderBottom: '1px solid #EFEBE9', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Activity size={16} /> AI-Server Operations logs
+        </h4>
         <div style={{ flex: 1, backgroundColor: '#1A3323', borderRadius: '8px', padding: '14px', fontFamily: 'monospace', fontSize: '11px', color: '#A5D6A7', minHeight: '300px', display: 'flex', flexDirection: 'column', gap: '6px', overflowY: 'auto' }}>
           {actionLogs.map((log, idx) => (
             <div key={idx} style={{ lineHeight: 1.4, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '4px' }}>{log}</div>

@@ -1,13 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Modal, Alert, SafeAreaView, DimensionValue
 } from 'react-native';
 import {
-  MockProducts, Categories, Product,
-  AdminCategories, AdminBrands, AdminCustomers, AdminOrders, AdminUserLogs,
-  AdminCategory, AdminBrand, AdminCustomer, AdminOrder
+  LayoutDashboard, UserCheck, Package, Tags, Award, Users,
+  ShoppingCart, FileText, Search, Pencil, Trash2, Plus,
+  Check, X, CheckCircle2, XCircle, Clock, Star, Crown,
+  MapPin, Phone, Calendar, CreditCard, TrendingUp, Eye,
+  LogIn, LogOut, Activity, Sprout, Store, ShoppingBag
+} from 'lucide-react-native';
+import {
+  Categories, Product,
+  AdminCategory, AdminBrand, AdminCustomer, AdminOrder, AdminUserLog
 } from '../constants/mockData';
+import { API_ENDPOINTS } from '../services/api';
 
 // ── Colour tokens ───────────────────────────────────────
 const C = {
@@ -31,14 +38,14 @@ const C = {
 
 // ── Tab config ───────────────────────────────────────────
 const TABS = [
-  { key: 'dashboard',      label: 'Dashboard',        icon: '📊' },
-  { key: 'vendorRequests', label: 'Vendor Approvals', icon: '👨‍🌾' },
-  { key: 'products',       label: 'Products',        icon: '🌾' },
-  { key: 'categories',     label: 'Categories',      icon: '🏷️' },
-  { key: 'brands',         label: 'Brands',          icon: '🌱' },
-  { key: 'customers',      label: 'Customers',       icon: '👥' },
-  { key: 'orders',         label: 'Orders',          icon: '📦' },
-  { key: 'logs',           label: 'Logs',            icon: '📋' },
+  { key: 'dashboard',      label: 'Dashboard',        Icon: LayoutDashboard },
+  { key: 'vendorRequests', label: 'Vendor Approvals', Icon: UserCheck },
+  { key: 'products',       label: 'Products',        Icon: Package },
+  { key: 'categories',     label: 'Categories',      Icon: Tags },
+  { key: 'brands',         label: 'Brands',          Icon: Award },
+  { key: 'customers',      label: 'Customers',       Icon: Users },
+  { key: 'orders',         label: 'Orders',          Icon: ShoppingCart },
+  { key: 'logs',           label: 'Logs',            Icon: FileText },
 ] as const;
 
 type TabKey = typeof TABS[number]['key'];
@@ -56,12 +63,15 @@ const statusColor = (s: string) => {
   }
 };
 
-const typeIcon = (t: string) => {
-  switch (t) {
-    case 'create': return '➕'; case 'update': return '✏️';
-    case 'delete': return '🗑️'; case 'login': return '🔑';
-    case 'logout': return '🚪'; case 'view': return '👁️';
-    default: return '•';
+const TypeIcon: React.FC<{ type: string; size?: number; color?: string }> = ({ type, size = 12, color = C.textSec }) => {
+  switch (type) {
+    case 'create': return <Plus size={size} color={color} strokeWidth={2.5} />;
+    case 'update': return <Pencil size={size} color={color} strokeWidth={2.5} />;
+    case 'delete': return <Trash2 size={size} color={color} strokeWidth={2.5} />;
+    case 'login': return <LogIn size={size} color={color} strokeWidth={2.5} />;
+    case 'logout': return <LogOut size={size} color={color} strokeWidth={2.5} />;
+    case 'view': return <Eye size={size} color={color} strokeWidth={2.5} />;
+    default: return <Activity size={size} color={color} strokeWidth={2.5} />;
   }
 };
 
@@ -94,10 +104,16 @@ const Card: React.FC<{ children: React.ReactNode; style?: object }> = ({ childre
   <View style={[s.card, style]}>{children}</View>
 );
 
-const KPICard: React.FC<{ icon: string; label: string; value: string; sub: string; accentColor: string }> = ({ icon, label, value, sub, accentColor }) => (
+const KPICard: React.FC<{
+  Icon: React.ComponentType<{ size: number; color: string; strokeWidth?: number }>;
+  label: string;
+  value: string;
+  sub: string;
+  accentColor: string;
+}> = ({ Icon, label, value, sub, accentColor }) => (
   <View style={[s.kpiCard, { borderTopColor: accentColor }]}>
     <View style={[s.kpiIcon, { backgroundColor: accentColor + '20' }]}>
-      <Text style={{ fontSize: 18 }}>{icon}</Text>
+      <Icon size={18} color={accentColor} strokeWidth={2.2} />
     </View>
     <Text style={s.kpiLabel}>{label}</Text>
     <Text style={s.kpiValue}>{value}</Text>
@@ -126,7 +142,7 @@ const VendorRequestsTab: React.FC = () => {
   const [actionId, setActionId] = useState<string | null>(null);
 
   const loadRequests = () => {
-    fetch('http://localhost:5050/api/vendor-requests')
+    fetch(API_ENDPOINTS.vendorRequests)
       .then(res => res.json())
       .then(json => {
         if (json.success && Array.isArray(json.data)) {
@@ -143,12 +159,12 @@ const VendorRequestsTab: React.FC = () => {
   const handleApprove = async (id: string, farmName: string) => {
     setActionId(id);
     try {
-      const res = await fetch(`http://localhost:5050/api/vendor-requests/${id}/approve`, {
+      const res = await fetch(API_ENDPOINTS.approveVendor(id), {
         method: 'POST'
       });
       const data = await res.json();
       if (data.success) {
-        Alert.alert('✅ Vendor Approved', `"${farmName}" is now an approved partner farmer! The customer can now switch to the Vendor Console.`);
+        Alert.alert('Vendor Approved', `"${farmName}" is now an approved partner farmer! The customer can now switch to the Vendor Console.`);
         loadRequests();
       }
     } catch {
@@ -162,7 +178,7 @@ const VendorRequestsTab: React.FC = () => {
   const handleReject = async (id: string) => {
     setActionId(id);
     try {
-      await fetch(`http://localhost:5050/api/vendor-requests/${id}/reject`, {
+      await fetch(API_ENDPOINTS.rejectVendor(id), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: 'Incomplete farm documents' })
@@ -182,8 +198,8 @@ const VendorRequestsTab: React.FC = () => {
     <View style={{ flex: 1 }}>
       <SectionHeader
         title={`Vendor Approvals (${requests.length})`}
-        sub={pendingCount > 0 ? `⚠️ ${pendingCount} applications awaiting admin review` : 'All vendor requests verified'}
-        action={{ label: '🔄 Refresh', onPress: loadRequests }}
+        sub={pendingCount > 0 ? `${pendingCount} applications awaiting admin review` : 'All vendor requests verified'}
+        action={{ label: 'Refresh', onPress: loadRequests }}
       />
 
       {/* Filter Tabs */}
@@ -195,7 +211,7 @@ const VendorRequestsTab: React.FC = () => {
             onPress={() => setFilter(tab)}
           >
             <Text style={[s.filterChipText, filter === tab && s.filterChipTextActive]}>
-              {tab === 'PENDING' ? `⏳ Pending (${pendingCount})` : tab}
+              {tab === 'PENDING' ? `Pending (${pendingCount})` : tab}
             </Text>
           </TouchableOpacity>
         ))}
@@ -211,9 +227,12 @@ const VendorRequestsTab: React.FC = () => {
             <View key={req.id} style={[s.card, { marginBottom: 12, borderLeftWidth: 4, borderLeftColor: isApproved ? C.success : isPending ? C.warning : C.danger }]}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                 <View style={{ flex: 1, marginRight: 8 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '800', color: C.primary }}>🌾 {req.farmName}</Text>
-                  <Text style={{ fontSize: 12, color: C.textSec, marginTop: 2 }}>
-                    Applicant: <Text style={{ fontWeight: '700', color: C.textPrimary }}>{req.userName}</Text> · 📞 +91 {req.phoneNumber}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Sprout size={16} color={C.primary} strokeWidth={2.2} />
+                    <Text style={{ fontSize: 16, fontWeight: '800', color: C.primary }}>{req.farmName}</Text>
+                  </View>
+                  <Text style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>
+                    Applicant: <Text style={{ fontWeight: '700', color: C.textPrimary }}>{req.userName}</Text> · +91 {req.phoneNumber}
                   </Text>
                 </View>
                 <View style={[s.chip, { backgroundColor: isApproved ? '#DCFCE7' : isPending ? '#FEF3C7' : '#FEE2E2', borderColor: isApproved ? '#A7F3D0' : isPending ? '#FDE68A' : '#FECACA' }]}>
@@ -223,50 +242,65 @@ const VendorRequestsTab: React.FC = () => {
                 </View>
               </View>
 
-              <View style={{ backgroundColor: C.surface2, borderRadius: 8, padding: 10, gap: 4, marginBottom: 10 }}>
-                <Text style={{ fontSize: 11, color: C.textSec }}>
-                  📍 <Text style={{ fontWeight: '600' }}>Location:</Text> {req.farmLocation}
-                </Text>
-                <Text style={{ fontSize: 11, color: C.textSec }}>
-                  🥦 <Text style={{ fontWeight: '600' }}>Crops:</Text> {req.cropCategories}
-                </Text>
-                <Text style={{ fontSize: 11, color: C.textSec }}>
-                  📜 <Text style={{ fontWeight: '600' }}>Experience:</Text> {req.experienceYears || '3'} Years · Cert: {req.certificateNo || 'Verified'}
-                </Text>
-                <Text style={{ fontSize: 10, color: C.textMuted }}>
-                  📅 Submitted: {new Date(req.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                </Text>
+              <View style={{ backgroundColor: C.surface2, borderRadius: 8, padding: 10, gap: 6, marginBottom: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <MapPin size={12} color={C.textSec} />
+                  <Text style={{ fontSize: 11, color: C.textSec }}>
+                    <Text style={{ fontWeight: '600' }}>Location:</Text> {req.farmLocation}
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Sprout size={12} color={C.textSec} />
+                  <Text style={{ fontSize: 11, color: C.textSec }}>
+                    <Text style={{ fontWeight: '600' }}>Crops:</Text> {req.cropCategories}
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Award size={12} color={C.textSec} />
+                  <Text style={{ fontSize: 11, color: C.textSec }}>
+                    <Text style={{ fontWeight: '600' }}>Experience:</Text> {req.experienceYears || '3'} Years · Cert: {req.certificateNo || 'Verified'}
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Calendar size={12} color={C.textMuted} />
+                  <Text style={{ fontSize: 10, color: C.textMuted }}>
+                    Submitted: {new Date(req.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </Text>
+                </View>
               </View>
 
               {/* Action Buttons */}
               {isPending && (
                 <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
                   <TouchableOpacity
-                    style={[s.modalBtn, { backgroundColor: C.success, height: 38 }]}
+                    style={[s.modalBtn, { backgroundColor: C.success, height: 38, flexDirection: 'row', gap: 6 }]}
                     onPress={() => handleApprove(req.id, req.farmName)}
                     disabled={isProcessing}
                     activeOpacity={0.8}
                   >
+                    <Check size={14} color="#fff" strokeWidth={2.5} />
                     <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>
-                      {isProcessing ? 'Approving...' : '✓ Approve as Vendor'}
+                      {isProcessing ? 'Approving...' : 'Approve as Vendor'}
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[s.modalBtn, s.modalBtnGhost, { height: 38, borderColor: C.danger }]}
+                    style={[s.modalBtn, s.modalBtnGhost, { height: 38, borderColor: C.danger, flexDirection: 'row', gap: 6 }]}
                     onPress={() => handleReject(req.id)}
                     disabled={isProcessing}
                     activeOpacity={0.8}
                   >
-                    <Text style={{ color: C.danger, fontWeight: '700', fontSize: 12 }}>✕ Reject</Text>
+                    <X size={14} color={C.danger} strokeWidth={2.5} />
+                    <Text style={{ color: C.danger, fontWeight: '700', fontSize: 12 }}>Reject</Text>
                   </TouchableOpacity>
                 </View>
               )}
 
               {isApproved && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <CheckCircle2 size={13} color={C.success} strokeWidth={2.5} />
                   <Text style={{ fontSize: 11, color: C.success, fontWeight: '700' }}>
-                    ✓ Customer verified. Role updated to vendor in SQLite Prisma DB.
+                    Customer verified. Role updated to vendor in SQLite Prisma DB.
                   </Text>
                 </View>
               )}
@@ -276,7 +310,7 @@ const VendorRequestsTab: React.FC = () => {
 
         {filtered.length === 0 && (
           <View style={{ alignItems: 'center', padding: 40 }}>
-            <Text style={{ fontSize: 36 }}>👨‍🌾</Text>
+            <Users size={36} color={C.textMuted} strokeWidth={1.5} />
             <Text style={{ fontSize: 13, color: C.textMuted, marginTop: 8 }}>
               No vendor applications in this filter.
             </Text>
@@ -289,74 +323,139 @@ const VendorRequestsTab: React.FC = () => {
 
 // ── 1. DASHBOARD ─────────────────────────────────────────
 const DashboardTab: React.FC = () => {
-  const topProducts = [...MockProducts].sort((a, b) => b.stock - a.stock).slice(0, 4);
-  const recentOrders = AdminOrders.slice(0, 5);
-  const recentLogs = AdminUserLogs.slice(0, 5);
+  const [stats, setStats] = useState({ totalRevenue: 284500, totalOrders: 0, totalCustomers: 0, pendingOrders: 0 });
+  const [topProducts, setTopProducts] = useState<Product[]>([]);
+  const [recentOrders, setRecentOrders] = useState<AdminOrder[]>([]);
+  const [recentLogs, setRecentLogs] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch(API_ENDPOINTS.dashboardStats)
+      .then(res => res.json())
+      .then(json => {
+        if (json.success && json.data) setStats(json.data);
+      })
+      .catch(() => {});
+
+    fetch(API_ENDPOINTS.products)
+      .then(res => res.json())
+      .then(json => {
+        if (json.success && Array.isArray(json.data)) {
+          setTopProducts([...json.data].sort((a: any, b: any) => (b.stock || 0) - (a.stock || 0)).slice(0, 4));
+        }
+      })
+      .catch(() => {});
+
+    fetch(API_ENDPOINTS.orders)
+      .then(res => res.json())
+      .then(json => {
+        if (json.success && Array.isArray(json.data)) {
+          setRecentOrders(json.data.slice(0, 5).map((o: any) => ({
+            id: o.id,
+            customerId: o.userId || 'cu-1',
+            customerName: o.customerName || 'Customer',
+            items: o.items && o.items.length > 0 ? o.items.map((i: any) => `${i.product?.name || 'Organic item'} ×${i.quantity}`).join(', ') : 'Certified produce',
+            total: o.totalAmount,
+            status: o.deliveryStatus === 'DELIVERED' ? 'Delivered' : (o.deliveryStatus === 'PROCESSING' ? 'Processing' : 'Pending'),
+            date: o.createdAt ? o.createdAt.substring(0, 10) : 'Today',
+            paymentMethod: o.paymentMethod || 'UPI'
+          })));
+        }
+      })
+      .catch(() => {});
+
+    fetch(API_ENDPOINTS.userLogs)
+      .then(res => res.json())
+      .then(json => {
+        if (json.success && Array.isArray(json.data)) setRecentLogs(json.data.slice(0, 5));
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
       {/* KPI Grid */}
       <View style={s.kpiGrid}>
-        <KPICard icon="💰" label="Total Revenue" value="₹2.84L" sub="▲ 18.4% this month" accentColor={C.primaryLight} />
-        <KPICard icon="📦" label="Total Orders" value={String(AdminOrders.length)} sub="▲ 3 today" accentColor={C.accent} />
-        <KPICard icon="👥" label="Customers" value={String(AdminCustomers.length)} sub="▲ 2 this week" accentColor={C.info} />
-        <KPICard icon="⏳" label="Pending" value={String(AdminOrders.filter(o => o.status === 'Pending').length)} sub="⚠ Needs action" accentColor={C.danger} />
+        <KPICard Icon={TrendingUp} label="Total Revenue" value={`₹${((stats.totalRevenue || 0) / 1000).toFixed(1)}K`} sub="▲ Live from SQLite DB" accentColor={C.primaryLight} />
+        <KPICard Icon={Package} label="Total Orders" value={String(stats.totalOrders || recentOrders.length)} sub="▲ Verified database orders" accentColor={C.accent} />
+        <KPICard Icon={Users} label="Customers" value={String(stats.totalCustomers || 1)} sub="▲ Registered profiles" accentColor={C.info} />
+        <KPICard Icon={Clock} label="Pending" value={String(stats.pendingOrders || 0)} sub="Requires delivery" accentColor={C.danger} />
       </View>
 
       {/* Top Products */}
       <Card>
-        <Text style={s.cardTitle}>🔥 Top Selling Products</Text>
-        <View style={{ marginTop: 10, gap: 10 }}>
-          {topProducts.map((p, i) => {
-            const pct = Math.max(30, Math.min(100, (p.stock / 120) * 100));
-            return (
-              <View key={p.id}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: C.textPrimary }} numberOfLines={1}>{p.name}</Text>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: C.primaryLight }}>₹{p.price * p.stock}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+          <TrendingUp size={15} color={C.primaryLight} strokeWidth={2.5} />
+          <Text style={s.cardTitle}>Top Products in Catalog</Text>
+        </View>
+        <View style={{ marginTop: 4, gap: 10 }}>
+          {topProducts.length === 0 ? (
+            <Text style={{ fontSize: 12, color: C.textMuted, paddingVertical: 12 }}>Loading products from API...</Text>
+          ) : (
+            topProducts.map((p, i) => {
+              const pct = Math.max(30, Math.min(100, ((p.stock || 0) / 120) * 100));
+              return (
+                <View key={p.id}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: C.textPrimary }} numberOfLines={1}>{p.name}</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: C.primaryLight }}>₹{p.price * (p.stock || 1)}</Text>
+                  </View>
+                  <View style={s.barTrack}>
+                    <View style={[s.barFill, { width: `${pct}%` as DimensionValue, backgroundColor: [C.primaryLight, C.accent, C.info, C.success][i % 4] }]} />
+                  </View>
+                  <Text style={s.barSub}>{p.stock} {p.unit} in stock</Text>
                 </View>
-                <View style={s.barTrack}>
-                  <View style={[s.barFill, { width: `${pct}%` as DimensionValue, backgroundColor: [C.primaryLight, C.accent, C.info, C.success][i % 4] }]} />
-                </View>
-                <Text style={s.barSub}>{p.stock} {p.unit} in stock</Text>
-              </View>
-            );
-          })}
+              );
+            })
+          )}
         </View>
       </Card>
 
       {/* Recent Orders */}
       <Card>
-        <Text style={s.cardTitle}>📦 Recent Orders</Text>
-        <View style={{ marginTop: 8 }}>
-          {recentOrders.map(o => (
-            <View key={o.id} style={s.listRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={s.listRowTitle}>{o.id}</Text>
-                <Text style={s.listRowSub}>{o.customerName} · {o.date}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+          <Package size={15} color={C.primary} strokeWidth={2.5} />
+          <Text style={s.cardTitle}>Recent Orders (Live API)</Text>
+        </View>
+        <View style={{ marginTop: 4 }}>
+          {recentOrders.length === 0 ? (
+            <Text style={{ fontSize: 12, color: C.textMuted, paddingVertical: 12 }}>No orders found.</Text>
+          ) : (
+            recentOrders.map(o => (
+              <View key={o.id} style={s.listRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.listRowTitle}>{o.id}</Text>
+                  <Text style={s.listRowSub}>{o.customerName} · {o.date}</Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={{ fontWeight: '700', fontSize: 13, color: C.textPrimary }}>₹{o.total}</Text>
+                  <Chip label={o.status} color={statusColor(o.status)} small />
+                </View>
               </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={{ fontWeight: '700', fontSize: 13, color: C.textPrimary }}>₹{o.total}</Text>
-                <Chip label={o.status} color={statusColor(o.status)} small />
-              </View>
-            </View>
-          ))}
+            ))
+          )}
         </View>
       </Card>
 
       {/* Recent Logs */}
       <Card style={{ marginBottom: 20 }}>
-        <Text style={s.cardTitle}>📋 Recent Activity</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+          <FileText size={15} color={C.primary} strokeWidth={2.5} />
+          <Text style={s.cardTitle}>Recent Activity Logs</Text>
+        </View>
         <View style={{ marginTop: 8 }}>
-          {recentLogs.map(l => (
-            <View key={l.id} style={s.listRow}>
-              <View style={[s.logDot, { backgroundColor: l.type === 'create' ? C.success : l.type === 'delete' ? C.danger : l.type === 'login' ? C.purple : C.info }]} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 12, fontWeight: '500', color: C.textPrimary }} numberOfLines={2}>{l.action}</Text>
-                <Text style={s.listRowSub}>{l.user} · {l.module}</Text>
+          {recentLogs.length === 0 ? (
+            <Text style={{ fontSize: 12, color: C.textMuted, paddingVertical: 12 }}>No logs recorded.</Text>
+          ) : (
+            recentLogs.map((l, i) => (
+              <View key={l.id || i} style={s.listRow}>
+                <View style={[s.logDot, { backgroundColor: l.type === 'create' ? C.success : l.type === 'delete' ? C.danger : l.type === 'login' ? C.purple : C.info }]} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '500', color: C.textPrimary }} numberOfLines={2}>{l.action}</Text>
+                  <Text style={s.listRowSub}>{l.user} · {l.module}</Text>
+                </View>
               </View>
-            </View>
-          ))}
+            ))
+          )}
         </View>
       </Card>
     </ScrollView>
@@ -365,45 +464,83 @@ const DashboardTab: React.FC = () => {
 
 // ── 2. PRODUCTS ───────────────────────────────────────────
 const ProductsTab: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>(MockProducts);
+  const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState<'add' | 'edit' | null>(null);
-  const [form, setForm] = useState({ name: '', price: '', stock: '', category: 'Dairy & Pure Ghee', unit: 'Kg', emoji: '🌾' });
+  const [form, setForm] = useState({ name: '', price: '', stock: '', category: 'Dairy & Pure Ghee', unit: 'Kg', emoji: '' });
   const [editId, setEditId] = useState<string | null>(null);
+
+  const loadProducts = () => {
+    fetch(API_ENDPOINTS.products)
+      .then(res => res.json())
+      .then(json => {
+        if (json.success && Array.isArray(json.data)) setProducts(json.data);
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    loadProducts();
+  }, []);
 
   const filtered = products.filter(p => {
     const catName = typeof p.category === 'object' && p.category !== null ? (p.category as any).name : String(p.category || '');
     return p.name.toLowerCase().includes(search.toLowerCase()) || catName.toLowerCase().includes(search.toLowerCase());
   });
 
-  const openAdd = () => { setForm({ name: '', price: '', stock: '', category: 'Dairy & Pure Ghee', unit: 'Kg', emoji: '🌾' }); setEditId(null); setModal('add'); };
+  const openAdd = () => { setForm({ name: '', price: '', stock: '', category: 'Dairy & Pure Ghee', unit: 'Kg', emoji: '' }); setEditId(null); setModal('add'); };
   const openEdit = (p: Product) => {
     const catName = typeof p.category === 'object' && p.category !== null ? (p.category as any).name : String(p.category || 'Dairy & Pure Ghee');
-    setForm({ name: p.name, price: String(p.price), stock: String(p.stock), category: catName, unit: p.unit, emoji: '🌾' });
+    setForm({ name: p.name, price: String(p.price), stock: String(p.stock), category: catName, unit: p.unit, emoji: '' });
     setEditId(p.id); setModal('edit');
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name || !form.price) { Alert.alert('Error', 'Name and price are required.'); return; }
     if (editId) {
-      setProducts(prev => prev.map(p => p.id === editId ? { ...p, name: form.name, price: parseFloat(form.price), stock: parseInt(form.stock || '0'), category: form.category, unit: form.unit } : p));
+      try {
+        await fetch(`${API_ENDPOINTS.products}/${editId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: form.name,
+            price: parseFloat(form.price),
+            stock: parseInt(form.stock || '0'),
+            categoryName: form.category,
+            unit: form.unit
+          })
+        });
+      } catch (e) {}
     } else {
-      const np: Product = {
-        id: 'p' + Date.now(), name: form.name, category: form.category, price: parseFloat(form.price),
-        unit: form.unit, rating: 5, stock: parseInt(form.stock || '0'), minStock: 5,
-        availabilityStart: '06:00 AM', availabilityEnd: '09:00 PM',
-        description: 'Newly added product.', benefits: ['Fresh and organic'],
-        imageUrl: '', subscriptionAllowed: true, oneTimeAllowed: true, organicCertified: true
-      };
-      setProducts(prev => [np, ...prev]);
+      try {
+        await fetch(API_ENDPOINTS.products, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: form.name,
+            categoryName: form.category,
+            price: parseFloat(form.price),
+            stock: parseInt(form.stock || '0'),
+            unit: form.unit,
+            description: `Fresh organic ${form.name}`,
+            imageUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=600'
+          })
+        });
+      } catch (e) {}
     }
     setModal(null);
+    loadProducts();
   };
 
   const handleDelete = (id: string) => {
     Alert.alert('Delete Product', 'Are you sure? This cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => setProducts(prev => prev.filter(p => p.id !== id)) }
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        try {
+          await fetch(`${API_ENDPOINTS.products}/${id}`, { method: 'DELETE' });
+        } catch (e) {}
+        loadProducts();
+      }}
     ]);
   };
 
@@ -411,7 +548,7 @@ const ProductsTab: React.FC = () => {
     <View style={{ flex: 1 }}>
       <SectionHeader title={`Products (${products.length})`} action={{ label: '+ Add', onPress: openAdd }} />
       <View style={s.searchBar}>
-        <Text style={s.searchIcon}>🔍</Text>
+        <Search size={15} color={C.textMuted} style={{ marginRight: 8 }} />
         <TextInput style={s.searchInput} placeholder="Search products…" value={search} onChangeText={setSearch} placeholderTextColor={C.textMuted} />
       </View>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -430,8 +567,12 @@ const ProductsTab: React.FC = () => {
             <View style={{ alignItems: 'flex-end', gap: 6 }}>
               <Chip label={p.stock === 0 ? 'Inactive' : p.stock <= p.minStock ? 'Low Stock' : 'Active'} color={statusColor(p.stock === 0 ? 'Inactive' : p.stock <= p.minStock ? 'Low Stock' : 'Active')} />
               <View style={{ flexDirection: 'row', gap: 6 }}>
-                <TouchableOpacity style={s.iconBtn} onPress={() => openEdit(p)}><Text>✏️</Text></TouchableOpacity>
-                <TouchableOpacity style={[s.iconBtn, { backgroundColor: '#FEF2F2' }]} onPress={() => handleDelete(p.id)}><Text>🗑️</Text></TouchableOpacity>
+                <TouchableOpacity style={s.iconBtn} onPress={() => openEdit(p)}>
+                  <Pencil size={13} color={C.textSec} />
+                </TouchableOpacity>
+                <TouchableOpacity style={[s.iconBtn, { backgroundColor: '#FEF2F2' }]} onPress={() => handleDelete(p.id)}>
+                  <Trash2 size={13} color={C.danger} />
+                </TouchableOpacity>
               </View>
             </View>
           </View>
@@ -445,7 +586,10 @@ const ProductsTab: React.FC = () => {
         <TouchableOpacity style={s.modalBackdrop} activeOpacity={1} onPress={() => setModal(null)}>
           <View style={s.modalSheet} onStartShouldSetResponder={() => true}>
             <View style={s.modalHandle} />
-            <Text style={s.modalTitle}>{modal === 'add' ? '➕ Add Product' : '✏️ Edit Product'}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              {modal === 'add' ? <Plus size={18} color={C.primary} strokeWidth={2.5} /> : <Pencil size={18} color={C.primary} strokeWidth={2.5} />}
+              <Text style={[s.modalTitle, { marginBottom: 0 }]}>{modal === 'add' ? 'Add Product' : 'Edit Product'}</Text>
+            </View>
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={s.formLabel}>Product Name *</Text>
               <TextInput style={s.formInput} value={form.name} onChangeText={v => setForm({ ...form, name: v })} placeholder="e.g. Organic A2 Cow Milk" placeholderTextColor={C.textMuted} />
@@ -483,28 +627,68 @@ const ProductsTab: React.FC = () => {
 
 // ── 3. CATEGORIES ─────────────────────────────────────────
 const CategoriesTab: React.FC = () => {
-  const [items, setItems] = useState<AdminCategory[]>(AdminCategories);
+  const [items, setItems] = useState<AdminCategory[]>([]);
   const [modal, setModal] = useState<'add' | 'edit' | null>(null);
-  const [form, setForm] = useState({ name: '', emoji: '🌿', productCount: '' });
+  const [form, setForm] = useState({ name: '', productCount: '' });
   const [editId, setEditId] = useState<string | null>(null);
 
-  const openAdd = () => { setForm({ name: '', emoji: '🌿', productCount: '' }); setEditId(null); setModal('add'); };
-  const openEdit = (c: AdminCategory) => { setForm({ name: c.name, emoji: c.emoji, productCount: String(c.productCount) }); setEditId(c.id); setModal('edit'); };
+  const loadCategories = async () => {
+    try {
+      const res = await fetch(API_ENDPOINTS.categories);
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setItems(data.map((c: any) => ({
+          id: String(c.id),
+          name: c.name || 'Category',
+          emoji: '',
+          productCount: c._count?.products || c.productCount || 0,
+          color: c.color || '#22c55e'
+        })));
+      }
+    } catch (e) {
+      console.warn('Failed to fetch categories:', e);
+    }
+  };
 
-  const handleSave = () => {
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  const openAdd = () => { setForm({ name: '', productCount: '' }); setEditId(null); setModal('add'); };
+  const openEdit = (c: AdminCategory) => { setForm({ name: c.name, productCount: String(c.productCount) }); setEditId(c.id); setModal('edit'); };
+
+  const handleSave = async () => {
     if (!form.name.trim()) { Alert.alert('Error', 'Category name is required.'); return; }
     if (editId) {
-      setItems(prev => prev.map(c => c.id === editId ? { ...c, name: form.name, emoji: form.emoji, productCount: parseInt(form.productCount || '0') } : c));
+      try {
+        await fetch(`${API_ENDPOINTS.categories}/${editId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: form.name })
+        });
+      } catch (e) {}
     } else {
-      setItems(prev => [...prev, { id: 'c' + Date.now(), name: form.name, emoji: form.emoji, productCount: parseInt(form.productCount || '0'), color: '#22c55e' }]);
+      try {
+        await fetch(API_ENDPOINTS.categories, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: form.name })
+        });
+      } catch (e) {}
     }
     setModal(null);
+    loadCategories();
   };
 
   const handleDelete = (id: string) => {
     Alert.alert('Delete Category', 'Are you sure?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => setItems(prev => prev.filter(c => c.id !== id)) }
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        try {
+          await fetch(`${API_ENDPOINTS.categories}/${id}`, { method: 'DELETE' });
+        } catch (e) {}
+        loadCategories();
+      }}
     ]);
   };
 
@@ -515,12 +699,19 @@ const CategoriesTab: React.FC = () => {
         <View style={s.gridWrap}>
           {items.map(cat => (
             <View key={cat.id} style={[s.gridCard, { borderTopColor: cat.color, borderTopWidth: 3 }]}>
-              <Text style={{ fontSize: 28, textAlign: 'center' }}>{cat.emoji}</Text>
+              <View style={[s.catIconBadge, { backgroundColor: (cat.color || C.primary) + '20' }]}>
+                <Tags size={22} color={cat.color || C.primary} strokeWidth={2.2} />
+              </View>
               <Text style={s.gridCardName} numberOfLines={2}>{cat.name}</Text>
               <Chip label={`${cat.productCount} products`} color={C.success} small />
               <View style={s.gridCardActions}>
-                <TouchableOpacity style={s.iconBtn} onPress={() => openEdit(cat)}><Text style={{ fontSize: 12 }}>✏️ Edit</Text></TouchableOpacity>
-                <TouchableOpacity style={[s.iconBtn, { backgroundColor: '#FEF2F2' }]} onPress={() => handleDelete(cat.id)}><Text style={{ fontSize: 12 }}>🗑️</Text></TouchableOpacity>
+                <TouchableOpacity style={[s.iconBtn, { flexDirection: 'row', alignItems: 'center', gap: 4 }]} onPress={() => openEdit(cat)}>
+                  <Pencil size={11} color={C.textSec} />
+                  <Text style={{ fontSize: 11, color: C.textSec, fontWeight: '600' }}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[s.iconBtn, { backgroundColor: '#FEF2F2' }]} onPress={() => handleDelete(cat.id)}>
+                  <Trash2 size={11} color={C.danger} />
+                </TouchableOpacity>
               </View>
             </View>
           ))}
@@ -532,9 +723,10 @@ const CategoriesTab: React.FC = () => {
         <TouchableOpacity style={s.modalBackdrop} activeOpacity={1} onPress={() => setModal(null)}>
           <View style={s.modalSheet} onStartShouldSetResponder={() => true}>
             <View style={s.modalHandle} />
-            <Text style={s.modalTitle}>{modal === 'add' ? '➕ Add Category' : '✏️ Edit Category'}</Text>
-            <Text style={s.formLabel}>Emoji</Text>
-            <TextInput style={[s.formInput, { textAlign: 'center', fontSize: 26, width: 70 }]} value={form.emoji} onChangeText={v => setForm({ ...form, emoji: v })} maxLength={4} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              {modal === 'add' ? <Plus size={18} color={C.primary} strokeWidth={2.5} /> : <Pencil size={18} color={C.primary} strokeWidth={2.5} />}
+              <Text style={[s.modalTitle, { marginBottom: 0 }]}>{modal === 'add' ? 'Add Category' : 'Edit Category'}</Text>
+            </View>
             <Text style={s.formLabel}>Name *</Text>
             <TextInput style={s.formInput} value={form.name} onChangeText={v => setForm({ ...form, name: v })} placeholder="e.g. Fresh Vegetables" placeholderTextColor={C.textMuted} />
             <Text style={s.formLabel}>Product Count</Text>
@@ -552,32 +744,71 @@ const CategoriesTab: React.FC = () => {
 
 // ── 4. BRANDS ─────────────────────────────────────────────
 const BrandsTab: React.FC = () => {
-  const [items, setItems] = useState<AdminBrand[]>(AdminBrands);
+  const [items, setItems] = useState<AdminBrand[]>([]);
   const [modal, setModal] = useState<'add' | 'edit' | null>(null);
-  const [form, setForm] = useState({ name: '', emoji: '🌱', origin: '', rating: '4.5' });
+  const [form, setForm] = useState({ name: '', origin: '', rating: '4.5' });
   const [editId, setEditId] = useState<string | null>(null);
 
-  const openAdd = () => { setForm({ name: '', emoji: '🌱', origin: '', rating: '4.5' }); setEditId(null); setModal('add'); };
-  const openEdit = (b: AdminBrand) => { setForm({ name: b.name, emoji: b.emoji, origin: b.origin, rating: String(b.rating) }); setEditId(b.id); setModal('edit'); };
+  const loadBrands = async () => {
+    try {
+      const res = await fetch(API_ENDPOINTS.brands);
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setItems(data.map((b: any) => ({
+          id: String(b.id),
+          name: b.name || 'Brand',
+          emoji: '',
+          origin: b.origin || 'India',
+          rating: Number(b.rating) || 4.5,
+          productCount: b._count?.products || b.productCount || 0
+        })));
+      }
+    } catch (e) {
+      console.warn('Failed to fetch brands:', e);
+    }
+  };
 
-  const handleSave = () => {
+  useEffect(() => {
+    loadBrands();
+  }, []);
+
+  const openAdd = () => { setForm({ name: '', origin: '', rating: '4.5' }); setEditId(null); setModal('add'); };
+  const openEdit = (b: AdminBrand) => { setForm({ name: b.name, origin: b.origin, rating: String(b.rating) }); setEditId(b.id); setModal('edit'); };
+
+  const handleSave = async () => {
     if (!form.name.trim()) { Alert.alert('Error', 'Brand name is required.'); return; }
     if (editId) {
-      setItems(prev => prev.map(b => b.id === editId ? { ...b, name: form.name, emoji: form.emoji, origin: form.origin, rating: parseFloat(form.rating) } : b));
+      try {
+        await fetch(`${API_ENDPOINTS.brands}/${editId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: form.name, origin: form.origin, rating: parseFloat(form.rating) })
+        });
+      } catch (e) {}
     } else {
-      setItems(prev => [...prev, { id: 'b' + Date.now(), name: form.name, emoji: form.emoji, origin: form.origin, rating: parseFloat(form.rating), productCount: 0 }]);
+      try {
+        await fetch(API_ENDPOINTS.brands, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: form.name, origin: form.origin, rating: parseFloat(form.rating) })
+        });
+      } catch (e) {}
     }
     setModal(null);
+    loadBrands();
   };
 
   const handleDelete = (id: string) => {
     Alert.alert('Delete Brand', 'Are you sure?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => setItems(prev => prev.filter(b => b.id !== id)) }
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        try {
+          await fetch(`${API_ENDPOINTS.brands}/${id}`, { method: 'DELETE' });
+        } catch (e) {}
+        loadBrands();
+      }}
     ]);
   };
-
-  const stars = (r: number) => '★'.repeat(Math.round(r)) + '☆'.repeat(5 - Math.round(r));
 
   return (
     <View style={{ flex: 1 }}>
@@ -585,17 +816,28 @@ const BrandsTab: React.FC = () => {
       <ScrollView showsVerticalScrollIndicator={false}>
         {items.map(b => (
           <View key={b.id} style={s.tableRow}>
-            <View style={s.brandIcon}><Text style={{ fontSize: 22 }}>{b.emoji}</Text></View>
+            <View style={s.brandIcon}>
+              <Award size={20} color={C.primary} strokeWidth={2.2} />
+            </View>
             <View style={{ flex: 1, marginLeft: 12 }}>
               <Text style={s.tableRowTitle}>{b.name}</Text>
-              <Text style={s.tableRowSub}>📍 {b.origin} · {b.productCount} products</Text>
-              <Text style={{ fontSize: 13, color: C.accent, letterSpacing: 2 }}>{stars(b.rating)}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                <MapPin size={11} color={C.textMuted} />
+                <Text style={s.tableRowSub}>{b.origin} · {b.productCount} products</Text>
+              </View>
             </View>
             <View style={{ alignItems: 'flex-end', gap: 6 }}>
-              <Chip label={`⭐ ${b.rating}`} color={C.warning} />
+              <View style={[s.chip, { backgroundColor: '#FEF3C7', borderColor: '#FDE68A', flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                <Star size={10} color="#B45309" fill="#B45309" />
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#B45309' }}>{b.rating}</Text>
+              </View>
               <View style={{ flexDirection: 'row', gap: 6 }}>
-                <TouchableOpacity style={s.iconBtn} onPress={() => openEdit(b)}><Text>✏️</Text></TouchableOpacity>
-                <TouchableOpacity style={[s.iconBtn, { backgroundColor: '#FEF2F2' }]} onPress={() => handleDelete(b.id)}><Text>🗑️</Text></TouchableOpacity>
+                <TouchableOpacity style={s.iconBtn} onPress={() => openEdit(b)}>
+                  <Pencil size={13} color={C.textSec} />
+                </TouchableOpacity>
+                <TouchableOpacity style={[s.iconBtn, { backgroundColor: '#FEF2F2' }]} onPress={() => handleDelete(b.id)}>
+                  <Trash2 size={13} color={C.danger} />
+                </TouchableOpacity>
               </View>
             </View>
           </View>
@@ -607,9 +849,10 @@ const BrandsTab: React.FC = () => {
         <TouchableOpacity style={s.modalBackdrop} activeOpacity={1} onPress={() => setModal(null)}>
           <View style={s.modalSheet} onStartShouldSetResponder={() => true}>
             <View style={s.modalHandle} />
-            <Text style={s.modalTitle}>{modal === 'add' ? '➕ Add Brand' : '✏️ Edit Brand'}</Text>
-            <Text style={s.formLabel}>Emoji</Text>
-            <TextInput style={[s.formInput, { textAlign: 'center', fontSize: 26, width: 70 }]} value={form.emoji} onChangeText={v => setForm({ ...form, emoji: v })} maxLength={4} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              {modal === 'add' ? <Plus size={18} color={C.primary} strokeWidth={2.5} /> : <Pencil size={18} color={C.primary} strokeWidth={2.5} />}
+              <Text style={[s.modalTitle, { marginBottom: 0 }]}>{modal === 'add' ? 'Add Brand' : 'Edit Brand'}</Text>
+            </View>
             <Text style={s.formLabel}>Brand Name *</Text>
             <TextInput style={s.formInput} value={form.name} onChangeText={v => setForm({ ...form, name: v })} placeholder="e.g. NatureFarm" placeholderTextColor={C.textMuted} />
             <Text style={s.formLabel}>Origin State</Text>
@@ -629,16 +872,60 @@ const BrandsTab: React.FC = () => {
 
 // ── 5. CUSTOMERS ──────────────────────────────────────────
 const CustomersTab: React.FC = () => {
-  const [customers] = useState<AdminCustomer[]>(AdminCustomers);
+  const [customers, setCustomers] = useState<AdminCustomer[]>([]);
+  const [allOrders, setAllOrders] = useState<AdminOrder[]>([]);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<AdminCustomer | null>(null);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [cRes, oRes] = await Promise.all([
+          fetch(API_ENDPOINTS.customers),
+          fetch(API_ENDPOINTS.orders)
+        ]);
+        const cData = await cRes.json();
+        const oData = await oRes.json();
+
+        if (Array.isArray(oData)) {
+          setAllOrders(oData.map((o: any) => ({
+            id: String(o.id),
+            customerId: String(o.customerId || o.customer?.id || ''),
+            customerName: o.customer?.name || o.customerName || 'Customer',
+            items: Array.isArray(o.items) ? o.items.map((i: any) => `${i.product?.name || i.name || 'Item'} (${i.quantity || 1})`).join(', ') : (o.items || 'Organic Grocery'),
+            total: o.totalAmount || o.total || 0,
+            status: o.status || 'Delivered',
+            paymentMethod: o.paymentMethod || 'Online',
+            date: o.createdAt ? new Date(o.createdAt).toLocaleDateString() : 'Today'
+          })));
+        }
+
+        if (Array.isArray(cData)) {
+          setCustomers(cData.map((c: any) => ({
+            id: String(c.id),
+            name: c.name || 'Customer',
+            phone: c.phone || '+91 98765 43210',
+            location: c.location || c.address || 'Chennai',
+            status: c.status || 'Active',
+            totalOrders: c._count?.orders || c.orders?.length || 0,
+            totalSpend: c.totalSpend || 1200,
+            lastActive: 'Today',
+            joinDate: c.createdAt ? new Date(c.createdAt).toLocaleDateString() : 'Jan 2026'
+          })));
+        }
+      } catch (e) {
+        console.warn('Failed to fetch customers/orders:', e);
+      }
+    };
+    loadData();
+  }, []);
 
   const filtered = customers.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     c.location.toLowerCase().includes(search.toLowerCase())
   );
 
-  const customerOrders = selected ? AdminOrders.filter(o => o.customerId === selected.id) : [];
+  const customerOrders = selected ? allOrders.filter(o => o.customerId === selected.id) : [];
 
   const initials = (name: string) => name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
@@ -646,7 +933,7 @@ const CustomersTab: React.FC = () => {
     <View style={{ flex: 1 }}>
       <SectionHeader title={`Customers (${customers.length})`} />
       <View style={s.searchBar}>
-        <Text style={s.searchIcon}>🔍</Text>
+        <Search size={15} color={C.textMuted} style={{ marginRight: 8 }} />
         <TextInput style={s.searchInput} placeholder="Search by name or city…" value={search} onChangeText={setSearch} placeholderTextColor={C.textMuted} />
       </View>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -658,10 +945,16 @@ const CustomersTab: React.FC = () => {
             <View style={{ flex: 1, marginLeft: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Text style={s.tableRowTitle}>{c.name}</Text>
-                {c.status === 'VIP' && <Text style={{ fontSize: 12 }}>👑</Text>}
+                {c.status === 'VIP' && <Crown size={12} color="#D97706" />}
               </View>
-              <Text style={s.tableRowSub}>📍 {c.location} · {c.phone}</Text>
-              <Text style={s.tableRowSub}>🛒 {c.totalOrders} orders · ₹{c.totalSpend.toLocaleString()}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                <MapPin size={11} color={C.textMuted} />
+                <Text style={s.tableRowSub}>{c.location} · {c.phone}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                <ShoppingBag size={11} color={C.textMuted} />
+                <Text style={s.tableRowSub}>{c.totalOrders} orders · ₹{c.totalSpend.toLocaleString()}</Text>
+              </View>
             </View>
             <View style={{ alignItems: 'flex-end', gap: 6 }}>
               <Chip label={c.status} color={statusColor(c.status)} />
@@ -686,7 +979,10 @@ const CustomersTab: React.FC = () => {
                     <Text style={s.avatarTextLg}>{initials(selected.name)}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[s.modalTitle, { marginBottom: 2 }]}>{selected.name} {selected.status === 'VIP' ? '👑' : ''}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={[s.modalTitle, { marginBottom: 2 }]}>{selected.name}</Text>
+                      {selected.status === 'VIP' && <Crown size={14} color="#D97706" />}
+                    </View>
                     <Text style={s.tableRowSub}>{selected.phone} · {selected.location}</Text>
                   </View>
                   <Chip label={selected.status} color={statusColor(selected.status)} />
@@ -707,15 +1003,24 @@ const CustomersTab: React.FC = () => {
                 </View>
 
                 {/* Order History */}
-                <Text style={[s.cardTitle, { marginBottom: 10 }]}>🛒 Order History</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                  <ShoppingCart size={15} color={C.primary} strokeWidth={2.5} />
+                  <Text style={s.cardTitle}>Order History</Text>
+                </View>
                 <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 280 }}>
                   {customerOrders.length === 0 ? (
                     <Text style={s.emptyText}>No orders yet</Text>
                   ) : (
                     customerOrders.map(o => (
                       <View key={o.id} style={s.timelineItem}>
-                        <View style={[s.timelineDot, { backgroundColor: statusColor(o.status) + '30' }]}>
-                          <Text style={{ fontSize: 12 }}>{o.status === 'Delivered' ? '✅' : o.status === 'Cancelled' ? '❌' : '⏳'}</Text>
+                        <View style={[s.timelineDot, { backgroundColor: statusColor(o.status) + '30', alignItems: 'center', justifyContent: 'center' }]}>
+                          {o.status === 'Delivered' ? (
+                            <CheckCircle2 size={12} color={C.success} strokeWidth={2.5} />
+                          ) : o.status === 'Cancelled' ? (
+                            <XCircle size={12} color={C.danger} strokeWidth={2.5} />
+                          ) : (
+                            <Clock size={12} color={C.warning} strokeWidth={2.5} />
+                          )}
                         </View>
                         <View style={{ flex: 1, marginLeft: 10 }}>
                           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -723,7 +1028,10 @@ const CustomersTab: React.FC = () => {
                             <Chip label={o.status} color={statusColor(o.status)} small />
                           </View>
                           <Text style={s.tableRowSub} numberOfLines={1}>{o.items}</Text>
-                          <Text style={s.tableRowSub}>💳 {o.paymentMethod} · {o.date}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                            <CreditCard size={11} color={C.textMuted} />
+                            <Text style={s.tableRowSub}>{o.paymentMethod} · {o.date}</Text>
+                          </View>
                         </View>
                       </View>
                     ))
@@ -743,16 +1051,50 @@ const CustomersTab: React.FC = () => {
 
 // ── 6. ORDERS ─────────────────────────────────────────────
 const OrdersTab: React.FC = () => {
-  const [orders, setOrders] = useState<AdminOrder[]>(AdminOrders);
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [filter, setFilter] = useState<string>('All');
   const [selected, setSelected] = useState<AdminOrder | null>(null);
+
+  const loadOrders = async () => {
+    try {
+      const res = await fetch(API_ENDPOINTS.orders);
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setOrders(data.map((o: any) => ({
+          id: String(o.id),
+          customerId: String(o.customerId || o.customer?.id || ''),
+          customerName: o.customer?.name || o.customerName || 'Customer',
+          items: Array.isArray(o.items) ? o.items.map((i: any) => `${i.product?.name || i.name || 'Item'} (${i.quantity || 1})`).join(', ') : (o.items || 'Organic Grocery'),
+          total: o.totalAmount || o.total || 0,
+          status: o.status || 'Pending',
+          paymentMethod: o.paymentMethod || 'Online',
+          date: o.createdAt ? new Date(o.createdAt).toLocaleDateString() : 'Today'
+        })));
+      }
+    } catch (e) {
+      console.warn('Failed to fetch orders:', e);
+    }
+  };
+
+  useEffect(() => {
+    loadOrders();
+  }, []);
 
   const statuses = ['All', 'Pending', 'Processing', 'Delivered', 'Cancelled'];
   const filtered = filter === 'All' ? orders : orders.filter(o => o.status === filter);
 
-  const updateStatus = (id: string, status: AdminOrder['status']) => {
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
-    setSelected(prev => prev && prev.id === id ? { ...prev, status } : prev);
+  const updateStatus = async (id: string, status: AdminOrder['status']) => {
+    try {
+      await fetch(`${API_ENDPOINTS.orders}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
+      setSelected(prev => prev && prev.id === id ? { ...prev, status } : prev);
+    } catch (e) {
+      console.warn('Failed to update order status:', e);
+    }
   };
 
   const pending = orders.filter(o => o.status === 'Pending').length;
@@ -837,10 +1179,35 @@ const OrdersTab: React.FC = () => {
 
 // ── 7. USER LOGS ──────────────────────────────────────────
 const LogsTab: React.FC = () => {
+  const [logs, setLogs] = useState<AdminUserLog[]>([]);
   const [filter, setFilter] = useState('All');
   const types = ['All', 'create', 'update', 'delete', 'login', 'logout', 'view'];
 
-  const filtered = filter === 'All' ? AdminUserLogs : AdminUserLogs.filter(l => l.type === filter);
+  const loadLogs = async () => {
+    try {
+      const res = await fetch(API_ENDPOINTS.userLogs);
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setLogs(data.map((l: any) => ({
+          id: String(l.id),
+          user: l.user?.name || l.userName || l.user || 'Admin',
+          role: l.role || 'Admin',
+          action: l.action || 'Performed action',
+          module: l.module || 'Dashboard',
+          type: (l.type || 'view').toLowerCase(),
+          timestamp: l.timestamp || l.createdAt || new Date().toISOString()
+        })));
+      }
+    } catch (e) {
+      console.warn('Failed to fetch user logs:', e);
+    }
+  };
+
+  useEffect(() => {
+    loadLogs();
+  }, []);
+
+  const filtered = filter === 'All' ? logs : logs.filter(l => l.type === filter);
 
   const dotColor = (t: string) => {
     switch (t) {
@@ -852,14 +1219,14 @@ const LogsTab: React.FC = () => {
 
   return (
     <View style={{ flex: 1 }}>
-      <SectionHeader title={`User Logs (${AdminUserLogs.length})`} sub="Full activity & audit trail" />
+      <SectionHeader title={`User Logs (${logs.length})`} sub="Full activity & audit trail" />
       {/* Summary row */}
       <View style={s.statRow}>
         {[
-          { val: AdminUserLogs.filter(l=>l.type==='create').length, lbl: 'Created', color: C.success },
-          { val: AdminUserLogs.filter(l=>l.type==='update').length, lbl: 'Updated', color: C.info },
-          { val: AdminUserLogs.filter(l=>l.type==='delete').length, lbl: 'Deleted', color: C.danger },
-          { val: AdminUserLogs.filter(l=>l.type==='login').length, lbl: 'Logins', color: C.purple },
+          { val: logs.filter(l=>l.type==='create').length, lbl: 'Created', color: C.success },
+          { val: logs.filter(l=>l.type==='update').length, lbl: 'Updated', color: C.info },
+          { val: logs.filter(l=>l.type==='delete').length, lbl: 'Deleted', color: C.danger },
+          { val: logs.filter(l=>l.type==='login').length, lbl: 'Logins', color: C.purple },
         ].map(stat => (
           <View key={stat.lbl} style={s.statBox}>
             <Text style={[s.statBoxVal, { color: stat.color }]}>{stat.val}</Text>
@@ -871,9 +1238,12 @@ const LogsTab: React.FC = () => {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterScroll}>
         {types.map(t => (
           <TouchableOpacity key={t} style={[s.filterChip, filter === t && s.filterChipActive]} onPress={() => setFilter(t)}>
-            <Text style={[s.filterChipText, filter === t && s.filterChipTextActive]}>
-              {t === 'All' ? '📋 All' : `${typeIcon(t)} ${t}`}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              {t !== 'All' && <TypeIcon type={t} size={11} color={filter === t ? '#fff' : C.textSec} />}
+              <Text style={[s.filterChipText, filter === t && s.filterChipTextActive]}>
+                {t === 'All' ? 'All' : t}
+              </Text>
+            </View>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -883,9 +1253,12 @@ const LogsTab: React.FC = () => {
             <View style={[s.logDot, { width: 10, height: 10, backgroundColor: dotColor(log.type) }]} />
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <Text style={{ flex: 1, fontSize: 12, fontWeight: '600', color: C.textPrimary, marginRight: 8 }} numberOfLines={2}>
-                  {typeIcon(log.type)} {log.action}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, marginRight: 8 }}>
+                  <TypeIcon type={log.type} size={13} color={dotColor(log.type)} />
+                  <Text style={{ flex: 1, fontSize: 12, fontWeight: '600', color: C.textPrimary }} numberOfLines={2}>
+                    {log.action}
+                  </Text>
+                </View>
                 <Chip label={log.module} color={C.textSec} small />
               </View>
               <Text style={s.tableRowSub}>{log.user} · {log.role}</Text>
@@ -998,6 +1371,7 @@ const s = StyleSheet.create({
 
   // Brand
   brandIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: C.surface2, alignItems: 'center', justifyContent: 'center' },
+  catIconBadge: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
 
   // Search
   searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: 10, borderWidth: 1, borderColor: C.border, paddingHorizontal: 10, marginBottom: 10, height: 40 },

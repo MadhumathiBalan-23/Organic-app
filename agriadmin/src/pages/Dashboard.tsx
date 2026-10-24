@@ -1,20 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { kpiData, products, orders, userLogs, fetchKpiDataFromDB, fetchProductsFromDB, fetchOrdersFromDB, fetchUserLogsFromDB } from '../data/mockData';
+import { DollarSign, Package, Users, Clock, TrendingUp, FileText } from 'lucide-react';
+import { Product, Order, UserLog, fetchKpiDataFromDB, fetchProductsFromDB, fetchOrdersFromDB, fetchUserLogsFromDB } from '../data/mockData';
 
 const Dashboard: React.FC = () => {
-  const [liveKpi, setLiveKpi] = useState(kpiData);
-  const [liveProducts, setLiveProducts] = useState(products);
-  const [liveOrders, setLiveOrders] = useState(orders);
-  const [liveLogs, setLiveLogs] = useState(userLogs);
+  const [liveKpi, setLiveKpi] = useState({
+    totalRevenue: 0,
+    totalOrders: 0,
+    totalCustomers: 0,
+    totalProducts: 0,
+    pendingOrders: 0,
+    processingOrders: 0,
+    lowStockProducts: 0
+  });
+  const [liveProducts, setLiveProducts] = useState<Product[]>([]);
+  const [liveOrders, setLiveOrders] = useState<Order[]>([]);
+  const [liveLogs, setLiveLogs] = useState<UserLog[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchKpiDataFromDB().then(setLiveKpi);
-    fetchProductsFromDB().then(setLiveProducts);
-    fetchOrdersFromDB().then(setLiveOrders);
-    fetchUserLogsFromDB().then(setLiveLogs);
+    setLoading(true);
+    Promise.all([
+      fetchKpiDataFromDB().then(setLiveKpi),
+      fetchProductsFromDB().then(setLiveProducts),
+      fetchOrdersFromDB().then(setLiveOrders),
+      fetchUserLogsFromDB().then(setLiveLogs)
+    ]).finally(() => setLoading(false));
   }, []);
 
-  const topProducts = [...liveProducts].sort((a, b) => b.sales - a.sales).slice(0, 5);
+  const topProducts = [...liveProducts].sort((a, b) => (b.sales || 0) - (a.sales || 0)).slice(0, 5);
   const recentLogs = liveLogs.slice(0, 6);
 
   const getLogColor = (type: string) => {
@@ -37,94 +50,116 @@ const Dashboard: React.FC = () => {
     return map[status] ?? 'chip-default';
   };
 
-  const maxSales = Math.max(...topProducts.map(p => p.sales || 1));
+  const maxSales = Math.max(...topProducts.map(p => p.sales || 1), 1);
 
   return (
     <div>
       {/* KPI Cards */}
       <div className="kpi-grid">
         <div className="kpi-card green">
-          <div className="kpi-icon green">💰</div>
+          <div className="kpi-icon green"><DollarSign size={20} /></div>
           <div className="kpi-label">Total Revenue</div>
-          <div className="kpi-value">₹{(liveKpi.totalRevenue / 1000).toFixed(0)}K</div>
-          <div className="kpi-change up">▲ 18.4% vs last month</div>
+          <div className="kpi-value">₹{(liveKpi.totalRevenue / 1000).toFixed(1)}K</div>
+          <div className="kpi-change up">▲ Live from SQLite DB</div>
         </div>
         <div className="kpi-card gold">
-          <div className="kpi-icon gold">📦</div>
+          <div className="kpi-icon gold"><Package size={20} /></div>
           <div className="kpi-label">Total Orders</div>
           <div className="kpi-value">{liveKpi.totalOrders}</div>
-          <div className="kpi-change up">▲ 7 new today</div>
+          <div className="kpi-change up">▲ {liveKpi.pendingOrders} pending dispatch</div>
         </div>
         <div className="kpi-card blue">
-          <div className="kpi-icon blue">👥</div>
+          <div className="kpi-icon blue"><Users size={20} /></div>
           <div className="kpi-label">Total Customers</div>
           <div className="kpi-value">{liveKpi.totalCustomers}</div>
-          <div className="kpi-change up">▲ 3 this week</div>
-        </div>
-        <div className="kpi-card red">
-          <div className="kpi-icon red">⏳</div>
-          <div className="kpi-label">Pending Orders</div>
-          <div className="kpi-value">{liveKpi.pendingOrders}</div>
-          <div className="kpi-change down">⚠ Needs attention</div>
+          <div className="kpi-change up">▲ Active verified profiles</div>
         </div>
         <div className="kpi-card purple">
-          <div className="kpi-icon purple">🌾</div>
-          <div className="kpi-label">Low Stock Items</div>
-          <div className="kpi-value">{liveKpi.lowStockProducts}</div>
-          <div className="kpi-change down">▼ Restock needed</div>
+          <div className="kpi-icon purple"><Clock size={20} /></div>
+          <div className="kpi-label">Active Products</div>
+          <div className="kpi-value">{liveKpi.totalProducts}</div>
+          <div className="kpi-change up">
+            {liveKpi.lowStockProducts > 0 ? (
+              <span style={{ color: 'var(--color-danger)' }}>{liveKpi.lowStockProducts} low stock</span>
+            ) : (
+              'All in stock'
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Two-column section */}
-      <div className="two-col" style={{ marginBottom: '24px' }}>
-        {/* Top Selling Products */}
+      {loading && (
+        <div style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)' }}>
+          Refreshing live metrics from backend API...
+        </div>
+      )}
+
+      {/* Two Column Section */}
+      <div className="dashboard-grid">
+        {/* Left Column: Top Selling Products */}
         <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+          <div className="card-header">
             <div>
-              <div style={{ fontWeight: 700, fontSize: '15px' }}>🔥 Top Selling Products</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: 2 }}>Based on units sold</div>
+              <div className="card-title">Top Selling Products</div>
+              <div className="card-subtitle">Ranked by customer orders</div>
             </div>
-            <span className="chip chip-success">Live Data</span>
+            <span className="chip chip-success" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <TrendingUp size={12} /> Live API
+            </span>
           </div>
-          <div className="bar-chart">
-            {topProducts.map(p => (
-              <div key={p.id} className="bar-item">
-                <div className="bar-info">
-                  <span>{p.emoji} {p.name}</span>
-                  <span style={{ fontWeight: 700 }}>₹{(p.price * p.sales).toLocaleString()}</span>
+
+          <div className="product-bars">
+            {topProducts.length === 0 ? (
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                No product sales recorded yet.
+              </div>
+            ) : topProducts.map((p, idx) => (
+              <div key={p.id} className="product-bar-item">
+                <div className="product-bar-header">
+                  <div className="product-bar-name">
+                    <span style={{ color: 'var(--text-muted)', marginRight: 6 }}>#{idx + 1}</span>
+                    {p.name}
+                  </div>
+                  <div className="product-bar-sales">₹{p.price * (p.sales || 1)} · {p.sales} {p.unit}s</div>
                 </div>
-                <div className="bar-track">
+                <div className="progress-bar">
                   <div
-                    className="bar-fill"
-                    style={{
-                      width: `${(p.sales / maxSales) * 100}%`,
-                      background: 'linear-gradient(90deg, var(--color-primary-light), var(--color-accent))'
-                    }}
+                    className="progress-fill"
+                    style={{ width: `${((p.sales || 1) / maxSales) * 100}%` }}
                   />
                 </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{p.sales} {p.unit} sold</div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Recent Orders */}
+        {/* Right Column: Recent Activity Logs */}
         <div className="card">
-          <div style={{ fontWeight: 700, fontSize: '15px', marginBottom: '18px' }}>📦 Recent Orders</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {recentOrders.map(order => (
-              <div key={order.id} style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '10px 14px', borderRadius: 10, background: 'var(--color-surface-2)',
-                border: '1px solid var(--color-border)'
-              }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 13 }}>{order.id}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{order.customerName} · {order.date}</div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontWeight: 700, fontSize: 13 }}>₹{order.total.toLocaleString()}</div>
-                  <span className={`chip ${statusChip(order.status)}`}>{order.status}</span>
+          <div className="card-header">
+            <div>
+              <div className="card-title">Audit Trail & Activity</div>
+              <div className="card-subtitle">Live system event log</div>
+            </div>
+            <span className="chip chip-default" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <FileText size={12} /> {liveLogs.length} events
+            </span>
+          </div>
+
+          <div className="activity-list">
+            {recentLogs.length === 0 ? (
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                No activity logs available.
+              </div>
+            ) : recentLogs.map(l => (
+              <div key={l.id} className="activity-item">
+                <div className={`activity-dot ${getLogColor(l.type)}`} />
+                <div className="activity-content">
+                  <div className="activity-text">
+                    <strong>{l.user}</strong>: {l.action}
+                  </div>
+                  <div className="activity-time">
+                    {new Date(l.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} · {l.module}
+                  </div>
                 </div>
               </div>
             ))}
@@ -132,22 +167,52 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Recent Activity */}
-      <div className="card">
-        <div style={{ fontWeight: 700, fontSize: '15px', marginBottom: '18px' }}>📋 Recent Admin Activity</div>
-        <div>
-          {recentLogs.map(log => (
-            <div key={log.id} className="log-row">
-              <div className={`log-dot ${getLogColor(log.type)}`} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 500 }}>{log.action}</div>
-                <div className="log-meta">
-                  {log.user} · {log.module} · {new Date(log.timestamp).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
-                </div>
-              </div>
-              <span className={`chip ${log.role === 'Admin' ? 'chip-success' : 'chip-info'}`}>{log.role}</span>
+      {/* Recent Orders Section */}
+      <div className="card" style={{ marginTop: 24 }}>
+        <div className="card-header">
+          <div>
+            <div className="card-title">Recent Customer Orders</div>
+            <div className="card-subtitle">Real-time orders received from mobile app</div>
+          </div>
+        </div>
+
+        <div className="table-wrap">
+          {recentOrders.length === 0 ? (
+            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              No orders found in database.
             </div>
-          ))}
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Customer</th>
+                  <th>Products</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentOrders.map(o => (
+                  <tr key={o.id}>
+                    <td><span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{o.id}</span></td>
+                    <td><strong>{o.customerName}</strong></td>
+                    <td>
+                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                        {o.items.map(i => `${i.name} ×${i.qty}`).join(', ')}
+                      </span>
+                    </td>
+                    <td><strong>₹{o.total.toLocaleString()}</strong></td>
+                    <td><span className={`chip ${statusChip(o.status)}`}>{o.status}</span></td>
+                    <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                      {new Date(o.date).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>

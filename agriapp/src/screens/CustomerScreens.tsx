@@ -4,7 +4,16 @@ import {
   TouchableOpacity, Alert, TextInput, Modal, SafeAreaView,
   ActivityIndicator
 } from 'react-native';
-import { Product, MockProducts, MockOrders, MockSubscriptions } from '../constants/mockData';
+import {
+  Search, X, ShoppingCart, Package, Repeat, MessageSquare, Phone,
+  ShieldCheck, Award, MapPin, CreditCard, Smartphone, Landmark,
+  Briefcase, Clock, Calendar, Pencil, LogOut, Sprout, Check,
+  CircleCheck, Sparkles, Star, Leaf, Droplets,
+  Apple, Wheat, Milk, ChevronRight, Zap, Gift, User, Store,
+  Truck, Trash, Plus, Minus, Mail, FileText
+} from 'lucide-react-native';
+import { Product } from '../constants/mockData';
+import { API_ENDPOINTS } from '../services/api';
 
 // ── Colour Palette ───────────────────────────────────────
 const C = {
@@ -92,7 +101,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
 
     setIsSubmittingVendor(true);
     try {
-      const res = await fetch('http://localhost:5050/api/vendor-requests', {
+      const res = await fetch(API_ENDPOINTS.vendorRequests, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -109,14 +118,14 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
       if (data.success) {
         setShowVendorModal(false);
         if (onRefreshVendorStatus) onRefreshVendorStatus();
-        Alert.alert('✅ Request Submitted!', 'Your vendor application has been sent to Admin for review. Once approved, the Vendor Console and crop publisher will be unlocked.');
+        Alert.alert('Request Submitted!', 'Your vendor application has been sent to Admin for review. Once approved, the Vendor Console and crop publisher will be unlocked.');
       } else {
         setVApplyError(data.message || 'Submission failed. Please try again.');
       }
     } catch {
       setShowVendorModal(false);
       if (onRefreshVendorStatus) onRefreshVendorStatus();
-      Alert.alert('✅ Request Recorded', 'Your request has been saved. Admin will review and verify your farm.');
+      Alert.alert('Request Recorded', 'Your request has been saved. Admin will review and verify your farm.');
     } finally {
       setIsSubmittingVendor(false);
     }
@@ -126,7 +135,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
   const [profileName, setProfileName] = useState('Ananya Sharma');
   const [profileEmail, setProfileEmail] = useState('ananya.sharma@mathira.org');
   const [profileLocation, setProfileLocation] = useState('Flat 402, Green Valley Apts, Indiranagar, Bangalore - 560038');
-  const [profileStats, setProfileStats] = useState({ orders: MockOrders.length, subs: subscriptions.length, spent: 3450, points: 280 });
+  const [profileStats, setProfileStats] = useState({ orders: 0, subs: subscriptions.length, spent: 0, points: 0 });
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [editName, setEditName] = useState('Ananya Sharma');
   const [editEmail, setEditEmail] = useState('ananya.sharma@mathira.org');
@@ -137,7 +146,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
   useEffect(() => {
     const cleanPhone = (userPhone || '9876543210').replace(/[^0-9]/g, '');
     if (!cleanPhone) return;
-    fetch(`http://localhost:5050/api/user/profile/${cleanPhone}`)
+    fetch(API_ENDPOINTS.userProfile(cleanPhone))
       .then(res => res.json())
       .then(json => {
         if (json.success && json.data) {
@@ -154,10 +163,10 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
             setEditLocation(json.data.location);
           }
           setProfileStats({
-            orders: json.data.totalOrders || MockOrders.length,
+            orders: json.data.totalOrders || 0,
             subs: json.data.activeSubscriptions || subscriptions.length,
-            spent: json.data.totalSpend || 3450,
-            points: json.data.loyaltyPoints || 280,
+            spent: json.data.totalSpend || 0,
+            points: json.data.loyaltyPoints || 0,
           });
         }
       })
@@ -169,7 +178,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
     setSaveSuccessMsg(null);
     try {
       const cleanPhone = (userPhone || '9876543210').replace(/[^0-9]/g, '');
-      const res = await fetch(`http://localhost:5050/api/user/profile/${cleanPhone}`, {
+      const res = await fetch(API_ENDPOINTS.userProfile(cleanPhone), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -220,7 +229,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
       if (existing) return prev.map(i => i.product.id === p.id ? { ...i, qty: i.qty + qty } : i);
       return [...prev, { product: p, qty }];
     });
-    Alert.alert('Added to Cart', `${p.name} added! 🛒`);
+    Alert.alert('Added to Cart', `${p.name} added!`);
   };
 
   const updateCartQty = (p: Product, delta: number) => {
@@ -239,16 +248,25 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
   const removeFromCart = (id: string) => setCart(prev => prev.filter(i => i.product.id !== id));
 
   const categories = ['All', 'Dairy & Pure Ghee', 'Fresh Vegetables', 'Fresh Fruits', 'Groceries & Grains', 'Organic Oils', 'Dry Fruits & Snacks'];
-  const categoryEmoji: Record<string, string> = {
-    'All': '🌿', 'Dairy & Pure Ghee': '🥛', 'Fresh Vegetables': '🥦',
-    'Fresh Fruits': '🍎', 'Groceries & Grains': '🌾', 'Organic Oils': '🫒', 'Dry Fruits & Snacks': '🍯'
+  const getCategoryIcon = (cat: string, color: string) => {
+    switch (cat) {
+      case 'All': return <Leaf size={14} color={color} />;
+      case 'Dairy & Pure Ghee': return <Milk size={14} color={color} />;
+      case 'Fresh Vegetables': return <Sprout size={14} color={color} />;
+      case 'Fresh Fruits': return <Apple size={14} color={color} />;
+      case 'Groceries & Grains': return <Wheat size={14} color={color} />;
+      case 'Organic Oils': return <Droplets size={14} color={color} />;
+      case 'Dry Fruits & Snacks': return <Sparkles size={14} color={color} />;
+      default: return <Leaf size={14} color={color} />;
+    }
   };
 
-  const [productsList, setProductsList] = useState<Product[]>(MockProducts);
+  const [productsList, setProductsList] = useState<Product[]>([]);
+  const [userOrders, setUserOrders] = useState<any[]>([]);
 
   useEffect(() => {
     let isMounted = true;
-    fetch('http://localhost:5050/api/products')
+    fetch(API_ENDPOINTS.products)
       .then(res => res.json())
       .then(json => {
         if (isMounted && json.success && Array.isArray(json.data) && json.data.length > 0) {
@@ -260,8 +278,26 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
         }
       })
       .catch(() => {});
+
+    fetch(API_ENDPOINTS.orders)
+      .then(res => res.json())
+      .then(json => {
+        if (isMounted && json.success && Array.isArray(json.data)) {
+          const mapped = json.data.map((o: any) => ({
+            id: o.id,
+            products: o.items && o.items.length > 0 ? o.items.map((it: any) => `${it.product?.name || 'Organic item'} ×${it.quantity}`).join(', ') : 'Certified Organic items',
+            amount: o.totalAmount,
+            date: o.createdAt ? o.createdAt.substring(0, 10) : new Date().toISOString().substring(0, 10),
+            paymentStatus: o.paymentStatus || 'SUCCESS',
+            deliveryStatus: o.deliveryStatus || 'CONFIRMED'
+          }));
+          setUserOrders(mapped);
+        }
+      })
+      .catch(() => {});
+
     return () => { isMounted = false; };
-  }, []);
+  }, [customerScreen]);
 
   const filteredProducts = productsList.filter(p => {
     const catName = safeCategory(p.category);
@@ -280,7 +316,10 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
         <View style={{ position: 'relative' }}>
           <Image source={{ uri: p.imageUrl }} style={cs.productImg} resizeMode="cover" />
           {p.organicCertified && (
-            <View style={cs.certBadge}><Text style={cs.certBadgeText}>✓ Certified Organic</Text></View>
+            <View style={[cs.certBadge, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+              <ShieldCheck size={11} color="#fff" />
+              <Text style={cs.certBadgeText}>Certified Organic</Text>
+            </View>
           )}
           {p.stock <= p.minStock && (
             <View style={cs.lowBadge}><Text style={cs.lowBadgeText}>Low Stock</Text></View>
@@ -291,11 +330,17 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
           <Text style={cs.productName} numberOfLines={1}>{p.name}</Text>
           <Text style={cs.productCat} numberOfLines={1}>{safeCategory(p.category)}</Text>
           
-          <Text style={cs.deliveryBadge}>⚡ Delivery by 6:30 AM Tomorrow</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
+            <Zap size={11} color={C.light} />
+            <Text style={cs.deliveryBadge}>Delivery by 6:30 AM Tomorrow</Text>
+          </View>
 
           <View style={cs.priceRow}>
             <Text style={cs.productPrice}>₹{p.price}<Text style={cs.productUnit}>/{p.unit}</Text></Text>
-            <Text style={cs.productRating}>★ {p.rating}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+              <Star size={11} color="#f59e0b" fill="#f59e0b" />
+              <Text style={cs.productRating}>{p.rating}</Text>
+            </View>
           </View>
 
           {/* Interactive Button Section */}
@@ -318,13 +363,14 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
 
             {p.subscriptionAllowed && (
               <TouchableOpacity
-                style={cs.quickSubBtn}
+                style={[cs.quickSubBtn, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}
                 onPress={() => {
                   setSelectedProduct(p);
                   setCustomerScreen('PRODUCT_DETAILS');
                 }}
               >
-                <Text style={cs.quickSubBtnText}>🔄 Subscribe</Text>
+                <Repeat size={11} color={C.light} />
+                <Text style={cs.quickSubBtnText}>Subscribe</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -356,44 +402,52 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
         {/* Hero Banner */}
         <View style={cs.heroBanner}>
           <View style={{ flex: 1 }}>
-            <View style={cs.heroBadge}><Text style={cs.heroBadgeText}>🌟 DAILY FRESH HARVEST</Text></View>
+            <View style={[cs.heroBadge, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+              <Sparkles size={11} color="#fff" />
+              <Text style={cs.heroBadgeText}>DAILY FRESH HARVEST</Text>
+            </View>
             <Text style={cs.heroTitle}>Farm-to-Door{'\n'}Organic Goodness</Text>
             <Text style={cs.heroSub}>Pure certified organic milk, veggies & ghee.</Text>
             <TouchableOpacity style={cs.heroBtn} onPress={() => setCustomerScreen('ALL_PRODUCTS')}>
               <Text style={cs.heroBtnText}>Shop Now →</Text>
             </TouchableOpacity>
           </View>
-          <Text style={{ fontSize: 56 }}>🌾</Text>
+          <Sprout size={52} color="rgba(255,255,255,0.85)" />
         </View>
 
         {/* Search */}
         <View style={cs.searchBox}>
-          <Text style={{ fontSize: 16, marginRight: 8 }}>🔍</Text>
+          <Search size={16} color={C.textMuted} style={{ marginRight: 8 }} />
           <TextInput
             style={cs.searchInput} placeholder="Search milk, ghee, fruits…"
             value={searchQuery} onChangeText={setSearchQuery}
             placeholderTextColor={C.textMuted}
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}><Text style={{ color: C.textMuted, fontSize: 16 }}>✕</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <X size={16} color={C.textMuted} />
+            </TouchableOpacity>
           )}
         </View>
 
         {/* Categories */}
         <SectionTitle>Browse Categories</SectionTitle>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 18 }}>
-          {categories.map(cat => (
-            <TouchableOpacity
-              key={cat}
-              style={[cs.catChip, activeCategory === cat && cs.catChipActive]}
-              onPress={() => { setActiveCategory(cat); setCustomerScreen('ALL_PRODUCTS'); }}
-            >
-              <Text style={{ fontSize: 13 }}>{categoryEmoji[cat]}</Text>
-              <Text style={[cs.catChipText, activeCategory === cat && cs.catChipTextActive]}>
-                {cat}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {categories.map(cat => {
+            const isActive = activeCategory === cat;
+            return (
+              <TouchableOpacity
+                key={cat}
+                style={[cs.catChip, isActive && cs.catChipActive, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}
+                onPress={() => { setActiveCategory(cat); setCustomerScreen('ALL_PRODUCTS'); }}
+              >
+                {getCategoryIcon(cat, isActive ? '#fff' : C.primary)}
+                <Text style={[cs.catChipText, isActive && cs.catChipTextActive]}>
+                  {cat}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
         {/* Featured products */}
@@ -406,7 +460,10 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
 
         {/* Offers Banner */}
         <View style={cs.offerBanner}>
-          <Text style={cs.offerTitle}>🎁 Subscribe Daily & Save 10% Extra</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Gift size={16} color="#B45309" />
+            <Text style={cs.offerTitle}>Subscribe Daily & Save 10% Extra</Text>
+          </View>
           <Text style={cs.offerSub}>Set up daily A2 Milk or Fresh Vegetable deliveries & get 10% cashback on advance monthly passes.</Text>
           <TouchableOpacity style={cs.offerBtn} onPress={() => setCustomerScreen('ALL_PRODUCTS')}>
             <Text style={cs.offerBtnText}>Explore Subscription Plans →</Text>
@@ -417,13 +474,13 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
         <SectionTitle>My Account & Shortcuts</SectionTitle>
         <View style={cs.quickLinks}>
           {[
-            { icon: '📦', label: 'My Orders', screen: 'ORDER_HISTORY' },
-            { icon: '🔄', label: 'Subscriptions', screen: 'MY_SUBSCRIPTIONS' },
-            { icon: '🛒', label: `Cart (${cartCount})`, screen: 'CART' },
-            { icon: '💬', label: 'WhatsApp AI', screen: 'WHATSAPP_AI' },
+            { icon: <Package size={22} color={C.primary} />, label: 'My Orders', screen: 'ORDER_HISTORY' },
+            { icon: <Repeat size={22} color={C.primary} />, label: 'Subscriptions', screen: 'MY_SUBSCRIPTIONS' },
+            { icon: <ShoppingCart size={22} color={C.primary} />, label: `Cart (${cartCount})`, screen: 'CART' },
+            { icon: <MessageSquare size={22} color={C.primary} />, label: 'WhatsApp AI', screen: 'WHATSAPP_AI' },
           ].map(item => (
             <TouchableOpacity key={item.screen} style={cs.quickLinkCard} onPress={() => setCustomerScreen(item.screen)}>
-              <Text style={{ fontSize: 24 }}>{item.icon}</Text>
+              {item.icon}
               <Text style={cs.quickLinkLabel}>{item.label}</Text>
             </TouchableOpacity>
           ))}
@@ -443,20 +500,23 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
 
         {/* Search */}
         <View style={cs.searchBox}>
-          <Text style={{ fontSize: 16, marginRight: 8 }}>🔍</Text>
+          <Search size={16} color={C.textMuted} style={{ marginRight: 8 }} />
           <TextInput style={cs.searchInput} placeholder="Search products…" value={searchQuery} onChangeText={setSearchQuery} placeholderTextColor={C.textMuted} />
         </View>
 
         {/* Category pills */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
-          {categories.map(cat => (
-            <TouchableOpacity key={cat} style={[cs.catChip, activeCategory === cat && cs.catChipActive]} onPress={() => setActiveCategory(cat)}>
-              <Text style={{ fontSize: 12 }}>{categoryEmoji[cat]}</Text>
-              <Text style={[cs.catChipText, activeCategory === cat && cs.catChipTextActive]}>
-                {cat}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {categories.map(cat => {
+            const isActive = activeCategory === cat;
+            return (
+              <TouchableOpacity key={cat} style={[cs.catChip, isActive && cs.catChipActive, { flexDirection: 'row', alignItems: 'center', gap: 6 }]} onPress={() => setActiveCategory(cat)}>
+                {getCategoryIcon(cat, isActive ? '#fff' : C.primary)}
+                <Text style={[cs.catChipText, isActive && cs.catChipTextActive]}>
+                  {cat}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
         <Text style={[cs.sectionTitle, { marginBottom: 12 }]}>
@@ -469,7 +529,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
           {filteredProducts.map(p => renderProductCard(p))}
           {filteredProducts.length === 0 && (
             <View style={{ padding: 40, alignItems: 'center', width: '100%' }}>
-              <Text style={{ fontSize: 40 }}>🌱</Text>
+              <Sprout size={40} color={C.textMuted} />
               <Text style={{ color: C.textMuted, marginTop: 10, fontSize: 13 }}>No products found</Text>
             </View>
           )}
@@ -512,12 +572,18 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
           </View>
           <View style={cs.detailCard}>
             {selectedProduct.organicCertified && (
-              <View style={cs.certBadgeInline}><Text style={cs.certBadgeText}>✓ 100% Organic Certified</Text></View>
+              <View style={[cs.certBadgeInline, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                <ShieldCheck size={12} color={C.light} />
+                <Text style={cs.certBadgeText}>100% Organic Certified</Text>
+              </View>
             )}
             <Text style={cs.detailName}>{selectedProduct.name}</Text>
             <Text style={cs.detailCat}>{safeCategory(selectedProduct.category)}</Text>
             <Text style={cs.detailPrice}>₹{selectedProduct.price} <Text style={cs.detailUnit}>/{selectedProduct.unit}</Text></Text>
-            <Text style={cs.detailRating}>★ {selectedProduct.rating} · Available {selectedProduct.availabilityStart}–{selectedProduct.availabilityEnd}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+              <Star size={13} color="#f59e0b" fill="#f59e0b" />
+              <Text style={cs.detailRating}>{selectedProduct.rating} · Available {selectedProduct.availabilityStart}–{selectedProduct.availabilityEnd}</Text>
+            </View>
 
             <View style={cs.divider} />
 
@@ -527,7 +593,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
             <Text style={cs.detailSection}>Key Benefits</Text>
             {selectedProduct.benefits.map((b: string, i: number) => (
               <View key={i} style={cs.benefitRow}>
-                <Text style={{ fontSize: 14, marginRight: 8 }}>🌱</Text>
+                <Sprout size={14} color={C.light} style={{ marginRight: 8, marginTop: 2 }} />
                 <Text style={cs.benefitText}>{b}</Text>
               </View>
             ))}
@@ -553,16 +619,18 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {selectedProduct.oneTimeAllowed && (
-              <TouchableOpacity style={cs.buyOnceBtn} onPress={() => { addToCart(selectedProduct, detailQty); setCustomerScreen('HOME'); }}>
-                <Text style={cs.buyOnceBtnText}>🛒 Add to Cart</Text>
+              <TouchableOpacity style={[cs.buyOnceBtn, { flexDirection: 'row', alignItems: 'center', gap: 6 }]} onPress={() => { addToCart(selectedProduct, detailQty); setCustomerScreen('HOME'); }}>
+                <ShoppingCart size={15} color="#fff" />
+                <Text style={cs.buyOnceBtnText}>Add to Cart</Text>
               </TouchableOpacity>
             )}
             {selectedProduct.subscriptionAllowed && (
-              <TouchableOpacity style={cs.subscribeBtn} onPress={() => {
+              <TouchableOpacity style={[cs.subscribeBtn, { flexDirection: 'row', alignItems: 'center', gap: 6 }]} onPress={() => {
                 setActiveSubscriptionData({ product: selectedProduct, qty: detailQty, freq: 'Daily', duration: 30, time: '06:30 AM', priceTotal: selectedProduct.price * detailQty * 30 });
                 setCustomerScreen('SUBSCRIPTION_CREATE');
               }}>
-                <Text style={cs.subscribeBtnText}>🔄 Subscribe</Text>
+                <Repeat size={15} color={C.primary} />
+                <Text style={cs.subscribeBtnText}>Subscribe</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -576,10 +644,13 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <ScrollView contentContainerStyle={cs.scroll} showsVerticalScrollIndicator={false}>
         <BackBtn onPress={() => setCustomerScreen('HOME')} />
-        <Text style={cs.screenTitle}>🛒 My Cart</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <ShoppingCart size={20} color={C.textPrimary} />
+          <Text style={cs.screenTitle}>My Cart</Text>
+        </View>
         {cart.length === 0 ? (
           <View style={{ alignItems: 'center', padding: 50 }}>
-            <Text style={{ fontSize: 50 }}>🛒</Text>
+            <ShoppingCart size={48} color={C.textMuted} />
             <Text style={{ color: C.textMuted, marginTop: 12, fontSize: 14 }}>Your cart is empty</Text>
             <TouchableOpacity style={[cs.buyOnceBtn, { marginTop: 16 }]} onPress={() => setCustomerScreen('ALL_PRODUCTS')}>
               <Text style={cs.buyOnceBtnText}>Browse Products</Text>
@@ -596,7 +667,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
                   <Text style={cs.cartItemPrice}>₹{item.product.price} × {item.qty} = <Text style={{ color: C.light, fontWeight: '800' }}>₹{item.product.price * item.qty}</Text></Text>
                 </View>
                 <TouchableOpacity style={cs.removeBtn} onPress={() => removeFromCart(item.product.id)}>
-                  <Text style={{ color: C.danger, fontSize: 16 }}>✕</Text>
+                  <Trash size={16} color={C.danger} />
                 </TouchableOpacity>
               </View>
             ))}
@@ -616,7 +687,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
               </View>
             </View>
             <TouchableOpacity style={cs.checkoutBtn} onPress={() => {
-              Alert.alert('Order Placed! 🎉', `Your order of ₹${cartTotal} has been placed successfully. Estimated delivery: 06:00–09:00 AM tomorrow.`);
+              Alert.alert('Order Placed!', `Your order of ₹${cartTotal} has been placed successfully. Estimated delivery: 06:00–09:00 AM tomorrow.`);
               setCart([]);
               setCustomerScreen('HOME');
             }}>
@@ -719,9 +790,15 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
           ))}
         </View>
         <View style={cs.configCard}>
-          <Text style={[cs.configCardTitle, { color: C.success }]}>✓ Free Benefits Included</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <ShieldCheck size={14} color={C.success} />
+            <Text style={[cs.configCardTitle, { color: C.success }]}>Free Benefits Included</Text>
+          </View>
           {['Free morning doorstep delivery', 'WhatsApp delivery alerts', 'Skip or pause anytime'].map(b => (
-            <View key={b} style={cs.benefitRow}><Text style={{ fontSize: 14, marginRight: 8 }}>🌱</Text><Text style={cs.benefitText}>{b}</Text></View>
+            <View key={b} style={cs.benefitRow}>
+              <Sprout size={13} color={C.light} style={{ marginRight: 8, marginTop: 2 }} />
+              <Text style={cs.benefitText}>{b}</Text>
+            </View>
           ))}
         </View>
       </ScrollView>
@@ -744,17 +821,20 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
           <View style={cs.payBanner}>
             <Text style={cs.payBannerLabel}>AMOUNT TO PAY</Text>
             <Text style={cs.payBannerAmt}>₹{activeSubscriptionData.priceTotal}</Text>
-            <Text style={cs.payBannerSub}>🔒 Secured via Razorpay</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+              <ShieldCheck size={13} color="rgba(255,255,255,0.8)" />
+              <Text style={cs.payBannerSub}>Secured via Razorpay</Text>
+            </View>
           </View>
           <Text style={cs.detailSection}>Select Payment Method</Text>
           {[
-            { id: 'UPI', name: 'UPI (GPay / PhonePe)', desc: 'Fastest · Zero fee', icon: '📱' },
-            { id: 'CARD', name: 'Credit / Debit Card', desc: 'Visa, Mastercard, RuPay', icon: '💳' },
-            { id: 'BANKING', name: 'Net Banking', desc: 'All major banks', icon: '🏛️' },
-            { id: 'WALLET', name: 'Paytm / Wallet', desc: 'Quick cashback', icon: '💼' },
+            { id: 'UPI', name: 'UPI (GPay / PhonePe)', desc: 'Fastest · Zero fee', icon: <Smartphone size={20} color={C.primary} /> },
+            { id: 'CARD', name: 'Credit / Debit Card', desc: 'Visa, Mastercard, RuPay', icon: <CreditCard size={20} color={C.primary} /> },
+            { id: 'BANKING', name: 'Net Banking', desc: 'All major banks', icon: <Landmark size={20} color={C.primary} /> },
+            { id: 'WALLET', name: 'Paytm / Wallet', desc: 'Quick cashback', icon: <Briefcase size={20} color={C.primary} /> },
           ].map(g => (
             <TouchableOpacity key={g.id} style={[cs.payRow, gateway === g.id && cs.payRowActive]} onPress={() => setGateway(g.id)}>
-              <Text style={{ fontSize: 24, marginRight: 12 }}>{g.icon}</Text>
+              <View style={{ marginRight: 12 }}>{g.icon}</View>
               <View style={{ flex: 1 }}>
                 <Text style={[cs.payRowName, gateway === g.id && { color: C.primary }]}>{g.name}</Text>
                 <Text style={cs.payRowDesc}>{g.desc}</Text>
@@ -769,7 +849,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
           <TouchableOpacity style={cs.checkoutBtn} onPress={() => {
             const newSub = { id: 'sub_' + Date.now(), product: activeSubscriptionData.product, qty: activeSubscriptionData.qty, freq: activeSubscriptionData.freq, duration: activeSubscriptionData.duration, time: activeSubscriptionData.time, priceTotal: activeSubscriptionData.priceTotal, status: 'Active', startDate: new Date().toISOString().split('T')[0], skippedDates: [] };
             setSubscriptions((prev: any[]) => [newSub, ...prev]);
-            Alert.alert('🎉 Payment Successful!', `₹${activeSubscriptionData.priceTotal} paid via ${gateway}. Subscription is now active!`);
+            Alert.alert('Payment Successful!', `₹${activeSubscriptionData.priceTotal} paid via ${gateway}. Subscription is now active!`);
             setCustomerScreen('MY_SUBSCRIPTIONS');
           }}>
             <Text style={cs.checkoutBtnText}>Pay ₹{activeSubscriptionData.priceTotal} →</Text>
@@ -809,8 +889,14 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
                   <Image source={{ uri: sub.product.imageUrl }} style={{ width: 44, height: 44, borderRadius: 8, marginRight: 10, backgroundColor: C.border }} resizeMode="cover" />
                   <View style={{ flex: 1 }}>
                     <Text style={cs.subCardName}>{sub.product.name}</Text>
-                    <Text style={cs.subCardInfo}>🕐 {sub.time} · {sub.qty} {sub.product.unit} · {sub.freq}</Text>
-                    <Text style={cs.subCardInfo}>📅 Started {sub.startDate}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                      <Clock size={11} color={C.textMuted} />
+                      <Text style={cs.subCardInfo}>{sub.time} · {sub.qty} {sub.product.unit} · {sub.freq}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                      <Calendar size={11} color={C.textMuted} />
+                      <Text style={cs.subCardInfo}>Started {sub.startDate}</Text>
+                    </View>
                   </View>
                   <View style={[cs.statusPill, { backgroundColor: sub.status === 'Active' ? '#DCFCE7' : '#FEF3C7' }]}>
                     <Text style={{ fontSize: 10, fontWeight: '700', color: sub.status === 'Active' ? C.success : C.warning }}>{sub.status}</Text>
@@ -819,15 +905,16 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
                 <View style={cs.divider} />
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   <TouchableOpacity style={[cs.subActionBtn, { borderColor: C.warning }]} onPress={() => handleSkip(sub.id)}>
-                    <Text style={{ color: C.warning, fontSize: 11, fontWeight: '700' }}>{skippedToday ? '↩ Resume' : '⏭ Skip Today'}</Text>
+                    <Text style={{ color: C.warning, fontSize: 11, fontWeight: '700' }}>{skippedToday ? 'Resume' : 'Skip Today'}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={[cs.subActionBtn, { borderColor: C.info }]} onPress={() => handlePause(sub.id)}>
-                    <Text style={{ color: C.info, fontSize: 11, fontWeight: '700' }}>{sub.status === 'Paused' ? '▶ Resume' : '⏸ Pause'}</Text>
+                    <Text style={{ color: C.info, fontSize: 11, fontWeight: '700' }}>{sub.status === 'Paused' ? 'Resume' : 'Pause'}</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[cs.subActionBtn, { borderColor: C.danger }]} onPress={() => {
+                  <TouchableOpacity style={[cs.subActionBtn, { borderColor: C.danger, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3 }]} onPress={() => {
                     Alert.alert('Cancel Subscription', 'Are you sure?', [{ text: 'No', style: 'cancel' }, { text: 'Yes, Cancel', style: 'destructive', onPress: () => setSubscriptions((prev: any[]) => prev.filter((s: any) => s.id !== sub.id)) }]);
                   }}>
-                    <Text style={{ color: C.danger, fontSize: 11, fontWeight: '700' }}>✕ Cancel</Text>
+                    <X size={11} color={C.danger} />
+                    <Text style={{ color: C.danger, fontSize: 11, fontWeight: '700' }}>Cancel</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -835,7 +922,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
           })}
           {(subTab === 'History' || subscriptions.length === 0) && (
             <View style={{ alignItems: 'center', padding: 40 }}>
-              <Text style={{ fontSize: 40 }}>📭</Text>
+              <Package size={40} color={C.textMuted} />
               <Text style={{ color: C.textMuted, fontSize: 13, marginTop: 10 }}>
                 {subTab === 'History' ? 'No past subscriptions' : 'No active subscriptions'}
               </Text>
@@ -853,24 +940,46 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
   if (customerScreen === 'ORDER_HISTORY') return (
     <ScrollView contentContainerStyle={cs.scroll} showsVerticalScrollIndicator={false}>
       <BackBtn onPress={() => setCustomerScreen('HOME')} />
-      <Text style={cs.screenTitle}>📦 My Orders</Text>
-      {MockOrders.map(order => (
-        <View key={order.id} style={cs.orderCard}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <View style={{ flex: 1 }}>
-              <Text style={cs.orderIdText}>{order.id}</Text>
-              <Text style={cs.orderProductText} numberOfLines={2}>{order.products}</Text>
-              <Text style={cs.orderMetaText}>📅 {order.date} · 💳 {order.paymentStatus}</Text>
-            </View>
-            <View style={{ alignItems: 'flex-end', gap: 4 }}>
-              <Text style={cs.orderAmount}>₹{order.amount}</Text>
-              <View style={[cs.statusPill, { backgroundColor: order.deliveryStatus === 'DELIVERED' ? '#DCFCE7' : '#DBEAFE' }]}>
-                <Text style={{ fontSize: 9, fontWeight: '700', color: order.deliveryStatus === 'DELIVERED' ? C.success : C.info }}>{order.deliveryStatus}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <Package size={20} color={C.textPrimary} />
+        <Text style={cs.screenTitle}>My Orders</Text>
+      </View>
+      {userOrders.length === 0 ? (
+        <View style={{ alignItems: 'center', padding: 40 }}>
+          <Package size={40} color={C.textMuted} />
+          <Text style={{ color: C.textMuted, fontSize: 13, marginTop: 10 }}>No orders recorded yet.</Text>
+          <TouchableOpacity style={[cs.subscribeBtn, { marginTop: 16 }]} onPress={() => setCustomerScreen('ALL_PRODUCTS')}>
+            <Text style={cs.subscribeBtnText}>Browse & Order</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        userOrders.map(order => (
+          <View key={order.id} style={cs.orderCard}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <View style={{ flex: 1 }}>
+                <Text style={cs.orderIdText}>{order.id}</Text>
+                <Text style={cs.orderProductText} numberOfLines={2}>{order.products}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Calendar size={11} color={C.textMuted} />
+                    <Text style={cs.orderMetaText}>{order.date}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <CreditCard size={11} color={C.textMuted} />
+                    <Text style={cs.orderMetaText}>{order.paymentStatus}</Text>
+                  </View>
+                </View>
+              </View>
+              <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                <Text style={cs.orderAmount}>₹{order.amount}</Text>
+                <View style={[cs.statusPill, { backgroundColor: order.deliveryStatus === 'DELIVERED' ? '#DCFCE7' : '#DBEAFE' }]}>
+                  <Text style={{ fontSize: 9, fontWeight: '700', color: order.deliveryStatus === 'DELIVERED' ? C.success : C.info }}>{order.deliveryStatus}</Text>
+                </View>
               </View>
             </View>
           </View>
-        </View>
-      ))}
+        ))
+      )}
       <View style={{ height: 20 }} />
     </ScrollView>
   );
@@ -884,8 +993,9 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
           <Text style={cs.profileBackBtnText}>← Back to Market</Text>
         </TouchableOpacity>
         <Text style={cs.profileTopNavTitle}>My Account</Text>
-        <TouchableOpacity style={cs.profileEditTopBtn} onPress={() => setShowEditProfileModal(true)} activeOpacity={0.7}>
-          <Text style={cs.profileEditTopBtnText}>✏️ Edit</Text>
+        <TouchableOpacity style={[cs.profileEditTopBtn, { flexDirection: 'row', alignItems: 'center', gap: 4 }]} onPress={() => setShowEditProfileModal(true)} activeOpacity={0.7}>
+          <Pencil size={12} color={C.light} />
+          <Text style={cs.profileEditTopBtnText}>Edit</Text>
         </TouchableOpacity>
       </View>
 
@@ -894,27 +1004,37 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
         <View style={cs.profileHeaderRow}>
           <View style={cs.avatarWrapper}>
             <View style={cs.avatarCircle}>
-              <Text style={{ fontSize: 34 }}>👩🏽</Text>
+              <User size={30} color="#FFFFFF" />
             </View>
             <View style={cs.avatarVerifiedBadge}>
-              <Text style={{ fontSize: 10, color: '#FFFFFF', fontWeight: 'bold' }}>✓</Text>
+              <Check size={10} color="#FFFFFF" strokeWidth={3} />
             </View>
           </View>
           <View style={{ flex: 1, marginLeft: 14 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Text style={cs.heroName} numberOfLines={1}>{profileName}</Text>
             </View>
-            <Text style={cs.heroPhone}>📞 +91 {userPhone || '98765 43210'}</Text>
-            <Text style={cs.heroEmail} numberOfLines={1}>✉️ {profileEmail}</Text>
-            <View style={cs.heroMemberBadge}>
-              <Text style={cs.heroMemberBadgeText}>🌿 Mathira Gold · 100% Organic Club</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+              <Phone size={12} color={C.textSec} />
+              <Text style={cs.heroPhone}>+91 {userPhone || '98765 43210'}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+              <Mail size={12} color={C.textMuted} />
+              <Text style={cs.heroEmail} numberOfLines={1}>{profileEmail}</Text>
+            </View>
+            <View style={[cs.heroMemberBadge, { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }]}>
+              <Award size={12} color="#059669" />
+              <Text style={cs.heroMemberBadgeText}>Mathira Gold · 100% Organic Club</Text>
             </View>
           </View>
         </View>
 
         {/* Address & Quick Edit row */}
         <View style={cs.heroAddressRow}>
-          <Text style={cs.heroAddressText} numberOfLines={1}>📍 {profileLocation}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+            <MapPin size={13} color={C.textMuted} />
+            <Text style={cs.heroAddressText} numberOfLines={1}>{profileLocation}</Text>
+          </View>
           <TouchableOpacity style={cs.heroEditBtn} onPress={() => setShowEditProfileModal(true)} activeOpacity={0.8}>
             <Text style={cs.heroEditBtnText}>Edit</Text>
           </TouchableOpacity>
@@ -925,28 +1045,37 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
       <View style={cs.profileStatsRow}>
         <TouchableOpacity style={cs.statTile} onPress={() => setCustomerScreen('ORDER_HISTORY')} activeOpacity={0.8}>
           <Text style={cs.statTileVal}>{profileStats.orders}</Text>
-          <Text style={cs.statTileLabel}>📦 Orders</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Package size={12} color={C.textMuted} />
+            <Text style={cs.statTileLabel}>Orders</Text>
+          </View>
           <Text style={cs.statTileSub}>Farm Deliveries</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={cs.statTile} onPress={() => setCustomerScreen('MY_SUBSCRIPTIONS')} activeOpacity={0.8}>
           <Text style={[cs.statTileVal, { color: '#059669' }]}>{profileStats.subs}</Text>
-          <Text style={cs.statTileLabel}>🔄 Active Plans</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Repeat size={12} color="#059669" />
+            <Text style={cs.statTileLabel}>Active Plans</Text>
+          </View>
           <Text style={cs.statTileSub}>Daily 6:30 AM</Text>
         </TouchableOpacity>
 
         <View style={cs.statTile}>
           <Text style={[cs.statTileVal, { color: '#D97706' }]}>280</Text>
-          <Text style={cs.statTileLabel}>⭐ Eco Points</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Star size={12} color="#D97706" />
+            <Text style={cs.statTileLabel}>Eco Points</Text>
+          </View>
           <Text style={cs.statTileSub}>Save ₹280</Text>
         </View>
       </View>
 
-      {/* 🌾 Farmer / Partner Producer Registration Section */}
+      {/* Farmer / Partner Producer Registration Section */}
       <View style={cs.producerCard}>
         <View style={cs.producerHeader}>
           <View style={cs.producerIconCircle}>
-            <Text style={{ fontSize: 22 }}>🌾</Text>
+            <Sprout size={22} color={C.primary} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={cs.producerTitle}>Mathira Farmer Network</Text>
@@ -957,29 +1086,31 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
         {(isApprovedVendor || vendorApplicationStatus === 'APPROVED') ? (
           <View style={cs.producerApprovedBox}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-              <Text style={{ fontSize: 13 }}>✅</Text>
+              <CircleCheck size={14} color="#047857" />
               <Text style={cs.producerApprovedBadge}>ADMIN ACCREDITED PRODUCER</Text>
             </View>
             <Text style={cs.producerApprovedDesc}>
               Your farm has been verified by Admin. You have full partner access to list crops, manage morning harvests, and dispatch depot orders.
             </Text>
             {onSwitchToVendor && (
-              <TouchableOpacity style={cs.launchVendorBtn} onPress={onSwitchToVendor} activeOpacity={0.85}>
-                <Text style={cs.launchVendorBtnText}>🚀 Open Farmer Console</Text>
+              <TouchableOpacity style={[cs.launchVendorBtn, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]} onPress={onSwitchToVendor} activeOpacity={0.85}>
+                <Store size={14} color="#FFFFFF" />
+                <Text style={cs.launchVendorBtnText}>Open Farmer Console</Text>
               </TouchableOpacity>
             )}
           </View>
         ) : vendorApplicationStatus === 'PENDING' ? (
           <View style={cs.producerPendingBox}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-              <Text style={{ fontSize: 13 }}>⏳</Text>
+              <Clock size={14} color="#B45309" />
               <Text style={cs.producerPendingBadge}>APPLICATION UNDER ADMIN REVIEW</Text>
             </View>
             <Text style={cs.producerPendingDesc}>
               Application #TN-REQ-9042 submitted to Super Admin. Once approved, the Farmer Console will unlock automatically.
             </Text>
-            <TouchableOpacity style={cs.refreshStatusBtn} onPress={onRefreshVendorStatus} activeOpacity={0.7}>
-              <Text style={cs.refreshStatusBtnText}>🔄 Check Approval Status</Text>
+            <TouchableOpacity style={[cs.refreshStatusBtn, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]} onPress={onRefreshVendorStatus} activeOpacity={0.7}>
+              <Repeat size={14} color="#B45309" />
+              <Text style={cs.refreshStatusBtnText}>Check Approval Status</Text>
             </TouchableOpacity>
           </View>
         ) : vendorApplicationStatus === 'REJECTED' ? (
@@ -997,58 +1128,67 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
             <Text style={cs.producerApplyDesc}>
               Cultivate certified organic crops or produce A2 dairy? Register to sell directly to local subscribers.
             </Text>
-            <TouchableOpacity style={cs.applyFarmerBtn} onPress={() => setShowVendorModal(true)} activeOpacity={0.85}>
-              <Text style={cs.applyFarmerBtnText}>📝 Apply as Partner Farmer</Text>
+            <TouchableOpacity style={[cs.applyFarmerBtn, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]} onPress={() => setShowVendorModal(true)} activeOpacity={0.85}>
+              <FileText size={14} color="#FFFFFF" />
+              <Text style={cs.applyFarmerBtnText}>Apply as Partner Farmer</Text>
             </TouchableOpacity>
           </View>
         )}
       </View>
 
-      {/* Grouped Menu List - iOS Style */}
+      {/* Grouped Menu List */}
       {/* Group 1: Orders & Subscriptions */}
       <View style={cs.menuGroup}>
         <Text style={cs.menuGroupHeading}>ORDERS & PLANS</Text>
         <TouchableOpacity style={cs.menuRow} onPress={() => setCustomerScreen('ORDER_HISTORY')} activeOpacity={0.7}>
-          <Text style={cs.menuRowIcon}>📦</Text>
+          <View style={cs.menuRowIconBox}>
+            <Package size={17} color={C.primary} />
+          </View>
           <View style={cs.menuRowContent}>
             <Text style={cs.menuRowTitle}>My Orders & Receipts</Text>
             <Text style={cs.menuRowSub}>Track farm-fresh deliveries & invoices</Text>
           </View>
-          <Text style={cs.menuRowChevron}>›</Text>
+          <ChevronRight size={16} color="#94A3B8" />
         </TouchableOpacity>
 
         <View style={cs.menuDivider} />
 
         <TouchableOpacity style={cs.menuRow} onPress={() => setCustomerScreen('MY_SUBSCRIPTIONS')} activeOpacity={0.7}>
-          <Text style={cs.menuRowIcon}>🔄</Text>
+          <View style={cs.menuRowIconBox}>
+            <Repeat size={17} color={C.primary} />
+          </View>
           <View style={cs.menuRowContent}>
             <Text style={cs.menuRowTitle}>Morning Subscriptions</Text>
             <Text style={cs.menuRowSub}>Pause, skip, or change milk & veggie plans</Text>
           </View>
           <View style={cs.activePill}><Text style={cs.activePillText}>Active</Text></View>
-          <Text style={cs.menuRowChevron}>›</Text>
+          <ChevronRight size={16} color="#94A3B8" />
         </TouchableOpacity>
 
         <View style={cs.menuDivider} />
 
         <TouchableOpacity style={cs.menuRow} onPress={() => setCustomerScreen('CART')} activeOpacity={0.7}>
-          <Text style={cs.menuRowIcon}>🛒</Text>
+          <View style={cs.menuRowIconBox}>
+            <ShoppingCart size={17} color={C.primary} />
+          </View>
           <View style={cs.menuRowContent}>
             <Text style={cs.menuRowTitle}>My Cart</Text>
             <Text style={cs.menuRowSub}>{cartCount > 0 ? `${cartCount} items ready` : 'View items in basket'}</Text>
           </View>
-          <Text style={cs.menuRowChevron}>›</Text>
+          <ChevronRight size={16} color="#94A3B8" />
         </TouchableOpacity>
 
         <View style={cs.menuDivider} />
 
         <TouchableOpacity style={cs.menuRow} onPress={() => setShowEditProfileModal(true)} activeOpacity={0.7}>
-          <Text style={cs.menuRowIcon}>📍</Text>
+          <View style={cs.menuRowIconBox}>
+            <MapPin size={17} color={C.primary} />
+          </View>
           <View style={cs.menuRowContent}>
             <Text style={cs.menuRowTitle}>Delivery Addresses</Text>
             <Text style={cs.menuRowSub} numberOfLines={1}>{profileLocation}</Text>
           </View>
-          <Text style={cs.menuRowChevron}>›</Text>
+          <ChevronRight size={16} color="#94A3B8" />
         </TouchableOpacity>
       </View>
 
@@ -1056,7 +1196,9 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
       <View style={cs.menuGroup}>
         <Text style={cs.menuGroupHeading}>SMART FARM SERVICES</Text>
         <TouchableOpacity style={cs.menuRow} onPress={() => setCustomerScreen('WHATSAPP_AI')} activeOpacity={0.7}>
-          <Text style={cs.menuRowIcon}>💬</Text>
+          <View style={cs.menuRowIconBox}>
+            <MessageSquare size={17} color={C.primary} />
+          </View>
           <View style={cs.menuRowContent}>
             <Text style={cs.menuRowTitle}>WhatsApp AI Assistant</Text>
             <Text style={cs.menuRowSub}>Instant order booking & harvest queries</Text>
@@ -1064,13 +1206,15 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
           <View style={[cs.activePill, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}>
             <Text style={[cs.activePillText, { color: '#047857' }]}>BOT</Text>
           </View>
-          <Text style={cs.menuRowChevron}>›</Text>
+          <ChevronRight size={16} color="#94A3B8" />
         </TouchableOpacity>
 
         <View style={cs.menuDivider} />
 
         <TouchableOpacity style={cs.menuRow} onPress={() => setCustomerScreen('AI_VOICE_CALL')} activeOpacity={0.7}>
-          <Text style={cs.menuRowIcon}>📞</Text>
+          <View style={cs.menuRowIconBox}>
+            <Phone size={17} color={C.primary} />
+          </View>
           <View style={cs.menuRowContent}>
             <Text style={cs.menuRowTitle}>Voice AI Hotline</Text>
             <Text style={cs.menuRowSub}>Speak naturally in your native language</Text>
@@ -1078,7 +1222,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
           <View style={[cs.activePill, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
             <Text style={[cs.activePillText, { color: '#2563EB' }]}>LIVE</Text>
           </View>
-          <Text style={cs.menuRowChevron}>›</Text>
+          <ChevronRight size={16} color="#94A3B8" />
         </TouchableOpacity>
       </View>
 
@@ -1086,7 +1230,9 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
       <View style={cs.menuGroup}>
         <Text style={cs.menuGroupHeading}>TRUST & PREFERENCES</Text>
         <View style={cs.menuRow}>
-          <Text style={cs.menuRowIcon}>🌱</Text>
+          <View style={cs.menuRowIconBox}>
+            <ShieldCheck size={17} color={C.primary} />
+          </View>
           <View style={cs.menuRowContent}>
             <Text style={cs.menuRowTitle}>100% Certified Organic</Text>
             <Text style={cs.menuRowSub}>NPOP & Jaivik Bharat Accredited</Text>
@@ -1097,7 +1243,9 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
         <View style={cs.menuDivider} />
 
         <View style={cs.menuRow}>
-          <Text style={cs.menuRowIcon}>⏰</Text>
+          <View style={cs.menuRowIconBox}>
+            <Clock size={17} color={C.primary} />
+          </View>
           <View style={cs.menuRowContent}>
             <Text style={cs.menuRowTitle}>Morning Delivery Window</Text>
             <Text style={cs.menuRowSub}>Daily 06:00 AM – 07:00 AM</Text>
@@ -1107,8 +1255,9 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
       </View>
 
       {/* Sign Out Card */}
-      <TouchableOpacity style={cs.profileSignOutBtn} onPress={handleLogout} activeOpacity={0.8}>
-        <Text style={cs.profileSignOutBtnText}>🔒 Sign Out of Account</Text>
+      <TouchableOpacity style={[cs.profileSignOutBtn, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]} onPress={handleLogout} activeOpacity={0.8}>
+        <LogOut size={16} color="#ef4444" />
+        <Text style={cs.profileSignOutBtnText}>Sign Out of Account</Text>
       </TouchableOpacity>
 
       {/* Footer Branding */}
@@ -1128,16 +1277,17 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
                 <Text style={cs.vendorModalSub}>Update your personal & delivery address</Text>
               </View>
               <TouchableOpacity onPress={() => setShowEditProfileModal(false)} style={cs.modalCloseBtn}>
-                <Text style={{ fontSize: 18, color: '#64748B' }}>✕</Text>
+                <X size={18} color="#64748B" />
               </TouchableOpacity>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
-              {saveSuccessMsg && (
-                <View style={[cs.modalErrorBox, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}>
-                  <Text style={[cs.modalErrorText, { color: '#047857' }]}>✅ {saveSuccessMsg}</Text>
+              {saveSuccessMsg ? (
+                <View style={[cs.modalErrorBox, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0', flexDirection: 'row', alignItems: 'center', gap: 6 }]}>
+                  <CircleCheck size={14} color="#047857" />
+                  <Text style={[cs.modalErrorText, { color: '#047857' }]}>{saveSuccessMsg}</Text>
                 </View>
-              )}
+              ) : null}
 
               <Text style={cs.formLabel}>Full Name</Text>
               <TextInput
@@ -1205,16 +1355,16 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
                 <Text style={cs.vendorModalSub}>Sends verification request to Admin</Text>
               </View>
               <TouchableOpacity onPress={() => setShowVendorModal(false)} style={cs.modalCloseBtn}>
-                <Text style={{ fontSize: 18, color: '#64748B' }}>✕</Text>
+                <X size={18} color="#64748B" />
               </TouchableOpacity>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
-              {vApplyError && (
+              {vApplyError ? (
                 <View style={cs.modalErrorBox}>
-                  <Text style={cs.modalErrorText}>⚠️ {vApplyError}</Text>
+                  <Text style={cs.modalErrorText}>{vApplyError}</Text>
                 </View>
-              )}
+              ) : null}
 
               <Text style={cs.formLabel}>Applicant Mobile</Text>
               <TextInput
@@ -1520,6 +1670,7 @@ const cs = StyleSheet.create({
   menuGroup: { backgroundColor: '#FFFFFF', borderRadius: 16, paddingVertical: 8, paddingHorizontal: 14, marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.03, shadowRadius: 3, elevation: 1 },
   menuGroupHeading: { fontSize: 10, fontWeight: '800', color: '#94A3B8', letterSpacing: 0.8, textTransform: 'uppercase', paddingVertical: 6, paddingHorizontal: 2 },
   menuRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
+  menuRowIconBox: { width: 32, height: 32, borderRadius: 8, backgroundColor: '#F0F9F4', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
   menuRowIcon: { fontSize: 18, width: 30 },
   menuRowContent: { flex: 1, paddingRight: 6 },
   menuRowTitle: { fontSize: 13, fontWeight: '700', color: '#1E293B' },

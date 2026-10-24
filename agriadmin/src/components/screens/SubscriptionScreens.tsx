@@ -1,12 +1,20 @@
-import React, { useState } from 'react';
-import { MockSubscriptions, Subscription } from '../../../../agriapp/src/constants/mockData';
+import React, { useState, useEffect } from 'react';
+import { Inbox, Milk, CheckCircle2, FastForward, Sprout, Bot, Mic, PhoneOff, Volume2, ArrowLeft } from 'lucide-react';
+import { Subscription } from '../../../../agriapp/src/constants/mockData';
+import { fetchSubscriptionsFromDB } from '../../data/mockData';
 
 // 8. MY SUBSCRIPTIONS SCREEN
 export const MySubscriptionsScreen: React.FC<{ 
   onBack: () => void;
 }> = ({ onBack }) => {
   const [activeTab, setActiveTab] = useState<'Active' | 'Upcoming' | 'History'>('Active');
-  const [subs, setSubs] = useState<Subscription[]>(MockSubscriptions);
+  const [subs, setSubs] = useState<Subscription[]>([]);
+
+  useEffect(() => {
+    fetchSubscriptionsFromDB().then(data => {
+      if (data && Array.isArray(data)) setSubs(data);
+    });
+  }, []);
 
   const handleSkip = (id: string) => {
     setSubs(prev => prev.map(s => {
@@ -92,7 +100,7 @@ export const MySubscriptionsScreen: React.FC<{
 
         {activeTab !== 'Active' && (
           <div style={{ padding: '40px 20px', textAlign: 'center', color: '#888' }}>
-            <span style={{ fontSize: '32px' }}>📭</span>
+            <Inbox size={32} color="#888" style={{ marginBottom: 8 }} />
             <p style={{ fontSize: '13px', margin: '8px 0 0 0' }}>No {activeTab.toLowerCase()} subscriptions found.</p>
           </div>
         )}
@@ -111,13 +119,13 @@ export const DailyDeliveryConfirmationScreen: React.FC<{
   return (
     <div style={{ flex: 1, backgroundColor: '#FDFBF7', display: 'flex', flexDirection: 'column', height: '100%', fontFamily: 'sans-serif', boxSizing: 'border-box' }}>
       <div style={{ display: 'flex', alignItems: 'center', padding: '16px', borderBottom: '1px solid #EFEBE9', backgroundColor: '#fff' }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', fontSize: '18px', marginRight: '12px', cursor: 'pointer', color: '#2E7D32' }}>←</button>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', marginRight: '12px', cursor: 'pointer', color: '#2E7D32', display: 'flex', alignItems: 'center' }}><ArrowLeft size={16} /></button>
         <span style={{ fontSize: '15px', fontWeight: 'bold', color: '#2C3E2F' }}>Morning Dispatch Checklist</span>
       </div>
 
       <div style={{ flex: 1, padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
         <div style={{ width: '80px', height: '80px', borderRadius: '40px', backgroundColor: '#E8F5E9', border: '2px solid #81C784', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px' }}>
-          <span style={{ fontSize: '36px' }}>🥛</span>
+          <Milk size={36} color="#2E7D32" />
         </div>
         
         <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#2C3E2F' }}>Tomorrow's Milk Intake</h3>
@@ -142,7 +150,7 @@ export const DailyDeliveryConfirmationScreen: React.FC<{
 
         {status === 'CONFIRMED' && (
           <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#E8F5E9', border: '1px solid #81C784', width: '100%', boxSizing: 'border-box' }}>
-            <span style={{ fontSize: '24px' }}>✅</span>
+            <CheckCircle2 size={24} color="#2E7D32" style={{ display: 'inline-block', marginBottom: 4 }} />
             <h4 style={{ margin: '4px 0', color: '#2E7D32' }}>Delivery Confirmed</h4>
             <p style={{ margin: '0', fontSize: '11px', color: '#7A8C7F' }}>Order dispatched under code RECUR-4921</p>
           </div>
@@ -150,7 +158,7 @@ export const DailyDeliveryConfirmationScreen: React.FC<{
 
         {status === 'SKIPPED' && (
           <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#FFF3E0', border: '1px solid #FFB74D', width: '100%', boxSizing: 'border-box' }}>
-            <span style={{ fontSize: '24px' }}>⏭️</span>
+            <FastForward size={24} color="#E65100" style={{ display: 'inline-block', marginBottom: 4 }} />
             <h4 style={{ margin: '4px 0', color: '#E65100' }}>Delivery Skipped</h4>
             <p style={{ margin: '0', fontSize: '11px', color: '#E65100' }}>You will not be charged. Subscription remains active.</p>
           </div>
@@ -197,7 +205,7 @@ export const WhatsAppAIScreen: React.FC = () => {
     <div style={{ flex: 1, backgroundColor: '#ECE5DD', display: 'flex', flexDirection: 'column', height: '100%', fontFamily: 'sans-serif' }}>
       {/* WhatsApp Bar */}
       <div style={{ backgroundColor: '#075E54', color: '#fff', padding: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <span style={{ fontSize: '20px' }}>🌱</span>
+        <Sprout size={20} color="#81C784" />
         <div>
           <h4 style={{ margin: '0', fontSize: '13px' }}>OrganicFlow AI Bot</h4>
           <span style={{ fontSize: '9px', opacity: 0.8 }}>Online | Verified Business</span>
@@ -274,7 +282,7 @@ export const AIVoiceCallScreen: React.FC = () => {
     <div style={{ flex: 1, backgroundColor: '#1A3323', display: 'flex', flexDirection: 'column', height: '100%', color: '#fff', fontFamily: 'sans-serif', boxSizing: 'border-box' }}>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
         <div style={{ width: '100px', height: '100px', borderRadius: '50px', backgroundColor: '#2E7D32', border: '3px solid #81C784', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px' }}>
-          <span style={{ fontSize: '48px' }}>🤖</span>
+          <Bot size={48} color="#fff" />
         </div>
         <h3>OrganicFlow Voice AI</h3>
         <p style={{ fontSize: '13px', opacity: 0.7 }}>{callActive ? 'Voice verification active...' : 'Call ended'}</p>
@@ -304,17 +312,21 @@ export const AIVoiceCallScreen: React.FC = () => {
             </button>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '30px', alignItems: 'center' }}>
               <div style={{ textAlign: 'center' }}>
-                <button style={{ width: '44px', height: '44px', borderRadius: '22px', border: 'none', backgroundColor: 'rgba(255,255,255,0.2)', cursor: 'pointer' }}>🎙️</button>
+                <button style={{ width: '44px', height: '44px', borderRadius: '22px', border: 'none', backgroundColor: 'rgba(255,255,255,0.2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Mic size={18} color="#fff" />
+                </button>
                 <p style={{ margin: '4px 0 0 0', fontSize: '9px', opacity: 0.8 }}>Mute</p>
               </div>
               <button 
                 onClick={() => setCallActive(false)}
-                style={{ width: '56px', height: '56px', borderRadius: '28px', border: 'none', backgroundColor: '#E53935', cursor: 'pointer', fontSize: '20px' }}
+                style={{ width: '56px', height: '56px', borderRadius: '28px', border: 'none', backgroundColor: '#E53935', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
-                📞
+                <PhoneOff size={22} color="#fff" />
               </button>
               <div style={{ textAlign: 'center' }}>
-                <button style={{ width: '44px', height: '44px', borderRadius: '22px', border: 'none', backgroundColor: 'rgba(255,255,255,0.2)', cursor: 'pointer' }}>🔊</button>
+                <button style={{ width: '44px', height: '44px', borderRadius: '22px', border: 'none', backgroundColor: 'rgba(255,255,255,0.2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Volume2 size={18} color="#fff" />
+                </button>
                 <p style={{ margin: '4px 0 0 0', fontSize: '9px', opacity: 0.8 }}>Speaker</p>
               </div>
             </div>

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Platform, Text, TouchableOpacity, Dimensions } from 'react-native';
 
+import { Sprout, Smartphone, Monitor } from 'lucide-react-native';
+
 interface MobileFrameWrapperProps {
   children: React.ReactNode;
 }
@@ -24,22 +26,26 @@ export const MobileFrameWrapper: React.FC<MobileFrameWrapperProps> = ({ children
         {/* Top Control Bar for Web Simulator */}
         <View style={styles.simulatorTopBar}>
           <View style={styles.simBrand}>
-            <Text style={styles.simBrandIcon}>🌱</Text>
+            <View style={{ marginRight: 6 }}>
+              <Sprout size={18} color="#16a34a" />
+            </View>
             <Text style={styles.simBrandTitle}>OrganicFlow AI Mobile Web Simulator</Text>
             <View style={styles.liveTag}><Text style={styles.liveTagText}>● Expo 54 Live</Text></View>
           </View>
           <View style={styles.simControls}>
             <TouchableOpacity 
-              style={[styles.simBtn, styles.simBtnActive]} 
+              style={[styles.simBtn, styles.simBtnActive, { flexDirection: 'row', alignItems: 'center', gap: 6 }]} 
               onPress={() => setFrameEnabled(true)}
             >
-              <Text style={styles.simBtnTextActive}>📱 Mobile View</Text>
+              <Smartphone size={14} color="#16a34a" />
+              <Text style={styles.simBtnTextActive}>Mobile View</Text>
             </TouchableOpacity>
             <TouchableOpacity 
-              style={styles.simBtn} 
+              style={[styles.simBtn, { flexDirection: 'row', alignItems: 'center', gap: 6 }]} 
               onPress={() => setFrameEnabled(false)}
             >
-              <Text style={styles.simBtnText}>🖥️ Full Web View</Text>
+              <Monitor size={14} color="#64748B" />
+              <Text style={styles.simBtnText}>Full Web View</Text>
             </TouchableOpacity>
           </View>
         </View>

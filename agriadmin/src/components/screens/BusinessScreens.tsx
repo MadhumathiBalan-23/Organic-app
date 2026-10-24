@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
-import { MockProducts, MockAIAlerts, Product, Categories } from '../../../../agriapp/src/constants/mockData';
+import React, { useState, useEffect } from 'react';
+import { Sprout, Plus, Package, ClipboardList, Bot, Lock, AlertTriangle, Settings, Zap } from 'lucide-react';
+import { Categories } from '../../../../agriapp/src/constants/mockData';
+import { fetchProductsFromDB, fetchAIAlertsFromDB } from '../../data/mockData';
+import { createProductAPI, updateProductAPI } from '../../services/api';
 
 // Helper for card styling
 const boxStyle = {
@@ -18,7 +21,9 @@ export const VendorDashboardScreen: React.FC<{ onNavigate: (scr: string) => void
       <div style={{ padding: '16px', backgroundColor: '#8D6E63', color: '#fff', borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px' }}>
         <h4 style={{ margin: '0 0 4px 0', fontSize: '11px', opacity: 0.9 }}>FARMER PORTAL</h4>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: '0', fontSize: '16px' }}>🌾 Green Valley Organic Farm</h3>
+          <h3 style={{ margin: '0', fontSize: '16px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Sprout size={16} /> Green Valley Organic Farm
+          </h3>
           <span style={{ fontSize: '12px', color: '#EFEBE9', cursor: 'pointer', border: '1px solid #EFEBE9', padding: '2px 8px', borderRadius: '4px' }} onClick={() => onNavigate('WELCOME')}>Exit</span>
         </div>
       </div>
@@ -38,9 +43,15 @@ export const VendorDashboardScreen: React.FC<{ onNavigate: (scr: string) => void
 
         {/* Action Shortcuts */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-          <button onClick={() => onNavigate('VENDOR_PRODUCT_MGMT')} style={{ padding: '10px 4px', borderRadius: '8px', border: '1px solid #EFEBE9', backgroundColor: '#fff', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }}>➕ Add Stock</button>
-          <button onClick={() => onNavigate('VENDOR_STOCK_MGMT')} style={{ padding: '10px 4px', borderRadius: '8px', border: '1px solid #EFEBE9', backgroundColor: '#fff', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }}>📦 Inventory</button>
-          <button onClick={() => onNavigate('VENDOR_ORDERS')} style={{ padding: '10px 4px', borderRadius: '8px', border: '1px solid #EFEBE9', backgroundColor: '#fff', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }}>📋 Orders</button>
+          <button onClick={() => onNavigate('VENDOR_PRODUCT_MGMT')} style={{ padding: '10px 4px', borderRadius: '8px', border: '1px solid #EFEBE9', backgroundColor: '#fff', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+            <Plus size={12} /> Add Stock
+          </button>
+          <button onClick={() => onNavigate('VENDOR_STOCK_MGMT')} style={{ padding: '10px 4px', borderRadius: '8px', border: '1px solid #EFEBE9', backgroundColor: '#fff', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+            <Package size={12} /> Inventory
+          </button>
+          <button onClick={() => onNavigate('VENDOR_ORDERS')} style={{ padding: '10px 4px', borderRadius: '8px', border: '1px solid #EFEBE9', backgroundColor: '#fff', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+            <ClipboardList size={12} /> Orders
+          </button>
         </div>
 
         {/* Stock Status Bar */}
@@ -80,35 +91,29 @@ export const VendorProductManagementScreen: React.FC<{ onBack: () => void }> = (
   const [category, setCategory] = useState(Categories[1]);
   const [success, setSuccess] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !price || !stock) return;
-    const newProduct: Product = {
-      id: 'p' + (MockProducts.length + 1),
-      name,
-      category,
-      price: parseFloat(price),
-      unit: 'kg',
-      rating: 5.0,
-      stock: parseInt(stock),
-      minStock: 5,
-      availabilityStart: '06:00 AM',
-      availabilityEnd: '10:00 PM',
-      description: 'Fresh organic crop added by Vendor.',
-      benefits: ['100% organic', 'Directly from farm'],
-      imageUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400',
-      subscriptionAllowed: true,
-      oneTimeAllowed: true,
-      organicCertified: true
-    };
-    MockProducts.push(newProduct);
-    setSuccess(true);
-    setTimeout(() => {
-      setSuccess(false);
-      setName('');
-      setPrice('');
-      setStock('');
-    }, 2000);
+    try {
+      await createProductAPI({
+        name,
+        categoryName: category,
+        price: parseFloat(price),
+        stock: parseInt(stock),
+        unit: 'kg',
+        description: 'Fresh organic crop added by Vendor.',
+        imageUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400'
+      });
+      setSuccess(true);
+      setTimeout(() => {
+        setSuccess(false);
+        setName('');
+        setPrice('');
+        setStock('');
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to create product:', err);
+    }
   };
 
   return (
@@ -170,10 +175,26 @@ export const VendorProductManagementScreen: React.FC<{ onBack: () => void }> = (
 
 // 17. VENDOR STOCK MANAGEMENT SCREEN
 export const VendorStockManagementScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const [productStocks, setProductStocks] = useState<Product[]>(MockProducts);
+  const [productStocks, setProductStocks] = useState<any[]>([]);
 
-  const addStockQuantity = (id: string, amt: number) => {
-    setProductStocks(prev => prev.map(p => p.id === id ? { ...p, stock: p.stock + amt } : p));
+  useEffect(() => {
+    fetchProductsFromDB().then(data => {
+      if (data && Array.isArray(data)) setProductStocks(data);
+    });
+  }, []);
+
+  const addStockQuantity = async (id: string, amt: number) => {
+    let newStock = 0;
+    setProductStocks(prev => prev.map(p => {
+      if (String(p.id) === String(id)) {
+        newStock = p.stock + amt;
+        return { ...p, stock: newStock };
+      }
+      return p;
+    }));
+    try {
+      await updateProductAPI(id, { stock: newStock });
+    } catch {}
   };
 
   return (
@@ -263,23 +284,33 @@ export const VendorOrdersScreen: React.FC<{ onBack: () => void }> = ({ onBack })
 
 // 19. AI MONITORING DASHBOARD SCREEN
 export const AIMonitoringScreen: React.FC = () => {
+  const [alerts, setAlerts] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchAIAlertsFromDB().then(data => {
+      if (data && Array.isArray(data)) setAlerts(data);
+    });
+  }, []);
+
   return (
     <div style={{ flex: 1, backgroundColor: '#F0F4F2', display: 'flex', flexDirection: 'column', height: '100%', fontFamily: 'sans-serif', boxSizing: 'border-box' }}>
       <div style={{ padding: '16px', backgroundColor: '#1A3323', color: '#fff' }}>
         <h4 style={{ margin: '0 0 2px 0', fontSize: '9px', color: '#81C784', fontWeight: 'bold' }}>PREDICTOR ENGINE</h4>
-        <h3 style={{ margin: '0', fontSize: '15px' }}>⚡ OrganicFlow AI Monitor</h3>
+        <h3 style={{ margin: '0', fontSize: '15px', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Zap size={16} color="#81C784" /> OrganicFlow AI Monitor
+        </h3>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px', boxSizing: 'border-box' }}>
         {/* Core Insights */}
-        {MockAIAlerts.map(al => (
+        {alerts.map(al => (
           <div 
             key={al.id}
             style={{ ...boxStyle, borderLeft: '4px solid #2E7D32', display: 'flex', gap: '10px', alignItems: 'flex-start' }}
           >
-            <span style={{ fontSize: '18px' }}>🤖</span>
+            <Bot size={18} color="#2E7D32" style={{ flexShrink: 0, marginTop: 2 }} />
             <div>
-              <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#7A8C7F' }}>{al.type.toUpperCase()}</span>
+              <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#7A8C7F' }}>{(al.type || 'INSIGHT').toUpperCase()}</span>
               <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#2C3E2F', lineHeight: 1.4 }}>{al.text}</p>
             </div>
           </div>
@@ -338,33 +369,27 @@ export const AdminDashboardScreen: React.FC = () => {
     localStorage.removeItem('isAdminLoggedIn');
   };
 
-  const handleAddProduct = (e: React.FormEvent) => {
+  const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!prodName || !prodPrice || !prodStock) return;
-    const newProduct: Product = {
-      id: 'p' + (MockProducts.length + 1),
-      name: prodName,
-      category: prodCategory,
-      price: parseFloat(prodPrice),
-      unit: 'kg',
-      rating: 5.0,
-      stock: parseInt(prodStock),
-      minStock: 5,
-      availabilityStart: '06:00 AM',
-      availabilityEnd: '10:00 PM',
-      description: 'High-quality organic product added by Super Admin.',
-      benefits: ['Verified Organic', 'Pesticide Free', 'Fresh Harvest'],
-      imageUrl: 'https://images.unsplash.com/photo-1610832958506-ee5633619144?auto=format&fit=crop&q=80&w=400',
-      subscriptionAllowed: true,
-      oneTimeAllowed: true,
-      organicCertified: true
-    };
-    MockProducts.push(newProduct);
-    setAddSuccess(true);
-    setProdName('');
-    setProdPrice('');
-    setProdStock('');
-    setTimeout(() => setAddSuccess(false), 2000);
+    try {
+      await createProductAPI({
+        name: prodName,
+        categoryName: prodCategory,
+        price: parseFloat(prodPrice),
+        stock: parseInt(prodStock),
+        unit: 'kg',
+        description: 'High-quality organic product added by Super Admin.',
+        imageUrl: 'https://images.unsplash.com/photo-1610832958506-ee5633619144?auto=format&fit=crop&q=80&w=400'
+      });
+      setAddSuccess(true);
+      setProdName('');
+      setProdPrice('');
+      setProdStock('');
+      setTimeout(() => setAddSuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to add product:', err);
+    }
   };
 
   if (!isLoggedIn) {
@@ -372,14 +397,16 @@ export const AdminDashboardScreen: React.FC = () => {
       <div style={{ flex: 1, backgroundColor: '#FDFBF7', display: 'flex', flexDirection: 'column', height: '100%', fontFamily: 'sans-serif', boxSizing: 'border-box', justifyContent: 'center', padding: '24px' }}>
         <div style={{ ...boxStyle, display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: '32px' }}>🔒</span>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
+              <Lock size={32} color="#2E7D32" />
+            </div>
             <h3 style={{ margin: '8px 0 0 0', color: '#2E7D32', fontSize: '18px' }}>Admin Portal Login</h3>
             <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#7A8C7F' }}>Enter credentials to access Control Room</p>
           </div>
           
           {error && (
-            <div style={{ fontSize: '11px', color: '#C62828', backgroundColor: '#FFEBEE', padding: '8px 12px', borderRadius: '6px', fontWeight: 'bold' }}>
-              ⚠️ {error}
+            <div style={{ fontSize: '11px', color: '#C62828', backgroundColor: '#FFEBEE', padding: '8px 12px', borderRadius: '6px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <AlertTriangle size={13} /> {error}
             </div>
           )}
 
@@ -424,7 +451,9 @@ export const AdminDashboardScreen: React.FC = () => {
       <div style={{ padding: '16px', backgroundColor: '#2E7D32', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h4 style={{ margin: '0 0 2px 0', fontSize: '10px', opacity: 0.8 }}>SYSTEM ADMINISTRATOR</h4>
-          <h3 style={{ margin: '0', fontSize: '16px' }}>⚙️ Control Room</h3>
+          <h3 style={{ margin: '0', fontSize: '16px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Settings size={16} /> Control Room
+          </h3>
         </div>
         <button 
           onClick={handleLogout}
@@ -450,7 +479,9 @@ export const AdminDashboardScreen: React.FC = () => {
 
         {/* Add Product Section for Admin */}
         <div style={boxStyle}>
-          <h5 style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#2E7D32', borderBottom: '1px solid #EFEBE9', paddingBottom: '6px' }}>➕ Add New Product to App Catalog</h5>
+          <h5 style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#2E7D32', borderBottom: '1px solid #EFEBE9', paddingBottom: '6px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Plus size={13} /> Add New Product to App Catalog
+          </h5>
           
           {addSuccess && (
             <div style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: '#E8F5E9', border: '1px solid #81C784', color: '#2E7D32', fontSize: '11px', fontWeight: 'bold', marginBottom: '10px' }}>

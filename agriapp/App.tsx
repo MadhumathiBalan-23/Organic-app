@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   SafeAreaView, StyleSheet, Text, View, TextInput, 
   TouchableOpacity, StatusBar, Alert, Modal, Image, ActivityIndicator
 } from 'react-native';
-import { MockProducts, MockDeliveries, Product } from './src/constants/mockData';
+import { defaultProduct, Product } from './src/constants/mockData';
 import { MobileFrameWrapper } from './src/components/MobileFrameWrapper';
 import { RoleHeader, UserRole } from './src/components/RoleHeader';
 import { BottomNavBar } from './src/components/BottomNavBar';
@@ -12,6 +12,7 @@ import { CustomerScreens } from './src/screens/CustomerScreens';
 import { AIScreens } from './src/screens/AIScreens';
 import { VendorAndAdminScreens } from './src/screens/VendorAndAdminScreens';
 import { SidebarDrawer } from './src/components/SidebarDrawer';
+import { API_ENDPOINTS } from './src/services/api';
 
 export default function App() {
   const [role, setRole] = useState<UserRole>(null);
@@ -25,28 +26,56 @@ export default function App() {
   const [showVendorAddProduct, setShowVendorAddProduct] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedProduct, setSelectedProduct] = useState<Product>(MockProducts[0]);
+  const [selectedProduct, setSelectedProduct] = useState<Product>(defaultProduct);
   const [activeSubscriptionData, setActiveSubscriptionData] = useState<any>({
-    product: MockProducts[0],
+    product: defaultProduct,
     qty: 2,
     freq: 'Daily',
     duration: 30,
     time: '06:30 AM',
     priceTotal: 5100
   });
-  const [subscriptions, setSubscriptions] = useState<any[]>([
-    {
-      id: 'sub_101',
-      product: MockProducts[0],
-      qty: 2,
-      freq: 'Daily',
-      duration: 30,
-      time: '06:30 AM',
-      priceTotal: 5100,
-      status: 'Active',
-      startDate: '2026-08-28'
-    }
-  ]);
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [cropsCount, setCropsCount] = useState<number>(0);
+  const [pendingDeliveriesCount, setPendingDeliveriesCount] = useState<number>(0);
+
+  useEffect(() => {
+    fetch(API_ENDPOINTS.products)
+      .then(res => res.json())
+      .then(json => {
+        if (json.success && Array.isArray(json.data)) {
+          setCropsCount(json.data.length);
+          if (json.data.length > 0) {
+            const first = {
+              ...json.data[0],
+              category: typeof json.data[0].category === 'object' && json.data[0].category !== null ? json.data[0].category.name : (json.data[0].categoryName || json.data[0].category || 'Organic'),
+              benefits: Array.isArray(json.data[0].benefits) ? json.data[0].benefits : []
+            };
+            setSelectedProduct(first);
+            setActiveSubscriptionData((prev: any) => ({ ...prev, product: first }));
+          }
+        }
+      })
+      .catch(() => {});
+
+    fetch(API_ENDPOINTS.subscriptions)
+      .then(res => res.json())
+      .then(json => {
+        if (json.success && Array.isArray(json.data)) {
+          setSubscriptions(json.data);
+        }
+      })
+      .catch(() => {});
+
+    fetch(API_ENDPOINTS.deliveries)
+      .then(res => res.json())
+      .then(json => {
+        if (json.success && Array.isArray(json.data)) {
+          setPendingDeliveriesCount(json.data.filter((d: any) => d.status !== 'Delivered').length);
+        }
+      })
+      .catch(() => {});
+  }, [refreshKey]);
 
   // Mobile OTP Auth states (Customer-only login, Passwordless)
   const [authStep, setAuthStep] = useState<'PHONE' | 'OTP'>('PHONE');
@@ -66,7 +95,7 @@ export default function App() {
     const cleanPhone = (overridePhone || phone || '').replace(/[^0-9]/g, '');
     if (!cleanPhone || cleanPhone.length !== 10) return;
     try {
-      const res = await fetch(`http://localhost:5050/api/vendor-requests/status/${cleanPhone}`);
+      const res = await fetch(API_ENDPOINTS.vendorStatus(cleanPhone));
       const data = await res.json();
       if (data.success && data.status) {
         setVendorStatus(data.status);
@@ -89,7 +118,7 @@ export default function App() {
 
     setIsSendingOtp(true);
     try {
-      const res = await fetch('http://localhost:5050/api/auth/send-otp', {
+      const res = await fetch(API_ENDPOINTS.sendOtp, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber: cleanPhone })
@@ -123,7 +152,7 @@ export default function App() {
 
     setIsVerifying(true);
     try {
-      const res = await fetch('http://localhost:5050/api/auth/verify-otp', {
+      const res = await fetch(API_ENDPOINTS.verifyOtp, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber: cleanPhone, otp: cleanCode })
@@ -182,7 +211,7 @@ export default function App() {
     setIsSwitchingToVendor(true);
 
     try {
-      const res = await fetch('http://localhost:5050/api/auth/vendor-token', {
+      const res = await fetch(API_ENDPOINTS.vendorToken, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber: validPhone })
@@ -523,8 +552,8 @@ export default function App() {
             onSelectTab={(tab) => setVendorTab(tab)}
             onOpenAddProduct={() => setShowVendorAddProduct(true)}
             onSwitchToCustomer={handleSwitchToCustomer}
-            pendingOrdersCount={MockDeliveries.filter((d) => d.status !== 'Delivered').length}
-            cropsCount={MockProducts.length}
+            pendingOrdersCount={pendingDeliveriesCount}
+            cropsCount={cropsCount}
           />
         )}
 

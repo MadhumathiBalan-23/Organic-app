@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { orders, Order, fetchOrdersFromDB } from '../data/mockData';
+import { Search, Eye, X, Package, MapPin, CreditCard, ShoppingCart } from 'lucide-react';
+import { Order, fetchOrdersFromDB } from '../data/mockData';
+import { updateOrderAPI } from '../services/api';
 
 const statusChip = (s: string) => {
   const map: Record<string, string> = { Pending: 'chip-warning', Processing: 'chip-info', Delivered: 'chip-success', Cancelled: 'chip-danger', Returned: 'chip-default' };
@@ -7,17 +9,26 @@ const statusChip = (s: string) => {
 };
 
 const Orders: React.FC = () => {
-  const [items, setItems] = useState<Order[]>(orders);
+  const [items, setItems] = useState<Order[]>([]);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const loadOrders = async () => {
+    setLoading(true);
+    try {
+      const dbOrders = await fetchOrdersFromDB();
+      setItems(dbOrders);
+    } catch (e) {
+      console.error('Failed to load orders from API:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetchOrdersFromDB().then(dbOrders => {
-      if (dbOrders && dbOrders.length > 0) {
-        setItems(dbOrders);
-      }
-    });
+    loadOrders();
   }, []);
 
   const filtered = items.filter(o => {
@@ -26,7 +37,12 @@ const Orders: React.FC = () => {
     return match && matchStatus;
   });
 
-  const updateStatus = (id: string, status: Order['status']) => {
+  const updateStatus = async (id: string, status: Order['status']) => {
+    try {
+      await updateOrderAPI(id, { status });
+    } catch (e) {
+      console.warn('API update order error:', e);
+    }
     setItems(prev => prev.map(o => o.id === id ? { ...o, status } : o));
     if (selectedOrder?.id === id) setSelectedOrder(prev => prev ? { ...prev, status } : null);
   };
@@ -58,124 +74,145 @@ const Orders: React.FC = () => {
         ))}
       </div>
 
-      {/* Filters */}
+      {/* Filter Bar */}
       <div className="filter-bar">
         <div className="search-bar">
-          <span className="search-icon">🔍</span>
-          <input placeholder="Search order ID or customer…" value={search} onChange={e => setSearch(e.target.value)} />
+          <span className="search-icon" style={{ display: 'flex', alignItems: 'center' }}><Search size={16} /></span>
+          <input placeholder="Search order ID or customer name…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        {['All', 'Pending', 'Processing', 'Delivered', 'Cancelled', 'Returned'].map(s => (
+        {['All', 'Pending', 'Processing', 'Delivered', 'Cancelled'].map(s => (
           <button key={s} className={`filter-chip${filterStatus === s ? ' active' : ''}`} onClick={() => setFilterStatus(s)}>{s}</button>
         ))}
       </div>
 
       {/* Table */}
       <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Order ID</th>
-              <th>Customer</th>
-              <th>Items</th>
-              <th>Total</th>
-              <th>Payment</th>
-              <th>Date</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(order => (
-              <tr key={order.id}>
-                <td style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: 13 }}>{order.id}</td>
-                <td style={{ fontSize: 13, fontWeight: 600 }}>{order.customerName}</td>
-                <td style={{ fontSize: 12, color: 'var(--text-secondary)', maxWidth: 180 }}>
-                  {order.items.map(i => `${i.name} ×${i.qty}`).join(', ')}
-                </td>
-                <td style={{ fontWeight: 700 }}>₹{order.total.toLocaleString()}</td>
-                <td><span className="chip chip-default">{order.paymentMethod}</span></td>
-                <td style={{ fontSize: 13 }}>{new Date(order.date).toLocaleDateString('en-IN', { dateStyle: 'medium' })}</td>
-                <td><span className={`chip ${statusChip(order.status)}`}>{order.status}</span></td>
-                <td>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button className="btn btn-ghost btn-sm" onClick={() => setSelectedOrder(order)}>👁️</button>
-                    {order.status === 'Pending' && (
-                      <button className="btn btn-primary btn-sm" onClick={() => updateStatus(order.id, 'Processing')}>Process</button>
-                    )}
-                    {order.status === 'Processing' && (
-                      <button className="btn btn-accent btn-sm" onClick={() => updateStatus(order.id, 'Delivered')}>Deliver</button>
-                    )}
-                  </div>
-                </td>
+        {loading ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+            Loading orders directly from live API...
+          </div>
+        ) : filtered.length === 0 ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <ShoppingCart size={36} style={{ margin: '0 auto 12px auto', display: 'block', opacity: 0.5 }} />
+            No orders found.
+          </div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Customer</th>
+                <th>Items</th>
+                <th>Total</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Actions</th>
               </tr>
-            ))}
-            {filtered.length === 0 && (
-              <tr><td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No orders found</td></tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.map(o => (
+                <tr key={o.id}>
+                  <td><span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{o.id}</span></td>
+                  <td>
+                    <div style={{ fontWeight: 600 }}>{o.customerName}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{o.paymentMethod}</div>
+                  </td>
+                  <td>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                      {o.items.map(i => `${i.name} ×${i.qty}`).join(', ')}
+                    </span>
+                  </td>
+                  <td><strong>₹{o.total.toLocaleString()}</strong></td>
+                  <td>{new Date(o.date).toLocaleDateString('en-IN', { dateStyle: 'medium' })}</td>
+                  <td><span className={`chip ${statusChip(o.status)}`}>{o.status}</span></td>
+                  <td>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <button className="btn btn-secondary btn-sm" onClick={() => setSelectedOrder(o)} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Eye size={12} /> View
+                      </button>
+                      <select
+                        className="form-select"
+                        value={o.status}
+                        onChange={e => updateStatus(o.id, e.target.value as any)}
+                        style={{ padding: '3px 8px', fontSize: 12, width: 'auto' }}
+                      >
+                        <option value="Pending">Pending</option>
+                        <option value="Processing">Processing</option>
+                        <option value="Delivered">Delivered</option>
+                        <option value="Cancelled">Cancelled</option>
+                      </select>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
-      {/* Order Detail Modal */}
+      {/* Detail Drawer */}
       {selectedOrder && (
-        <div className="modal-backdrop" onClick={() => setSelectedOrder(null)}>
-          <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
+        <>
+          <div className="drawer-overlay" onClick={() => setSelectedOrder(null)} />
+          <div className="detail-panel">
+            <div className="detail-panel-header">
               <div>
-                <div className="modal-title">📦 {selectedOrder.id}</div>
-                <span className={`chip ${statusChip(selectedOrder.status)}`}>{selectedOrder.status}</span>
+                <div style={{ fontWeight: 800, fontSize: 16 }}>Order {selectedOrder.id}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{new Date(selectedOrder.date).toLocaleDateString('en-IN', { dateStyle: 'full' })}</div>
               </div>
-              <button className="modal-close" onClick={() => setSelectedOrder(null)}>✕</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setSelectedOrder(null)} style={{ padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={18} />
+              </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-              <div>
-                <div className="form-label" style={{ marginBottom: 8 }}>Customer</div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>{selectedOrder.customerName}</div>
-                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>📍 {selectedOrder.address}</div>
-                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>💳 {selectedOrder.paymentMethod}</div>
-                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>📅 {new Date(selectedOrder.date).toLocaleDateString('en-IN', { dateStyle: 'long' })}</div>
+            <div className="detail-panel-body">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <span className={`chip ${statusChip(selectedOrder.status)}`} style={{ fontSize: 12, padding: '4px 12px' }}>{selectedOrder.status}</span>
+                <select
+                  className="form-select"
+                  value={selectedOrder.status}
+                  onChange={e => updateStatus(selectedOrder.id, e.target.value as any)}
+                  style={{ width: 'auto', padding: '4px 10px', fontSize: 12 }}
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="Processing">Processing</option>
+                  <option value="Delivered">Delivered</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
               </div>
-              <div>
-                <div className="form-label" style={{ marginBottom: 8 }}>Update Status</div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {(['Pending','Processing','Delivered','Cancelled'] as Order['status'][]).map(s => (
-                    <button
-                      key={s}
-                      className={`btn btn-sm ${selectedOrder.status === s ? 'btn-primary' : 'btn-ghost'}`}
-                      onClick={() => updateStatus(selectedOrder.id, s)}
-                    >{s}</button>
-                  ))}
+
+              {/* Customer */}
+              <div className="card" style={{ marginBottom: 16 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Customer Details</div>
+                <div style={{ fontWeight: 600 }}>{selectedOrder.customerName}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                  <MapPin size={12} /> {selectedOrder.address}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                  <CreditCard size={12} /> Paid via {selectedOrder.paymentMethod}
+                </div>
+              </div>
+
+              {/* Items */}
+              <div className="card">
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12 }}>Items ({selectedOrder.items.length})</div>
+                {selectedOrder.items.map((it, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: idx < selectedOrder.items.length - 1 ? '1px solid var(--color-border)' : 'none', fontSize: 13 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Package size={14} color="var(--color-primary)" />
+                      <span>{it.name} <span style={{ color: 'var(--text-muted)' }}>×{it.qty}</span></span>
+                    </div>
+                    <strong>₹{(it.price * it.qty).toLocaleString()}</strong>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid var(--color-border)', marginTop: 12, paddingTop: 10, fontWeight: 800, fontSize: 15 }}>
+                  <span>Total</span>
+                  <span style={{ color: 'var(--color-primary)' }}>₹{selectedOrder.total.toLocaleString()}</span>
                 </div>
               </div>
             </div>
-
-            <div style={{ marginTop: 20 }}>
-              <div className="form-label" style={{ marginBottom: 10 }}>Order Items</div>
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr><th>Item</th><th>Qty</th><th>Price</th><th>Subtotal</th></tr>
-                  </thead>
-                  <tbody>
-                    {selectedOrder.items.map((item, i) => (
-                      <tr key={i}>
-                        <td style={{ fontSize: 13, fontWeight: 500 }}>{item.name}</td>
-                        <td>{item.qty}</td>
-                        <td>₹{item.price}</td>
-                        <td style={{ fontWeight: 700 }}>₹{item.qty * item.price}</td>
-                      </tr>
-                    ))}
-                    <tr>
-                      <td colSpan={3} style={{ textAlign: 'right', fontWeight: 700, color: 'var(--text-secondary)' }}>Total</td>
-                      <td style={{ fontWeight: 800, fontSize: 15, color: 'var(--color-primary)' }}>₹{selectedOrder.total.toLocaleString()}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

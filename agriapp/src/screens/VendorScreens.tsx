@@ -29,7 +29,8 @@ import {
   Trash,
   Tag,
 } from 'lucide-react-native';
-import { Product, MockProducts, MockDeliveries, Categories } from '../constants/mockData';
+import { Product, Categories } from '../constants/mockData';
+import { API_ENDPOINTS } from '../services/api';
 
 // ── Theme Palette (Mathira Organic Farmer / Vendor Portal) ──
 const VC = {
@@ -64,12 +65,12 @@ export const getCategoryName = (cat: any): string => {
 
 // Preset images for realistic organic crops
 const IMAGE_PRESETS = [
-  { label: '🥛 Desi Cow Milk', url: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=600' },
-  { label: '🍅 Farm Tomatoes', url: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&q=80&w=600' },
-  { label: '🍯 Wild Honey', url: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&q=80&w=600' },
-  { label: '🥬 Fresh Spinach', url: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&q=80&w=600' },
-  { label: '🍎 Shimla Apples', url: 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&q=80&w=600' },
-  { label: '🌾 Basmati Rice', url: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=80&w=600' },
+  { label: 'Desi Cow Milk', url: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=600' },
+  { label: 'Farm Tomatoes', url: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&q=80&w=600' },
+  { label: 'Wild Honey', url: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&q=80&w=600' },
+  { label: 'Fresh Spinach', url: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&q=80&w=600' },
+  { label: 'Shimla Apples', url: 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&q=80&w=600' },
+  { label: 'Basmati Rice', url: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=80&w=600' },
 ];
 
 const AVAILABLE_UNITS = ['Kg', 'Litre', '500g', '250g', 'Bunch', 'Jar', 'Dozen', 'Crate'];
@@ -102,14 +103,14 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
     if (onSelectTab) onSelectTab(tab);
   };
 
-  // State for products and deliveries to support live responsive edits
-  const [productList, setProductList] = useState<Product[]>([...MockProducts]);
-  const [deliveriesList, setDeliveriesList] = useState([...MockDeliveries]);
+  // State for products and deliveries loaded live from API
+  const [productList, setProductList] = useState<Product[]>([]);
+  const [deliveriesList, setDeliveriesList] = useState<any[]>([]);
 
-  // Load products from Prisma SQLite DB on mount
+  // Load products and deliveries from Prisma SQLite DB on mount
   useEffect(() => {
     let isMounted = true;
-    fetch('http://localhost:5050/api/products')
+    fetch(API_ENDPOINTS.products)
       .then((res) => res.json())
       .then((json) => {
         if (isMounted && json.success && Array.isArray(json.data) && json.data.length > 0) {
@@ -121,6 +122,16 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
         }
       })
       .catch(() => {});
+
+    fetch(API_ENDPOINTS.deliveries)
+      .then((res) => res.json())
+      .then((json) => {
+        if (isMounted && json.success && Array.isArray(json.data)) {
+          setDeliveriesList(json.data);
+        }
+      })
+      .catch(() => {});
+
     return () => {
       isMounted = false;
     };
@@ -213,7 +224,7 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
 
     // Attempt to persist to Prisma SQLite Database via API
     try {
-      await fetch('http://localhost:5050/api/products', {
+      await fetch(API_ENDPOINTS.products, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -234,7 +245,6 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
     }
 
     setProductList((prev) => [newCrop, ...prev]);
-    MockProducts.unshift(newCrop);
     triggerRefresh();
 
     setIsPublishing(false);
@@ -244,49 +254,62 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
     setPStock('50');
     setModalError(null);
     setActiveTab('crops');
-    showToast(`🌾 "${newCrop.name}" saved to Prisma DB & active in catalog!`);
+    showToast(`"${newCrop.name}" saved to Prisma DB & active in catalog!`);
   };
 
-  const handleStockAdjust = (id: string, delta: number) => {
+  const handleStockAdjust = async (id: string, delta: number) => {
+    let updatedStock = 0;
     setProductList((prev) =>
       prev.map((item) => {
         if (item.id === id) {
-          const updatedStock = Math.max(0, item.stock + delta);
-          const found = MockProducts.find((p) => p.id === id);
-          if (found) found.stock = updatedStock;
+          updatedStock = Math.max(0, item.stock + delta);
           return { ...item, stock: updatedStock };
         }
         return item;
       })
     );
+    try {
+      await fetch(`${API_ENDPOINTS.products}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stock: updatedStock })
+      });
+    } catch {}
     triggerRefresh();
   };
 
-  const handleToggleStockStatus = (id: string) => {
+  const handleToggleStockStatus = async (id: string) => {
+    let newStock = 0;
     setProductList((prev) =>
       prev.map((item) => {
         if (item.id === id) {
-          const newStock = item.stock > 0 ? 0 : 30;
-          const found = MockProducts.find((p) => p.id === id);
-          if (found) found.stock = newStock;
+          newStock = item.stock > 0 ? 0 : 30;
           showToast(newStock > 0 ? `Crop marked Active (${newStock} ${item.unit}s)` : 'Crop marked Out of Stock');
           return { ...item, stock: newStock };
         }
         return item;
       })
     );
+    try {
+      await fetch(`${API_ENDPOINTS.products}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stock: newStock })
+      });
+    } catch {}
     triggerRefresh();
   };
 
-  const handleDeleteCrop = (id: string, name: string) => {
+  const handleDeleteCrop = async (id: string, name: string) => {
     setProductList((prev) => prev.filter((p) => p.id !== id));
-    const idx = MockProducts.findIndex((p) => p.id === id);
-    if (idx !== -1) MockProducts.splice(idx, 1);
+    try {
+      await fetch(`${API_ENDPOINTS.products}/${id}`, { method: 'DELETE' });
+    } catch {}
     triggerRefresh();
     showToast(`Removed "${name}" from vendor listings`);
   };
 
-  const handleUpdateOrderStatus = (orderId: string, newStatus: string) => {
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
     setDeliveriesList((prev) =>
       prev.map((del) => {
         if (del.id === orderId) {
@@ -295,18 +318,23 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
         return del;
       })
     );
-    const target = MockDeliveries.find((d) => d.id === orderId);
-    if (target) target.status = newStatus;
+    try {
+      await fetch(`${API_ENDPOINTS.deliveries}/${orderId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+    } catch {}
     triggerRefresh();
     showToast(`Order #${(orderId || '').toUpperCase()} marked as ${newStatus}!`);
   };
 
   // Harvest Schedule data
   const [harvests] = useState([
-    { id: 'h1', crop: 'Organic Vine Tomatoes', expectedYield: '140 kg', harvestDate: 'Tomorrow, Oct 24', status: 'Ready 🌿', badgeColor: VC.success },
-    { id: 'h2', crop: 'Pure Desi Cow A2 Milk', expectedYield: '280 L', harvestDate: 'Daily Morning Flow', status: 'In Flow 🥛', badgeColor: VC.info },
-    { id: 'h3', crop: 'Wild Forest Raw Honey', expectedYield: '50 Jars', harvestDate: 'Oct 28', status: 'Maturing 🍯', badgeColor: VC.warning },
-    { id: 'h4', crop: 'Country Free-Range Eggs', expectedYield: '90 Crates', harvestDate: 'Daily Morning', status: 'Ready 🥚', badgeColor: VC.success },
+    { id: 'h1', crop: 'Organic Vine Tomatoes', expectedYield: '140 kg', harvestDate: 'Tomorrow, Oct 24', status: 'Ready', badgeColor: VC.success },
+    { id: 'h2', crop: 'Pure Desi Cow A2 Milk', expectedYield: '280 L', harvestDate: 'Daily Morning Flow', status: 'In Flow', badgeColor: VC.info },
+    { id: 'h3', crop: 'Wild Forest Raw Honey', expectedYield: '50 Jars', harvestDate: 'Oct 28', status: 'Maturing', badgeColor: VC.warning },
+    { id: 'h4', crop: 'Country Free-Range Eggs', expectedYield: '90 Crates', harvestDate: 'Daily Morning', status: 'Ready', badgeColor: VC.success },
   ]);
 
   // Tab Definitions
@@ -341,8 +369,9 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
       {/* ── Top Producer Bar with Vendor Identity & Store Switch ── */}
       <View style={styles.vendorTopBar}>
         <View style={styles.vendorInfo}>
-          <View style={styles.vendorBadge}>
-            <Text style={styles.vendorBadgeText}>🌾 SALEM ORGANIC FARM HUB</Text>
+          <View style={[styles.vendorBadge, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+            <Sprout size={12} color={VC.accent} />
+            <Text style={styles.vendorBadgeText}>SALEM ORGANIC FARM HUB</Text>
           </View>
           <Text style={styles.vendorTitle} numberOfLines={1}>Direct Partner Producer</Text>
           <Text style={styles.vendorSub}>Token Verified · SQLite Prisma Sync</Text>
@@ -472,7 +501,10 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
           {/* Incoming Dispatch Orders Preview */}
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>📦 Incoming Deliveries</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <PackageCheck size={16} color={VC.primary} />
+                <Text style={styles.sectionTitle}>Incoming Deliveries</Text>
+              </View>
               <TouchableOpacity onPress={() => setActiveTab('orders')}>
                 <Text style={styles.sectionActionLink}>View All ({deliveriesList.length}) →</Text>
               </TouchableOpacity>
@@ -521,7 +553,10 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
           {/* Upcoming Harvest Forecast */}
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>🌱 Upcoming Farm Harvests</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Sprout size={16} color={VC.primary} />
+                <Text style={styles.sectionTitle}>Upcoming Farm Harvests</Text>
+              </View>
               <TouchableOpacity onPress={() => setActiveTab('harvests')}>
                 <Text style={styles.sectionActionLink}>Track All →</Text>
               </TouchableOpacity>
@@ -789,19 +824,21 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
                       <View style={styles.dispatchBtnRow}>
                         {del.status === 'Shipped' ? (
                           <TouchableOpacity
-                            style={[styles.dispatchActionBtn, { backgroundColor: VC.success }]}
+                            style={[styles.dispatchActionBtn, { backgroundColor: VC.success, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
                             onPress={() => handleUpdateOrderStatus(del.id, 'Delivered')}
                             activeOpacity={0.8}
                           >
-                            <Text style={styles.dispatchActionBtnText}>✓ Mark as Delivered</Text>
+                            <CircleCheck size={14} color="#FFFFFF" />
+                            <Text style={styles.dispatchActionBtnText}>Mark as Delivered</Text>
                           </TouchableOpacity>
                         ) : (
                           <TouchableOpacity
-                            style={[styles.dispatchActionBtn, { backgroundColor: VC.info }]}
+                            style={[styles.dispatchActionBtn, { backgroundColor: VC.info, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
                             onPress={() => handleUpdateOrderStatus(del.id, 'Shipped')}
                             activeOpacity={0.8}
                           >
-                            <Text style={styles.dispatchActionBtnText}>🚀 Mark as Shipped</Text>
+                            <PackageCheck size={14} color="#FFFFFF" />
+                            <Text style={styles.dispatchActionBtnText}>Mark as Shipped</Text>
                           </TouchableOpacity>
                         )}
                       </View>
@@ -818,7 +855,10 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
       {activeTab === 'harvests' && (
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.screenHeaderBox}>
-            <Text style={styles.screenHeading}>🌱 Crop Harvest Tracker</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Sprout size={20} color={VC.primary} />
+              <Text style={styles.screenHeading}>Crop Harvest Tracker</Text>
+            </View>
             <Text style={styles.screenSubheading}>Track planned field yields and harvest dates</Text>
           </View>
 
@@ -872,8 +912,9 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
                   <Text style={styles.payoutAmt}>{p.amt}</Text>
                   <Text style={styles.payoutMeta}>Ref: {p.ref} · {p.date}</Text>
                 </View>
-                <View style={[styles.statusPill, { backgroundColor: VC.successLight }]}>
-                  <Text style={[styles.statusPillText, { color: VC.success }]}>✓ {p.status}</Text>
+                <View style={[styles.statusPill, { backgroundColor: VC.successLight, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                  <CircleCheck size={10} color={VC.success} />
+                  <Text style={[styles.statusPillText, { color: VC.success }]}>{p.status}</Text>
                 </View>
               </View>
             ))}
@@ -1017,11 +1058,12 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
                   return (
                     <TouchableOpacity
                       key={b}
-                      style={[styles.benefitBadge, isChecked && styles.benefitBadgeActive]}
+                      style={[styles.benefitBadge, isChecked && styles.benefitBadgeActive, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}
                       onPress={() => toggleBenefit(b)}
                     >
+                      {isChecked ? <CircleCheck size={11} color={VC.primary} /> : <Plus size={11} color={VC.textMuted} />}
                       <Text style={[styles.benefitBadgeText, isChecked && styles.benefitBadgeTextActive]}>
-                        {isChecked ? '✓ ' : '+ '} {b}
+                        {b}
                       </Text>
                     </TouchableOpacity>
                   );

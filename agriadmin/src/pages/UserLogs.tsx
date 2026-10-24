@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { userLogs, UserLog, fetchUserLogsFromDB } from '../data/mockData';
+import { Search, Plus, Edit2, Trash2, Key, LogOut, Eye, Circle, FileText } from 'lucide-react';
+import { UserLog, fetchUserLogsFromDB } from '../data/mockData';
 
 const typeChip = (type: string) => {
   const map: Record<string, string> = {
@@ -9,23 +10,31 @@ const typeChip = (type: string) => {
   return map[type] ?? 'chip-default';
 };
 
-const typeEmoji = (type: string) => {
-  const map: Record<string, string> = { create: '➕', update: '✏️', delete: '🗑️', login: '🔑', logout: '🚪', view: '👁️' };
-  return map[type] ?? '•';
+const renderTypeIcon = (type: string, size = 13) => {
+  switch (type) {
+    case 'create': return <Plus size={size} color="var(--color-success)" />;
+    case 'update': return <Edit2 size={size} color="var(--color-info)" />;
+    case 'delete': return <Trash2 size={size} color="var(--color-danger)" />;
+    case 'login': return <Key size={size} color="#a855f7" />;
+    case 'logout': return <LogOut size={size} color="var(--text-muted)" />;
+    case 'view': return <Eye size={size} color="var(--color-warning)" />;
+    default: return <Circle size={size} />;
+  }
 };
 
 const UserLogs: React.FC = () => {
-  const [logs, setLogs] = useState<UserLog[]>(userLogs);
+  const [logs, setLogs] = useState<UserLog[]>([]);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('All');
   const [filterModule, setFilterModule] = useState('All');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     fetchUserLogsFromDB().then(dbLogs => {
-      if (dbLogs && dbLogs.length > 0) {
-        setLogs(dbLogs);
-      }
-    });
+      setLogs(dbLogs);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
   const modules = ['All', ...Array.from(new Set(logs.map(l => l.module)))];
@@ -47,98 +56,79 @@ const UserLogs: React.FC = () => {
       <div className="page-header">
         <div>
           <div className="page-title">User Logs</div>
-          <div className="page-subtitle">{filtered.length} of {logs.length} log entries</div>
+          <div className="page-subtitle">{filtered.length} of {logs.length} log entries loaded from live API</div>
         </div>
-        <span className="chip chip-success" style={{ padding: '6px 14px', fontSize: 12 }}>🟢 Live Audit Trail</span>
+        <span className="chip chip-success" style={{ padding: '6px 14px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <FileText size={14} /> Audit Trail Active
+        </span>
       </div>
 
-      {/* Filters */}
+      {/* Filter Bar */}
       <div className="filter-bar">
         <div className="search-bar">
-          <span className="search-icon">🔍</span>
-          <input placeholder="Search user, action…" value={search} onChange={e => setSearch(e.target.value)} />
+          <span className="search-icon" style={{ display: 'flex', alignItems: 'center' }}><Search size={16} /></span>
+          <input placeholder="Search user or action…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-
-        {/* Module filter */}
-        <select
-          className="form-select"
-          style={{ width: 'auto', padding: '8px 12px', fontSize: 12 }}
-          value={filterModule}
-          onChange={e => setFilterModule(e.target.value)}
-        >
-          {modules.map(m => <option key={m}>{m}</option>)}
+        <select className="form-select" value={filterType} onChange={e => setFilterType(e.target.value)} style={{ width: 'auto', padding: '6px 12px' }}>
+          {types.map(t => <option key={t} value={t}>{t === 'All' ? 'All Types' : t.toUpperCase()}</option>)}
         </select>
-      </div>
-
-      {/* Type chips */}
-      <div className="filter-bar" style={{ marginBottom: 20 }}>
-        {types.map(t => (
-          <button
-            key={t}
-            className={`filter-chip${filterType === t ? ' active' : ''}`}
-            onClick={() => setFilterType(t)}
-          >
-            {t === 'All' ? '📋 All' : `${typeEmoji(t)} ${t.charAt(0).toUpperCase() + t.slice(1)}`}
-          </button>
-        ))}
-      </div>
-
-      {/* Summary Row */}
-      <div className="stat-row" style={{ marginBottom: 20 }}>
-        {[
-          { label: 'Total', val: logs.length, color: 'var(--text-primary)' },
-          { label: 'Creates', val: logs.filter(l=>l.type==='create').length, color: 'var(--color-success)' },
-          { label: 'Updates', val: logs.filter(l=>l.type==='update').length, color: 'var(--color-info)' },
-          { label: 'Deletes', val: logs.filter(l=>l.type==='delete').length, color: 'var(--color-danger)' },
-          { label: 'Logins', val: logs.filter(l=>l.type==='login').length, color: '#a855f7' },
-        ].map(s => (
-          <div key={s.label} className="stat-box">
-            <div className="stat-box-val" style={{ color: s.color }}>{s.val}</div>
-            <div className="stat-box-lbl">{s.label}</div>
-          </div>
-        ))}
+        <select className="form-select" value={filterModule} onChange={e => setFilterModule(e.target.value)} style={{ width: 'auto', padding: '6px 12px' }}>
+          {modules.map(m => <option key={m} value={m}>{m === 'All' ? 'All Modules' : m}</option>)}
+        </select>
       </div>
 
       {/* Table */}
       <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>User</th>
-              <th>Action</th>
-              <th>Module</th>
-              <th>Type</th>
-              <th>IP Address</th>
-              <th>Timestamp</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(log => (
-              <tr key={log.id}>
-                <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>#{log.id}</td>
-                <td>
-                  <div style={{ fontWeight: 600, fontSize: 13 }}>{log.user}</div>
-                  <span className={`chip ${log.role === 'Admin' ? 'chip-success' : 'chip-info'}`} style={{ fontSize: 10 }}>{log.role}</span>
-                </td>
-                <td style={{ fontSize: 13, maxWidth: 280 }}>
-                  <span style={{ marginRight: 6 }}>{typeEmoji(log.type)}</span>{log.action}
-                </td>
-                <td><span className="chip chip-default">{log.module}</span></td>
-                <td><span className={`chip ${typeChip(log.type)}`}>{log.type}</span></td>
-                <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text-muted)' }}>{log.ip}</td>
-                <td style={{ fontSize: 12, whiteSpace: 'nowrap' }}>{formatTime(log.timestamp)}</td>
-              </tr>
-            ))}
-            {filtered.length === 0 && (
+        {loading ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+            Loading user audit logs directly from live API...
+          </div>
+        ) : filtered.length === 0 ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <FileText size={36} style={{ margin: '0 auto 12px auto', display: 'block', opacity: 0.5 }} />
+            No user logs found.
+          </div>
+        ) : (
+          <table>
+            <thead>
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                  No logs match your filters
-                </td>
+                <th>Type</th>
+                <th>User</th>
+                <th>Role</th>
+                <th>Action</th>
+                <th>Module</th>
+                <th>IP Address</th>
+                <th>Timestamp</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.map(l => (
+                <tr key={l.id}>
+                  <td>
+                    <span className={`chip ${typeChip(l.type)}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      {renderTypeIcon(l.type)}
+                      {l.type.toUpperCase()}
+                    </span>
+                  </td>
+                  <td><strong>{l.user}</strong></td>
+                  <td>
+                    <span className={`chip ${l.role === 'Admin' ? 'chip-purple' : l.role === 'Manager' ? 'chip-info' : 'chip-default'}`}>
+                      {l.role}
+                    </span>
+                  </td>
+                  <td style={{ maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {l.action}
+                  </td>
+                  <td><span className="chip chip-default">{l.module}</span></td>
+                  <td><span style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--text-muted)' }}>{l.ip}</span></td>
+                  <td style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                    {formatTime(l.timestamp)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

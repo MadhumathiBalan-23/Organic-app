@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Platform, Image } from 'react-native';
-import { MapPin, User, Menu as MenuIcon, Store, MonitorCog } from 'lucide-react-native';
+import { MapPin, User, Menu as MenuIcon, Store, MonitorCog, Sprout, Settings } from 'lucide-react-native';
 
 export type UserRole = 'customer' | 'admin' | 'vendor' | null;
 
@@ -33,10 +33,19 @@ export const RoleHeader: React.FC<RoleHeaderProps> = ({
 
   const getSubTitle = () => {
     switch (role) {
-      case 'customer': return '📍 Indiranagar, Bangalore';
-      case 'vendor':   return '🌾 Farmer Console';
-      case 'admin':    return '⚙️ Super Admin';
-      default:         return '🌿 Fresh & Pure Direct from Farm';
+      case 'customer': return 'Indiranagar, Bangalore';
+      case 'vendor':   return 'Farmer Console';
+      case 'admin':    return 'Super Admin Console';
+      default:         return 'Fresh & Pure Direct from Farm';
+    }
+  };
+
+  const renderSubIcon = () => {
+    switch (role) {
+      case 'customer': return <MapPin size={11} color={theme.labelColor} style={{ marginRight: 3 }} />;
+      case 'vendor':   return <Sprout size={11} color={theme.labelColor} style={{ marginRight: 3 }} />;
+      case 'admin':    return <Settings size={11} color={theme.labelColor} style={{ marginRight: 3 }} />;
+      default:         return <Sprout size={11} color={theme.labelColor} style={{ marginRight: 3 }} />;
     }
   };
 
@@ -57,6 +66,7 @@ export const RoleHeader: React.FC<RoleHeaderProps> = ({
           <View style={{ flex: 1, paddingRight: 4 }}>
             <Text style={styles.titleText} numberOfLines={1}>{getMainTitle()}</Text>
             <View style={styles.labelRow}>
+              {renderSubIcon()}
               <Text style={[styles.labelText, { color: theme.labelColor }]} numberOfLines={1}>{getSubTitle()}</Text>
               {role === 'admin' && (
                 <View style={styles.liveBadge}><Text style={styles.liveBadgeText}>LIVE</Text></View>

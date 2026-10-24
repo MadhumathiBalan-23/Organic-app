@@ -1,3 +1,10 @@
+// =============================================
+// AgriApp — Live API Data Service Layer
+// (Mock data removed: all data retrieved directly via SQLite Prisma API)
+// =============================================
+
+import { API_BASE } from '../services/api';
+
 export interface Product {
   id: string;
   name: string;
@@ -27,292 +34,40 @@ export const Categories = [
   'Dry Fruits & Snacks'
 ];
 
-export const MockProducts: Product[] = [
-  {
-    id: 'p1',
-    name: 'Organic A2 Desi Cow Milk',
-    category: 'Dairy & Pure Ghee',
-    price: 85,
-    unit: 'Litre',
-    rating: 4.8,
-    stock: 120,
-    minStock: 20,
-    availabilityStart: '05:00 AM',
-    availabilityEnd: '10:00 AM',
-    description: 'Fresh organic A2 cow milk sourced directly from local pastures, untouched by synthetic chemicals and processed using traditional organic methods.',
-    benefits: ['Rich in A2 Beta-Casein protein', 'No added preservatives or antibiotics', 'Sourced locally from pasture-fed desi cows'],
-    imageUrl: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=600',
-    subscriptionAllowed: true,
-    oneTimeAllowed: true,
-    organicCertified: true
-  },
-  {
-    id: 'p2',
-    name: 'Pure Desi Cow Bilona Ghee',
-    category: 'Dairy & Pure Ghee',
-    price: 680,
-    unit: '500ml',
-    rating: 4.9,
-    stock: 45,
-    minStock: 10,
-    availabilityStart: '06:00 AM',
-    availabilityEnd: '09:00 PM',
-    description: 'Handcrafted Desi Cow Ghee churned using the traditional wooden Bilona method. Offers divine aroma, golden granules, and natural immunity booster.',
-    benefits: ['Hand-churned via classical Bilona method', 'Rich in fat-soluble vitamins A, D, E & K', 'High smoke point for healthy digestive cooking'],
-    imageUrl: 'https://images.unsplash.com/photo-1627308595229-7830a5c91f9f?auto=format&fit=crop&q=80&w=600',
-    subscriptionAllowed: true,
-    oneTimeAllowed: true,
-    organicCertified: true
-  },
-  {
-    id: 'p3',
-    name: 'Farm Fresh Baby Spinach (Palak)',
-    category: 'Fresh Vegetables',
-    price: 30,
-    unit: 'Bunch',
-    rating: 4.6,
-    stock: 60,
-    minStock: 15,
-    availabilityStart: '06:00 AM',
-    availabilityEnd: '12:00 PM',
-    description: 'Freshly harvested tender spinach leaves, rich in iron, folic acid, and natural chlorophyll, grown in chemical-free virgin soil.',
-    benefits: ['Loaded with natural Iron & Calcium', 'Harvested on the morning of delivery', 'Thoroughly washed with organic bio-purifiers'],
-    imageUrl: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&q=80&w=600',
-    subscriptionAllowed: true,
-    oneTimeAllowed: true,
-    organicCertified: true
-  },
-  {
-    id: 'p4',
-    name: 'Native Organic Robusta Bananas',
-    category: 'Fresh Fruits',
-    price: 60,
-    unit: 'Dozen',
-    rating: 4.7,
-    stock: 75,
-    minStock: 15,
-    availabilityStart: '06:00 AM',
-    availabilityEnd: '08:00 PM',
-    description: '100% naturally tree-ripened native sweet bananas harvested from organic hillside orchards without artificial calcium carbide chemicals.',
-    benefits: ['Zero carbide ripening chemicals', 'High potassium & natural dietary fibre', 'Sourced from smallholder organic farmers'],
-    imageUrl: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&q=80&w=600',
-    subscriptionAllowed: true,
-    oneTimeAllowed: true,
-    organicCertified: true
-  },
-  {
-    id: 'p5',
-    name: 'Wild Forest Raw Organic Honey',
-    category: 'Dry Fruits & Snacks',
-    price: 240,
-    unit: '250g',
-    rating: 4.9,
-    stock: 35,
-    minStock: 10,
-    availabilityStart: '08:00 AM',
-    availabilityEnd: '09:00 PM',
-    description: 'Raw unpasteurized organic honey filtered directly from wild forest beehives. Packed with active bee pollen, beneficial enzymes, and natural nectar.',
-    benefits: ['Unheated, unfiltered & 100% pure raw nectar', 'Natural antibacterial & immunity booster', 'Sustainably harvested without hurting bee colonies'],
-    imageUrl: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&q=80&w=600',
-    subscriptionAllowed: false,
-    oneTimeAllowed: true,
-    organicCertified: true
-  },
-  {
-    id: 'p6',
-    name: 'Wood Churned Groundnut Oil',
-    category: 'Organic Oils',
-    price: 320,
-    unit: '1 Litre',
-    rating: 4.8,
-    stock: 40,
-    minStock: 10,
-    availabilityStart: '07:00 AM',
-    availabilityEnd: '09:00 PM',
-    description: 'Cold-pressed in traditional wooden chekku apparatus at low temperatures. Retains authentic nutty aroma, heart-friendly mono-unsaturated fats, and natural vitamin E.',
-    benefits: ['Extracted at cold temperatures below 40°C', 'Free from chemical hexane refining solvents', 'Zero trans fats and unadulterated pure seed oil'],
-    imageUrl: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&q=80&w=600',
-    subscriptionAllowed: true,
-    oneTimeAllowed: true,
-    organicCertified: true
-  },
-  {
-    id: 'p7',
-    name: 'Farm-Fresh Vine Country Tomatoes',
-    category: 'Fresh Vegetables',
-    price: 45,
-    unit: '1 Kg',
-    rating: 4.5,
-    stock: 85,
-    minStock: 20,
-    availabilityStart: '06:00 AM',
-    availabilityEnd: '06:00 PM',
-    description: 'Juicy, plump heirloom country tomatoes picked ripe from the vine at dawn. Naturally sweet, tangy, and bursting with fresh flavor and lycopene.',
-    benefits: ['Rich in antioxidant Lycopene & Vitamin C', 'Grown in nutrient-rich organic compost', 'Delivered within 24 hours of farm harvest'],
-    imageUrl: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&q=80&w=600',
-    subscriptionAllowed: true,
-    oneTimeAllowed: true,
-    organicCertified: true
-  },
-  {
-    id: 'p8',
-    name: 'Organic Aged Basmati Brown Rice',
-    category: 'Groceries & Grains',
-    price: 195,
-    unit: '1 Kg',
-    rating: 4.7,
-    stock: 90,
-    minStock: 15,
-    availabilityStart: '07:00 AM',
-    availabilityEnd: '09:00 PM',
-    description: 'Single-origin Himalayan foothills whole grain brown basmati rice. High in natural dietary fiber and slow-release low GI energy with a delicate nutty fragrance.',
-    benefits: ['Naturally low Glycemic Index (GI)', 'Retains healthy outer bran and germ layers', '100% certified pesticide-free organic paddy'],
-    imageUrl: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=80&w=600',
-    subscriptionAllowed: true,
-    oneTimeAllowed: true,
-    organicCertified: true
-  },
-  {
-    id: 'p9',
-    name: 'Pure Virgin Cold-Pressed Coconut Oil',
-    category: 'Organic Oils',
-    price: 260,
-    unit: '500ml',
-    rating: 4.9,
-    stock: 50,
-    minStock: 12,
-    availabilityStart: '07:00 AM',
-    availabilityEnd: '09:00 PM',
-    description: 'Centrifuged pure virgin coconut oil made from fresh organic coconuts within 2 hours of harvest. Pristine water-clear clarity with heavenly fresh coconut aroma.',
-    benefits: ['Abundant in Medium Chain Triglycerides (MCTs)', 'Zero heating or chemical bleaching applied', 'Ideal for ketogenic diets, cooking & holistic skin care'],
-    imageUrl: 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=600',
-    subscriptionAllowed: true,
-    oneTimeAllowed: true,
-    organicCertified: true
-  },
-  {
-    id: 'p10',
-    name: 'Pasture-Raised Free-Range Eggs',
-    category: 'Dairy & Pure Ghee',
-    price: 95,
-    unit: 'Pack of 6',
-    rating: 4.8,
-    stock: 65,
-    minStock: 15,
-    availabilityStart: '06:00 AM',
-    availabilityEnd: '11:00 AM',
-    description: 'Farm-fresh country eggs laid by pasture-foraged free-range hens fed on natural grains, herbs, and morning sunlight. Deep golden yolks packed with natural Omega-3.',
-    benefits: ['Hens raised cage-free on organic green pastures', 'No hormones, artificial coloring or antibiotic feeds', 'Twice the Omega-3 fatty acids of factory eggs'],
-    imageUrl: 'https://images.unsplash.com/photo-1506976785307-8732e854ad03?auto=format&fit=crop&q=80&w=600',
-    subscriptionAllowed: true,
-    oneTimeAllowed: true,
-    organicCertified: true
-  }
-];
+export const defaultProduct: Product = {
+  id: 'p-default',
+  name: 'Organic Desi Produce',
+  category: 'Dairy & Pure Ghee',
+  price: 85,
+  unit: 'Litre',
+  rating: 4.8,
+  stock: 100,
+  minStock: 20,
+  availabilityStart: '05:00 AM',
+  availabilityEnd: '10:00 AM',
+  description: 'Farm-fresh certified organic produce sourced directly from accredited farmers.',
+  benefits: ['100% Pesticide Free', 'Certified Organic', 'Farm-to-Door Dispatch'],
+  imageUrl: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=600',
+  subscriptionAllowed: true,
+  oneTimeAllowed: true,
+  organicCertified: true
+};
 
 export interface Subscription {
   id: string;
   product: Product;
   quantity: number;
-  frequency: 'Daily' | 'Weekly' | 'Monthly';
+  frequency: 'Daily' | 'Weekly' | 'Monthly' | 'Alternative Days';
   deliveryTime: string;
-  duration: number; // in days
+  duration: number;
   startDate: string;
-  paymentStatus: 'Paid' | 'Pending' | 'Failed';
+  paymentStatus: 'Paid' | 'Pending';
   status: 'Active' | 'Paused' | 'Cancelled';
   priceTotal: number;
   autoRenew: boolean;
   confirmationRequired: boolean;
   skippedDates: string[];
 }
-
-export const MockSubscriptions: Subscription[] = [
-  {
-    id: 'sub-01',
-    product: MockProducts[0], // Milk
-    quantity: 2,
-    frequency: 'Daily',
-    deliveryTime: '06:30 AM',
-    duration: 30,
-    startDate: '2026-08-20',
-    paymentStatus: 'Paid',
-    status: 'Active',
-    priceTotal: 5100, // 2 Litres * 85 * 30
-    autoRenew: true,
-    confirmationRequired: true,
-    skippedDates: ['2026-08-23']
-  },
-  {
-    id: 'sub-02',
-    product: MockProducts[1], // Ghee
-    quantity: 1,
-    frequency: 'Monthly',
-    deliveryTime: '09:00 AM',
-    duration: 90,
-    startDate: '2026-08-15',
-    paymentStatus: 'Paid',
-    status: 'Active',
-    priceTotal: 2040, // 1 * 680 * 3 months
-    autoRenew: false,
-    confirmationRequired: false,
-    skippedDates: []
-  }
-];
-
-export const MockOrders = [
-  {
-    id: 'ord-10492',
-    products: 'Organic A2 Cow Milk x 2L, Spinach x 1 Bunch',
-    amount: 200,
-    date: '2026-08-24',
-    paymentStatus: 'SUCCESS',
-    deliveryStatus: 'DELIVERED',
-    type: 'One-Time'
-  },
-  {
-    id: 'ord-10493',
-    products: 'Organic A2 Cow Milk x 2L (Subscription Delivery)',
-    amount: 170,
-    date: '2026-08-25',
-    paymentStatus: 'SUCCESS',
-    deliveryStatus: 'CONFIRMED',
-    type: 'Subscription'
-  }
-];
-
-export const MockAIAlerts = [
-  { id: 'al-1', type: 'Demand Prediction', text: 'Milk demand expected to rise by 18% tomorrow due to subscription renewals.', time: '2 hrs ago' },
-  { id: 'al-2', type: 'Low Stock Alert', text: 'Tomato and Forest Honey stocks may be insufficient for tomorrow\'s orders.', time: '4 hrs ago' },
-  { id: 'al-3', type: 'Delivery Analytics', text: '42 deliveries successfully mapped and routes optimized for tomorrow morning.', time: '5 hrs ago' },
-];
-
-export const MockTransactions = [
-  { id: 'TXN-90231', subId: 'sub-01', amount: 5100, date: '2026-08-19', method: 'UPI (GPay)', status: 'Paid' },
-  { id: 'TXN-76452', subId: 'sub-02', amount: 2040, date: '2026-08-14', method: 'Credit Card', status: 'Paid' }
-];
-
-export const MockDeliveries = [
-  {
-    id: 'del-01',
-    customerName: 'Ananya Sharma',
-    address: 'Flat 402, Green Glen Layout, Outer Ring Road, Bangalore - 560103',
-    products: 'Organic A2 Cow Milk (2 Litres), Fresh Spinach (1 Bunch)',
-    quantity: '2L, 1 Bunch',
-    deliveryTime: '06:30 AM',
-    status: 'Assigned' // Assigned, Picked Up, Out for Delivery, Delivered, Failed
-  },
-  {
-    id: 'del-02',
-    customerName: 'Rohan Verma',
-    address: 'No 45, Ideal Homes Township, Rajarajeshwari Nagar, Bangalore - 560098',
-    products: 'Desi Cow Ghee (500ml)',
-    quantity: '1 Jar',
-    deliveryTime: '09:00 AM',
-    status: 'Delivered'
-  }
-];
-
-// ── ADMIN PANEL DATA ─────────────────────────────────────
 
 export interface AdminCategory {
   id: string;
@@ -364,56 +119,34 @@ export interface AdminUserLog {
   type: 'create' | 'update' | 'delete' | 'login' | 'logout' | 'view';
 }
 
-export const AdminCategories: AdminCategory[] = [
-  { id: 'c1', name: 'Dairy & Pure Ghee', emoji: '🥛', productCount: 18, color: '#3b82f6' },
-  { id: 'c2', name: 'Fresh Vegetables', emoji: '🥦', productCount: 32, color: '#22c55e' },
-  { id: 'c3', name: 'Fresh Fruits', emoji: '🍎', productCount: 24, color: '#f59e0b' },
-  { id: 'c4', name: 'Groceries & Grains', emoji: '🌾', productCount: 15, color: '#d97706' },
-  { id: 'c5', name: 'Organic Oils', emoji: '🫒', productCount: 9, color: '#84cc16' },
-  { id: 'c6', name: 'Dry Fruits & Snacks', emoji: '🍯', productCount: 11, color: '#f97316' },
-];
+// Zero mock records — collections populated live from the backend API
+// A safe Proxy fallback ensures index-0 access before API loads never causes undefined crashes
+const createSafeArray = <T>(fallback: T): T[] => {
+  const arr: T[] = [];
+  return new Proxy(arr, {
+    get(target, prop, receiver) {
+      if (prop === '0' && target.length === 0) {
+        return fallback;
+      }
+      return Reflect.get(target, prop, receiver);
+    }
+  });
+};
 
-export const AdminBrands: AdminBrand[] = [
-  { id: 'b1', name: 'NatureFarm', emoji: '🌱', origin: 'Tamil Nadu', productCount: 34, rating: 4.8 },
-  { id: 'b2', name: 'Pure Harvest', emoji: '🌾', origin: 'Punjab', productCount: 22, rating: 4.6 },
-  { id: 'b3', name: 'GreenRoots', emoji: '🌿', origin: 'Kerala', productCount: 18, rating: 4.7 },
-  { id: 'b4', name: 'DesiDairy', emoji: '🐄', origin: 'Gujarat', productCount: 14, rating: 4.9 },
-  { id: 'b5', name: 'OrganicOasis', emoji: '🏡', origin: 'Karnataka', productCount: 27, rating: 4.5 },
-];
+export const MockProducts: Product[] = createSafeArray<Product>(defaultProduct);
+export const MockSubscriptions: Subscription[] = [];
+export const MockOrders: any[] = [];
+export const MockAIAlerts: any[] = [];
+export const MockTransactions: any[] = [];
+export const MockDeliveries: any[] = [];
 
-export const AdminCustomers: AdminCustomer[] = [
-  { id: 'cu1', name: 'Priya Sharma', phone: '9876543210', location: 'Chennai, TN', totalOrders: 34, totalSpend: 12800, status: 'VIP', joinDate: '2024-01-15', lastActive: '2026-09-26' },
-  { id: 'cu2', name: 'Arjun Menon', phone: '9123456789', location: 'Kochi, KL', totalOrders: 18, totalSpend: 7400, status: 'Active', joinDate: '2024-03-20', lastActive: '2026-09-25' },
-  { id: 'cu3', name: 'Deepika Nair', phone: '8765432109', location: 'Bangalore, KA', totalOrders: 52, totalSpend: 21000, status: 'VIP', joinDate: '2023-11-05', lastActive: '2026-09-27' },
-  { id: 'cu4', name: 'Raj Kumar', phone: '9988776655', location: 'Coimbatore, TN', totalOrders: 8, totalSpend: 2800, status: 'Active', joinDate: '2024-06-10', lastActive: '2026-09-20' },
-  { id: 'cu5', name: 'Sneha Patel', phone: '8877665544', location: 'Ahmedabad, GJ', totalOrders: 22, totalSpend: 9600, status: 'Active', joinDate: '2024-02-28', lastActive: '2026-09-22' },
-  { id: 'cu6', name: 'Vikram Singh', phone: '7766554433', location: 'Jaipur, RJ', totalOrders: 4, totalSpend: 1200, status: 'Inactive', joinDate: '2023-09-14', lastActive: '2026-07-10' },
-];
+export const AdminCategories: AdminCategory[] = [];
+export const AdminBrands: AdminBrand[] = [];
+export const AdminCustomers: AdminCustomer[] = [];
+export const AdminOrders: AdminOrder[] = [];
+export const AdminUserLogs: AdminUserLog[] = [];
 
-export const AdminOrders: AdminOrder[] = [
-  { id: 'ORD-2001', customerId: 'cu1', customerName: 'Priya Sharma', items: 'A2 Milk ×10, Desi Ghee ×1', total: 1530, status: 'Delivered', date: '2026-09-26', paymentMethod: 'UPI' },
-  { id: 'ORD-2002', customerId: 'cu3', customerName: 'Deepika Nair', items: 'Wild Honey ×2, Turmeric ×1', total: 620, status: 'Processing', date: '2026-09-27', paymentMethod: 'COD' },
-  { id: 'ORD-2003', customerId: 'cu2', customerName: 'Arjun Menon', items: 'Coconut Oil ×2', total: 520, status: 'Pending', date: '2026-09-27', paymentMethod: 'Card' },
-  { id: 'ORD-2004', customerId: 'cu5', customerName: 'Sneha Patel', items: 'Country Eggs ×3', total: 270, status: 'Cancelled', date: '2026-09-24', paymentMethod: 'UPI' },
-  { id: 'ORD-2005', customerId: 'cu4', customerName: 'Raj Kumar', items: 'Bananas ×5, Tomatoes ×2', total: 380, status: 'Delivered', date: '2026-09-23', paymentMethod: 'Card' },
-  { id: 'ORD-2006', customerId: 'cu1', customerName: 'Priya Sharma', items: 'Raw Honey ×3', total: 720, status: 'Delivered', date: '2026-09-20', paymentMethod: 'UPI' },
-];
-
-export const AdminUserLogs: AdminUserLog[] = [
-  { id: 'l1', user: 'Admin Jeena', role: 'Admin', action: 'Added product: Organic A2 Cow Milk', module: 'Products', timestamp: '2026-09-27T11:32:00', type: 'create' },
-  { id: 'l2', user: 'Admin Jeena', role: 'Admin', action: 'Updated price of Desi Ghee to ₹680', module: 'Products', timestamp: '2026-09-27T10:58:00', type: 'update' },
-  { id: 'l3', user: 'Manager Ravi', role: 'Manager', action: 'Logged in to admin dashboard', module: 'Auth', timestamp: '2026-09-27T10:15:00', type: 'login' },
-  { id: 'l4', user: 'Manager Ravi', role: 'Manager', action: 'Added new brand: OrganicOasis', module: 'Brands', timestamp: '2026-09-27T10:20:00', type: 'create' },
-  { id: 'l5', user: 'Admin Jeena', role: 'Admin', action: 'Deleted old category: Bulk Items', module: 'Categories', timestamp: '2026-09-26T18:44:00', type: 'delete' },
-  { id: 'l6', user: 'Admin Jeena', role: 'Admin', action: 'Viewed customer profile: Priya Sharma', module: 'Customers', timestamp: '2026-09-26T17:30:00', type: 'view' },
-  { id: 'l7', user: 'Manager Ravi', role: 'Manager', action: 'Updated ORD-2002 status to Processing', module: 'Orders', timestamp: '2026-09-27T09:45:00', type: 'update' },
-  { id: 'l8', user: 'Staff Preethi', role: 'Manager', action: 'Logged in to admin dashboard', module: 'Auth', timestamp: '2026-09-25T09:00:00', type: 'login' },
-  { id: 'l9', user: 'Admin Jeena', role: 'Admin', action: 'Logged out', module: 'Auth', timestamp: '2026-09-24T20:00:00', type: 'logout' },
-  { id: 'l10', user: 'Manager Ravi', role: 'Manager', action: 'Updated stock: Basmati Rice', module: 'Products', timestamp: '2026-09-24T15:10:00', type: 'update' },
-];
-
-// ── LIVE PRISMA SQLITE DATABASE API LAYER ────────────────────
-const API_BASE = 'http://localhost:5050/api';
+// ── LIVE API FETCHERS ─────────────────────────────────────────
 
 export async function fetchProductsFromDB(): Promise<Product[]> {
   try {
@@ -427,9 +160,9 @@ export async function fetchProductsFromDB(): Promise<Product[]> {
       }));
     }
   } catch (e) {
-    console.warn('Could not fetch products from SQLite DB:', e);
+    console.warn('API fetch products error:', e);
   }
-  return MockProducts;
+  return [];
 }
 
 export async function fetchSubscriptionsFromDB(): Promise<Subscription[]> {
@@ -439,8 +172,8 @@ export async function fetchSubscriptionsFromDB(): Promise<Subscription[]> {
     if (json.success && Array.isArray(json.data) && json.data.length > 0) {
       return json.data.map((s: any) => ({
         id: s.id,
-        product: s.product || MockProducts[0],
-        quantity: s.quantity,
+        product: s.product || defaultProduct,
+        quantity: s.quantity || 1,
         frequency: s.frequency as any,
         deliveryTime: s.deliveryTime,
         duration: s.duration,
@@ -450,13 +183,13 @@ export async function fetchSubscriptionsFromDB(): Promise<Subscription[]> {
         priceTotal: s.priceTotal,
         autoRenew: s.autoRenew,
         confirmationRequired: s.confirmationRequired,
-        skippedDates: typeof s.skippedDates === 'string' ? JSON.parse(s.skippedDates) : []
+        skippedDates: typeof s.skippedDates === 'string' ? JSON.parse(s.skippedDates) : (Array.isArray(s.skippedDates) ? s.skippedDates : [])
       }));
     }
   } catch (e) {
-    console.warn('Could not fetch subscriptions from SQLite DB:', e);
+    console.warn('API fetch subscriptions error:', e);
   }
-  return MockSubscriptions;
+  return [];
 }
 
 export async function fetchDeliveriesFromDB(): Promise<any[]> {
@@ -467,9 +200,9 @@ export async function fetchDeliveriesFromDB(): Promise<any[]> {
       return json.data;
     }
   } catch (e) {
-    console.warn('Could not fetch deliveries from SQLite DB:', e);
+    console.warn('API fetch deliveries error:', e);
   }
-  return MockDeliveries;
+  return [];
 }
 
 export async function fetchAIAlertsFromDB(): Promise<any[]> {
@@ -480,9 +213,113 @@ export async function fetchAIAlertsFromDB(): Promise<any[]> {
       return json.data;
     }
   } catch (e) {
-    console.warn('Could not fetch AI alerts from SQLite DB:', e);
+    console.warn('API fetch AI alerts error:', e);
   }
-  return MockAIAlerts;
+  return [];
 }
 
+export async function fetchCategoriesFromDB(): Promise<AdminCategory[]> {
+  try {
+    const res = await fetch(`${API_BASE}/categories`);
+    const json = await res.json();
+    if (json.success && Array.isArray(json.data)) {
+      const colors = ['#3b82f6', '#22c55e', '#f59e0b', '#d97706', '#f97316', '#84cc16'];
+      return json.data.map((c: any, i: number) => ({
+        id: c.id,
+        name: c.name,
+        emoji: '',
+        productCount: c.productCount || 0,
+        color: colors[i % colors.length]
+      }));
+    }
+  } catch (e) {
+    console.warn('API fetch categories error:', e);
+  }
+  return [];
+}
 
+export async function fetchBrandsFromDB(): Promise<AdminBrand[]> {
+  try {
+    const res = await fetch(`${API_BASE}/brands`);
+    const json = await res.json();
+    if (json.success && Array.isArray(json.data)) {
+      return json.data.map((b: any) => ({
+        id: b.id,
+        name: b.name,
+        emoji: '',
+        origin: b.origin || 'India',
+        productCount: b.productCount || 0,
+        rating: b.rating || 4.5
+      }));
+    }
+  } catch (e) {
+    console.warn('API fetch brands error:', e);
+  }
+  return [];
+}
+
+export async function fetchCustomersFromDB(): Promise<AdminCustomer[]> {
+  try {
+    const res = await fetch(`${API_BASE}/customers`);
+    const json = await res.json();
+    if (json.success && Array.isArray(json.data)) {
+      return json.data.map((u: any) => ({
+        id: u.id,
+        name: u.fullName || 'Customer',
+        phone: u.phoneNumber,
+        location: u.location || 'India',
+        totalOrders: u.totalOrders || 0,
+        totalSpend: u.totalSpend || 0,
+        status: (u.status || 'Active') as any,
+        joinDate: u.createdAt ? u.createdAt.substring(0, 10) : '2026-01-01',
+        lastActive: 'Today'
+      }));
+    }
+  } catch (e) {
+    console.warn('API fetch customers error:', e);
+  }
+  return [];
+}
+
+export async function fetchOrdersFromDB(): Promise<AdminOrder[]> {
+  try {
+    const res = await fetch(`${API_BASE}/orders`);
+    const json = await res.json();
+    if (json.success && Array.isArray(json.data)) {
+      return json.data.map((o: any) => ({
+        id: o.id,
+        customerId: o.userId || 'cu-1',
+        customerName: o.customerName || 'Registered Customer',
+        items: o.items && o.items.length > 0 ? o.items.map((i: any) => `${i.product?.name || 'Organic item'} ×${i.quantity}`).join(', ') : 'Organic items',
+        total: o.totalAmount,
+        status: o.deliveryStatus === 'DELIVERED' ? 'Delivered' : (o.deliveryStatus === 'PROCESSING' ? 'Processing' : (o.deliveryStatus === 'CANCELLED' ? 'Cancelled' : 'Pending')),
+        date: o.createdAt ? o.createdAt.substring(0, 10) : new Date().toISOString().substring(0, 10),
+        paymentMethod: o.paymentMethod || 'UPI'
+      }));
+    }
+  } catch (e) {
+    console.warn('API fetch orders error:', e);
+  }
+  return [];
+}
+
+export async function fetchUserLogsFromDB(): Promise<AdminUserLog[]> {
+  try {
+    const res = await fetch(`${API_BASE}/user-logs`);
+    const json = await res.json();
+    if (json.success && Array.isArray(json.data)) {
+      return json.data.map((l: any, i: number) => ({
+        id: l.id || 'log-' + (i + 1),
+        user: l.user,
+        role: l.role,
+        action: l.action,
+        module: l.module,
+        timestamp: l.timestamp,
+        type: l.type as any
+      }));
+    }
+  } catch (e) {
+    console.warn('API fetch user logs error:', e);
+  }
+  return [];
+}

@@ -1,5 +1,15 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  Package,
+  Tags,
+  Award,
+  ShoppingCart,
+  Users,
+  FileText,
+  Sprout
+} from 'lucide-react';
 
 interface SidebarProps {
   open: boolean;
@@ -8,13 +18,13 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { label: 'Dashboard', icon: '📊', to: '/', section: 'Main' },
-  { label: 'Products', icon: '🌾', to: '/products', section: 'Catalogue' },
-  { label: 'Categories', icon: '🏷️', to: '/categories', section: 'Catalogue' },
-  { label: 'Brands', icon: '🌱', to: '/brands', section: 'Catalogue' },
-  { label: 'Orders', icon: '📦', to: '/orders', section: 'Sales' },
-  { label: 'Customers', icon: '👥', to: '/customers', section: 'Sales' },
-  { label: 'User Logs', icon: '📋', to: '/logs', section: 'Admin' },
+  { label: 'Dashboard', icon: <LayoutDashboard size={18} />, to: '/', section: 'Main' },
+  { label: 'Products', icon: <Package size={18} />, to: '/products', section: 'Catalogue' },
+  { label: 'Categories', icon: <Tags size={18} />, to: '/categories', section: 'Catalogue' },
+  { label: 'Brands', icon: <Award size={18} />, to: '/brands', section: 'Catalogue' },
+  { label: 'Orders', icon: <ShoppingCart size={18} />, to: '/orders', section: 'Sales' },
+  { label: 'Customers', icon: <Users size={18} />, to: '/customers', section: 'Sales' },
+  { label: 'User Logs', icon: <FileText size={18} />, to: '/logs', section: 'Admin' },
 ];
 
 const sections = ['Main', 'Catalogue', 'Sales', 'Admin'];
@@ -36,7 +46,9 @@ const Sidebar: React.FC<SidebarProps> = ({ open, mobileOpen, onClose }) => {
         {/* Brand */}
         <div className="sidebar-brand">
           <div className="sidebar-brand-logo">
-            <div className="sidebar-brand-icon">🌿</div>
+            <div className="sidebar-brand-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Sprout size={20} color="#10B981" />
+            </div>
             <div>
               <div className="sidebar-brand-name">AgriFlow AI</div>
               <div className="sidebar-brand-sub">Admin Portal</div>
@@ -61,7 +73,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, mobileOpen, onClose }) => {
                     }
                     onClick={() => { if (mobileOpen) onClose(); }}
                   >
-                    <span className="sidebar-item-icon">{item.icon}</span>
+                    <span className="sidebar-item-icon" style={{ display: 'inline-flex', alignItems: 'center' }}>{item.icon}</span>
                     <span>{item.label}</span>
                   </NavLink>
                 ))}

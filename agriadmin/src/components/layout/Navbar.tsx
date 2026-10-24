@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
+import { Menu, Bell, Settings } from 'lucide-react';
 
 interface NavbarProps {
   sidebarOpen: boolean;
@@ -7,13 +8,13 @@ interface NavbarProps {
 }
 
 const pageTitles: Record<string, { title: string; subtitle: string }> = {
-  '/': { title: '📊 Dashboard', subtitle: 'Overview of your agri business' },
-  '/products': { title: '🌾 Products', subtitle: 'Manage your product catalogue' },
-  '/categories': { title: '🏷️ Categories', subtitle: 'Organise products by category' },
-  '/brands': { title: '🌱 Brands', subtitle: 'Manage partner brands & suppliers' },
-  '/orders': { title: '📦 Orders', subtitle: 'Track and manage customer orders' },
-  '/customers': { title: '👥 Customers', subtitle: 'Customer profiles and purchase history' },
-  '/logs': { title: '📋 User Logs', subtitle: 'Activity and audit trail' },
+  '/': { title: 'Dashboard', subtitle: 'Overview of your agri business' },
+  '/products': { title: 'Products', subtitle: 'Manage your product catalogue' },
+  '/categories': { title: 'Categories', subtitle: 'Organise products by category' },
+  '/brands': { title: 'Brands', subtitle: 'Manage partner brands & suppliers' },
+  '/orders': { title: 'Orders', subtitle: 'Track and manage customer orders' },
+  '/customers': { title: 'Customers', subtitle: 'Customer profiles and purchase history' },
+  '/logs': { title: 'User Logs', subtitle: 'Activity and audit trail' },
 };
 
 const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
@@ -29,8 +30,9 @@ const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
         onClick={onToggleSidebar}
         aria-label="Toggle sidebar"
         id="nav-toggle-btn"
+        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
       >
-        ☰
+        <Menu size={18} />
       </button>
 
       {/* Title */}
@@ -50,13 +52,15 @@ const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
         </span>
 
         {/* Notification */}
-        <button className="navbar-icon-btn" aria-label="Notifications">
-          🔔
+        <button className="navbar-icon-btn" aria-label="Notifications" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Bell size={16} />
           <span className="navbar-badge">3</span>
         </button>
 
         {/* Settings */}
-        <button className="navbar-icon-btn" aria-label="Settings">⚙️</button>
+        <button className="navbar-icon-btn" aria-label="Settings" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Settings size={16} />
+        </button>
 
         {/* Avatar */}
         <div className="navbar-avatar" title="Jeena Admin">JA</div>

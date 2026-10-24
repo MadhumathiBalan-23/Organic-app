@@ -178,8 +178,9 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
             </ScrollView>
 
             {/* Minimalist App Version Footer */}
-            <View style={sd.footerBox}>
-              <Text style={sd.footerText}>🌿 Mathira Organic · 100% Certified</Text>
+            <View style={[sd.footerBox, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}>
+              <Sprout size={13} color="#16a34a" />
+              <Text style={sd.footerText}>Mathira Organic · 100% Certified</Text>
             </View>
           </SafeAreaView>
         </View>

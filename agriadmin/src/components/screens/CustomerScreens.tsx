@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { MockProducts, Product } from '../../../../agriapp/src/constants/mockData';
+import React, { useState, useEffect } from 'react';
+import { Sprout, Tractor, MapPin, User, Search, Milk, Smartphone, CreditCard, Landmark, Briefcase, Lock, Star, ArrowLeft } from 'lucide-react';
+import { Product, fetchProductsFromDB } from '../../data/mockData';
 
 // Shared styling helper for buttons and badges
 const cardShadow = {
@@ -13,7 +14,7 @@ export const WelcomeScreen: React.FC<{ onNavigate: (screen: string) => void }> =
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '40px' }}>
         {/* Dynamic Organic Icon Mockup */}
         <div style={{ width: '90px', height: '90px', borderRadius: '45px', backgroundColor: '#E8F5E9', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', border: '2px solid #81C784' }}>
-          <span style={{ fontSize: '42px', color: '#2E7D32' }}>🌱</span>
+          <Sprout size={42} color="#2E7D32" />
         </div>
         <h1 style={{ fontSize: '32px', fontWeight: 'bold', color: '#2E7D32', margin: '0 0 8px 0', fontFamily: 'sans-serif' }}>OrganicFlow AI</h1>
         <p style={{ fontSize: '15px', color: '#7A8C7F', textAlign: 'center', margin: '0', fontStyle: 'italic' }}>“Pure. Natural. Healthy.”</p>
@@ -22,7 +23,9 @@ export const WelcomeScreen: React.FC<{ onNavigate: (screen: string) => void }> =
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <div style={{ width: '100%', height: '180px', borderRadius: '16px', background: 'linear-gradient(135deg, #E8F5E9 0%, #F1F8E9 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '30px', border: '1px dashed #A5D6A7', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: '40px' }}>🚜</span>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6 }}>
+              <Tractor size={40} color="#2E7D32" />
+            </div>
             <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#2C3E2F', fontWeight: '600' }}>Direct From Organic Farms</p>
             <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#7A8C7F' }}>Subscriptions & Free Home Delivery</p>
           </div>
@@ -59,7 +62,15 @@ export const CustomerHomeScreen: React.FC<{
   onSelectProduct: (p: Product) => void; 
 }> = ({ onNavigate, onSelectProduct }) => {
   const [search, setSearch] = useState('');
-  const activeProducts = MockProducts.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+  const [products, setProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    fetchProductsFromDB().then(data => {
+      if (data) setProducts(data);
+    });
+  }, []);
+
+  const activeProducts = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div style={{ flex: 1, backgroundColor: '#FDFBF7', display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', fontFamily: 'sans-serif', boxSizing: 'border-box' }}>
@@ -68,14 +79,16 @@ export const CustomerHomeScreen: React.FC<{
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <div>
             <span style={{ fontSize: '11px', opacity: 0.8 }}>DELIVERING TO</span>
-            <p style={{ margin: '0', fontSize: '14px', fontWeight: 'bold' }}>📍 Indiranagar, Bangalore</p>
+            <p style={{ margin: '0', fontSize: '14px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <MapPin size={13} /> Indiranagar, Bangalore
+            </p>
           </div>
           <div style={{ width: '36px', height: '36px', borderRadius: '18px', backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => onNavigate('PROFILE')}>
-            👤
+            <User size={18} color="#fff" />
           </div>
         </div>
         <div style={{ display: 'flex', backgroundColor: '#fff', borderRadius: '30px', padding: '8px 16px', alignItems: 'center' }}>
-          <span style={{ color: '#888', marginRight: '8px' }}>🔍</span>
+          <Search size={16} color="#888" style={{ marginRight: '8px' }} />
           <input 
             type="text" 
             placeholder="Search milk, ghee, spinach..." 
@@ -96,7 +109,9 @@ export const CustomerHomeScreen: React.FC<{
               <h3 style={{ margin: '6px 0 2px 0', fontSize: '16px' }}>Set up Morning Milk</h3>
               <p style={{ margin: '0', fontSize: '12px', opacity: 0.9 }}>Get 10% Cash-Back on advance payments</p>
             </div>
-            <span style={{ fontSize: '40px' }}>🥛</span>
+            <div style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Milk size={26} color="#fff" />
+            </div>
           </div>
         </div>
 
@@ -134,7 +149,9 @@ export const CustomerHomeScreen: React.FC<{
               <h5 style={{ margin: '0 0 4px 0', fontSize: '13px', color: '#2C3E2F', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{product.name}</h5>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
                 <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#2E7D32' }}>₹{product.price}<span style={{ fontSize: '10px', color: '#888', fontWeight: 'normal' }}>/{product.unit}</span></span>
-                <span style={{ fontSize: '10px', color: '#F5B041' }}>★ {product.rating}</span>
+                <span style={{ fontSize: '10px', color: '#F5B041', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                  <Star size={11} fill="#F5B041" color="#F5B041" /> {product.rating}
+                </span>
               </div>
               <p style={{ margin: '4px 0 0 0', fontSize: '9px', color: '#7A8C7F' }}>Available {product.availabilityStart}-{product.availabilityEnd}</p>
             </div>
@@ -151,9 +168,17 @@ export const AllProductsScreen: React.FC<{
   onSelectProduct: (p: Product) => void;
 }> = ({ onBack, onSelectProduct }) => {
   const [activeCat, setActiveCat] = useState('All');
+  const [products, setProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    fetchProductsFromDB().then(data => {
+      if (data) setProducts(data);
+    });
+  }, []);
+
   const filtered = activeCat === 'All' 
-    ? MockProducts 
-    : MockProducts.filter(p => p.category === activeCat);
+    ? products 
+    : products.filter(p => p.category === activeCat);
 
   return (
     <div style={{ flex: 1, backgroundColor: '#FDFBF7', display: 'flex', flexDirection: 'column', height: '100%', fontFamily: 'sans-serif' }}>
@@ -194,7 +219,9 @@ export const AllProductsScreen: React.FC<{
               <p style={{ margin: '4px 0', fontSize: '11px', color: '#7A8C7F' }}>Available: {p.availabilityStart} - {p.availabilityEnd}</p>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
                 <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#2E7D32' }}>₹{p.price}/<span style={{ fontSize: '10px', color: '#888' }}>{p.unit}</span></span>
-                <span style={{ fontSize: '11px', color: '#F5B041' }}>★ {p.rating}</span>
+                <span style={{ fontSize: '11px', color: '#F5B041', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                  <Star size={11} fill="#F5B041" color="#F5B041" /> {p.rating}
+                </span>
               </div>
             </div>
           </div>
@@ -216,7 +243,9 @@ export const ProductDetailsScreen: React.FC<{
   return (
     <div style={{ flex: 1, backgroundColor: '#FDFBF7', display: 'flex', flexDirection: 'column', height: '100%', fontFamily: 'sans-serif', boxSizing: 'border-box' }}>
       <div style={{ display: 'flex', alignItems: 'center', padding: '16px', position: 'absolute', top: 0, left: 0, zIndex: 10, width: '100%' }}>
-        <button onClick={onBack} style={{ width: '32px', height: '32px', borderRadius: '16px', backgroundColor: 'rgba(255,255,255,0.8)', border: 'none', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>←</button>
+        <button onClick={onBack} style={{ width: '32px', height: '32px', borderRadius: '16px', backgroundColor: 'rgba(255,255,255,0.8)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <ArrowLeft size={16} />
+        </button>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -229,7 +258,9 @@ export const ProductDetailsScreen: React.FC<{
         <div style={{ padding: '20px', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', backgroundColor: '#FDFBF7', marginTop: '-20px', position: 'relative' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <span style={{ backgroundColor: '#E8F5E9', color: '#2E7D32', fontSize: '10px', fontWeight: 'bold', padding: '3px 8px', borderRadius: '6px' }}>100% ORGANIC CERTIFIED</span>
-            <span style={{ fontSize: '12px', color: '#888' }}>★ {product.rating}</span>
+            <span style={{ fontSize: '12px', color: '#888', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+              <Star size={12} fill="#F5B041" color="#F5B041" /> {product.rating}
+            </span>
           </div>
 
           <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#2C3E2F', margin: '0 0 6px 0' }}>{product.name}</h2>
@@ -483,17 +514,17 @@ export const PaymentScreen: React.FC<{
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {[
-            { id: 'UPI', name: 'Google Pay / PhonePe (UPI)', icon: '📱' },
-            { id: 'CARD', name: 'Credit or Debit Shell Cards', icon: '💳' },
-            { id: 'BANKING', name: 'Net Banking', icon: '🏛️' },
-            { id: 'WALLET', name: 'Other Wallets', icon: '💼' }
+            { id: 'UPI', name: 'Google Pay / PhonePe (UPI)', icon: <Smartphone size={18} color="#2E7D32" /> },
+            { id: 'CARD', name: 'Credit or Debit Shell Cards', icon: <CreditCard size={18} color="#2E7D32" /> },
+            { id: 'BANKING', name: 'Net Banking', icon: <Landmark size={18} color="#2E7D32" /> },
+            { id: 'WALLET', name: 'Other Wallets', icon: <Briefcase size={18} color="#2E7D32" /> }
           ].map(gate => (
             <div 
               key={gate.id}
               onClick={() => setGatewaySelected(gate.id)}
               style={{ display: 'flex', alignItems: 'center', padding: '14px', borderRadius: '8px', border: gatewaySelected === gate.id ? '2px solid #2E7D32' : '1px solid #EFEBE9', backgroundColor: '#fff', cursor: 'pointer' }}
             >
-              <span style={{ fontSize: '20px', marginRight: '12px' }}>{gate.icon}</span>
+              <span style={{ marginRight: '12px', display: 'flex', alignItems: 'center' }}>{gate.icon}</span>
               <span style={{ fontSize: '13px', color: '#2C3E2F', fontWeight: gatewaySelected === gate.id ? 'bold' : 'normal' }}>{gate.name}</span>
               <input 
                 type="radio" 
@@ -506,7 +537,7 @@ export const PaymentScreen: React.FC<{
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: '#7A8C7F', fontSize: '11px', marginTop: '10px' }}>
-          <span>🔒 PCI-DSS Compliant Gateway</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Lock size={12} /> PCI-DSS Compliant Gateway</span>
         </div>
       </div>
 
