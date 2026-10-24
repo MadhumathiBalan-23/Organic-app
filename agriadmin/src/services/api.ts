@@ -1,4 +1,4 @@
-export const API_BASE = 'http://localhost:5050/api';
+export const API_BASE = (import.meta as any).env?.VITE_API_URL || 'https://mathira.jeenora.com/api';
 
 export const API_ENDPOINTS = {
   products: `${API_BASE}/products`,

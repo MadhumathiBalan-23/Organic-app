@@ -48,17 +48,38 @@ export const getApiHost = (): string => {
   return cachedHost;
 };
 
+// Cloud Production API URL
+export const CLOUD_API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://mathira.jeenora.com/api';
+
 export const setApiHost = (newHost: string) => {
   cachedHost = newHost;
   console.log(`[API Config]: Backend host updated to: ${newHost}`);
 };
 
 export const getApiBase = (): string => {
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
+  if (CLOUD_API_BASE) {
+    return CLOUD_API_BASE;
+  }
   return `http://${getApiHost()}:5050/api`;
 };
 
-// Auto-discovery helper: tries candidates if needed
+// Auto-discovery helper: verifies cloud API first, falls back to local if unavailable
 export const probeBackend = async (): Promise<string> => {
+  const cloudUrl = getApiBase();
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2500);
+    const res = await fetch(`${cloudUrl}/health`, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) {
+      console.log(`[API Config]: Successfully connected to backend at ${cloudUrl}`);
+      return cloudUrl;
+    }
+  } catch {}
+
   if (Platform.OS === 'web') return 'localhost';
   const candidates = [getApiHost(), HOST_LAN_IP, ANDROID_EMULATOR_IP, 'localhost'];
   for (const host of candidates) {
