@@ -17,9 +17,23 @@ export class SubscriptionService {
   }
 
   public static async createSubscription(data: any) {
-    const { product, ...rest } = data;
+    const { product, id, createdAt, user, ...rest } = data;
     return prisma.subscription.create({
-      data: rest,
+      data: {
+        productId: rest.productId || (product ? product.id : undefined),
+        userId: rest.userId,
+        quantity: parseInt(rest.quantity, 10) || 1,
+        frequency: rest.frequency || 'Daily',
+        deliveryTime: rest.deliveryTime || rest.time || rest.timeSlot || '06:30 AM',
+        duration: parseInt(rest.duration, 10) || 30,
+        startDate: rest.startDate || new Date().toISOString().split('T')[0],
+        paymentStatus: rest.paymentStatus || 'Paid',
+        status: rest.status || 'Active',
+        priceTotal: parseFloat(rest.priceTotal || rest.totalAmount) || 0,
+        autoRenew: rest.autoRenew !== undefined ? Boolean(rest.autoRenew) : true,
+        confirmationRequired: rest.confirmationRequired !== undefined ? Boolean(rest.confirmationRequired) : true,
+        skippedDates: typeof rest.skippedDates === 'string' ? rest.skippedDates : JSON.stringify(rest.skippedDates || [])
+      },
       include: { product: true }
     });
   }

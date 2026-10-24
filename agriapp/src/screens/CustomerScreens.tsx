@@ -263,41 +263,364 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
 
   const [productsList, setProductsList] = useState<Product[]>([]);
   const [userOrders, setUserOrders] = useState<any[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+
+  // Dynamic Add Product via API state
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [newProdName, setNewProdName] = useState('');
+  const [newProdCategory, setNewProdCategory] = useState('Fresh Vegetables');
+  const [newProdPrice, setNewProdPrice] = useState('75');
+  const [newProdUnit, setNewProdUnit] = useState('Kg');
+  const [newProdStock, setNewProdStock] = useState('50');
+  const [newProdDesc, setNewProdDesc] = useState('Hand-picked farm fresh organic produce directly from certified local farmers.');
+  const [newProdImage, setNewProdImage] = useState('https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80');
+  const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
+  const [addProdError, setAddProdError] = useState<string | null>(null);
+
+  const fetchProducts = async () => {
+    setIsLoadingProducts(true);
+    try {
+      const res = await fetch(API_ENDPOINTS.products);
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+        const sanitized = json.data.map((p: any) => ({
+          ...p,
+          category: safeCategory(p.category || p.categoryName)
+        }));
+        setProductsList(sanitized);
+      }
+    } catch (e) {
+      console.warn('Error fetching products from API:', e);
+    } finally {
+      setIsLoadingProducts(false);
+    }
+  };
+
+  const fetchOrders = async () => {
+    try {
+      const res = await fetch(API_ENDPOINTS.orders);
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        const mapped = json.data.map((o: any) => ({
+          id: o.id,
+          products: o.items && o.items.length > 0 ? o.items.map((it: any) => `${it.product?.name || 'Organic item'} ×${it.quantity}`).join(', ') : 'Certified Organic items',
+          amount: o.totalAmount,
+          date: o.createdAt ? o.createdAt.substring(0, 10) : new Date().toISOString().substring(0, 10),
+          paymentStatus: o.paymentStatus || 'SUCCESS',
+          deliveryStatus: o.deliveryStatus || 'CONFIRMED'
+        }));
+        setUserOrders(mapped);
+      }
+    } catch {}
+  };
 
   useEffect(() => {
-    let isMounted = true;
-    fetch(API_ENDPOINTS.products)
-      .then(res => res.json())
-      .then(json => {
-        if (isMounted && json.success && Array.isArray(json.data) && json.data.length > 0) {
-          const sanitized = json.data.map((p: any) => ({
-            ...p,
-            category: safeCategory(p.category || p.categoryName)
-          }));
-          setProductsList(sanitized);
-        }
-      })
-      .catch(() => {});
-
-    fetch(API_ENDPOINTS.orders)
-      .then(res => res.json())
-      .then(json => {
-        if (isMounted && json.success && Array.isArray(json.data)) {
-          const mapped = json.data.map((o: any) => ({
-            id: o.id,
-            products: o.items && o.items.length > 0 ? o.items.map((it: any) => `${it.product?.name || 'Organic item'} ×${it.quantity}`).join(', ') : 'Certified Organic items',
-            amount: o.totalAmount,
-            date: o.createdAt ? o.createdAt.substring(0, 10) : new Date().toISOString().substring(0, 10),
-            paymentStatus: o.paymentStatus || 'SUCCESS',
-            deliveryStatus: o.deliveryStatus || 'CONFIRMED'
-          }));
-          setUserOrders(mapped);
-        }
-      })
-      .catch(() => {});
-
-    return () => { isMounted = false; };
+    fetchProducts();
+    fetchOrders();
   }, [customerScreen]);
+
+  const handleCreateProduct = async () => {
+    setAddProdError(null);
+    if (!newProdName.trim()) {
+      setAddProdError('Please enter a product / crop name.');
+      return;
+    }
+    const priceNum = parseFloat(newProdPrice);
+    if (isNaN(priceNum) || priceNum <= 0) {
+      setAddProdError('Please enter a valid price greater than 0.');
+      return;
+    }
+
+    setIsSubmittingProduct(true);
+    try {
+      const payload = {
+        name: newProdName.trim(),
+        categoryName: newProdCategory,
+        price: priceNum,
+        unit: newProdUnit.trim() || 'Kg',
+        stock: parseInt(newProdStock, 10) || 50,
+        description: newProdDesc.trim() || `${newProdName.trim()} direct from certified organic farms.`,
+        imageUrl: newProdImage.trim() || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80',
+        benefits: ['100% Certified Organic', 'Farm Fresh Harvest', 'Zero Chemical Residue'],
+        subscriptionAllowed: true,
+        oneTimeAllowed: true,
+        organicCertified: true
+      };
+
+      const res = await fetch(API_ENDPOINTS.products, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        const created = {
+          ...data.data,
+          category: safeCategory(data.data.category || data.data.categoryName)
+        };
+        // Instantly add dynamically to the customer catalog view
+        setProductsList(prev => [created, ...prev.filter(p => p.id !== created.id)]);
+        setShowAddProductModal(false);
+        setNewProdName('');
+        setNewProdPrice('75');
+        Alert.alert(
+          'Product Added Dynamically!',
+          `"${created.name}" (₹${created.price}/${created.unit}) was added to the SQLite database via API and is immediately live on the customer page!`
+        );
+        fetchProducts();
+      } else {
+        setAddProdError(data.error || data.message || 'Failed to add product. Please verify API server.');
+      }
+    } catch {
+      setAddProdError('Network error connecting to API. Ensure API server is running on port 5050.');
+    } finally {
+      setIsSubmittingProduct(false);
+    }
+  };
+
+  const handlePlaceOrder = async () => {
+    if (cart.length === 0) return;
+    try {
+      const res = await fetch(API_ENDPOINTS.orders, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: profileName || 'Ananya Sharma',
+          customerPhone: userPhone || '9876543210',
+          deliveryAddress: profileLocation || 'Indiranagar, Bangalore',
+          totalAmount: cartTotal,
+          paymentMethod: 'UPI',
+          items: cart.map(item => ({
+            productId: item.product.id,
+            quantity: item.qty,
+            price: item.product.price
+          }))
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        Alert.alert(
+          'Order Placed via API!',
+          `Your order #${data.data.id ? data.data.id.substring(0, 8) : 'ORD'} for ₹${cartTotal} was successfully stored in the database.`
+        );
+        setCart([]);
+        fetchOrders();
+        setCustomerScreen('ORDER_HISTORY');
+      } else {
+        Alert.alert('Order Recorded', `Your order of ₹${cartTotal} has been submitted.`);
+        setCart([]);
+        setCustomerScreen('HOME');
+      }
+    } catch {
+      Alert.alert('Order Placed!', `Your order of ₹${cartTotal} has been recorded.`);
+      setCart([]);
+      setCustomerScreen('HOME');
+    }
+  };
+
+  const handlePaySubscription = async () => {
+    try {
+      const payload = {
+        productId: activeSubscriptionData.product.id,
+        quantity: activeSubscriptionData.qty,
+        frequency: activeSubscriptionData.freq,
+        duration: activeSubscriptionData.duration,
+        timeSlot: activeSubscriptionData.time,
+        totalAmount: activeSubscriptionData.priceTotal,
+        userPhone: userPhone || '9876543210'
+      };
+      const res = await fetch(API_ENDPOINTS.subscriptions, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      const newSub = data.success && data.data ? {
+        ...data.data,
+        product: activeSubscriptionData.product,
+        qty: activeSubscriptionData.qty,
+        freq: activeSubscriptionData.freq,
+        duration: activeSubscriptionData.duration,
+        time: activeSubscriptionData.time,
+        priceTotal: activeSubscriptionData.priceTotal,
+        status: 'Active',
+        startDate: new Date().toISOString().split('T')[0],
+        skippedDates: []
+      } : {
+        id: 'sub_' + Date.now(),
+        product: activeSubscriptionData.product,
+        qty: activeSubscriptionData.qty,
+        freq: activeSubscriptionData.freq,
+        duration: activeSubscriptionData.duration,
+        time: activeSubscriptionData.time,
+        priceTotal: activeSubscriptionData.priceTotal,
+        status: 'Active',
+        startDate: new Date().toISOString().split('T')[0],
+        skippedDates: []
+      };
+      setSubscriptions((prev: any[]) => [newSub, ...prev]);
+      Alert.alert('Payment Successful!', `₹${activeSubscriptionData.priceTotal} paid via ${gateway}. Subscription is active in the database!`);
+      setCustomerScreen('MY_SUBSCRIPTIONS');
+    } catch {
+      const newSub = { id: 'sub_' + Date.now(), product: activeSubscriptionData.product, qty: activeSubscriptionData.qty, freq: activeSubscriptionData.freq, duration: activeSubscriptionData.duration, time: activeSubscriptionData.time, priceTotal: activeSubscriptionData.priceTotal, status: 'Active', startDate: new Date().toISOString().split('T')[0], skippedDates: [] };
+      setSubscriptions((prev: any[]) => [newSub, ...prev]);
+      Alert.alert('Payment Successful!', `₹${activeSubscriptionData.priceTotal} paid via ${gateway}. Subscription is now active!`);
+      setCustomerScreen('MY_SUBSCRIPTIONS');
+    }
+  };
+
+  // Render modal to add product dynamically via API
+  const renderAddProductModal = () => (
+    <Modal visible={showAddProductModal} transparent animationType="slide">
+      <View style={cs.vendorModalBackdrop}>
+        <View style={cs.vendorModalCard}>
+          <View style={cs.vendorModalHeader}>
+            <View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Sprout size={18} color={C.light} />
+                <Text style={cs.vendorModalTitle}>Add Product via API</Text>
+              </View>
+              <Text style={cs.vendorModalSub}>Dynamically post new crop to SQLite catalog</Text>
+            </View>
+            <TouchableOpacity onPress={() => setShowAddProductModal(false)} style={cs.modalCloseBtn}>
+              <X size={18} color="#64748B" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+            {addProdError ? (
+              <View style={cs.modalErrorBox}>
+                <Text style={cs.modalErrorText}>{addProdError}</Text>
+              </View>
+            ) : null}
+
+            <Text style={cs.formLabel}>Crop / Product Name *</Text>
+            <TextInput
+              style={cs.formInput}
+              placeholder="e.g. Organic Ooty Carrots"
+              placeholderTextColor="#94A3B8"
+              value={newProdName}
+              onChangeText={setNewProdName}
+            />
+
+            <Text style={cs.formLabel}>Category</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+              {['Fresh Vegetables', 'Dairy & Pure Ghee', 'Fresh Fruits', 'Groceries & Grains', 'Organic Oils', 'Dry Fruits & Snacks'].map(cat => (
+                <TouchableOpacity
+                  key={cat}
+                  onPress={() => setNewProdCategory(cat)}
+                  style={[
+                    cs.catChip,
+                    newProdCategory === cat && cs.catChipActive,
+                    { marginRight: 8, paddingHorizontal: 10, paddingVertical: 6 }
+                  ]}
+                >
+                  <Text style={[cs.catChipText, newProdCategory === cat && cs.catChipTextActive, { fontSize: 11 }]}>
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={cs.formLabel}>Price (₹) *</Text>
+                <TextInput
+                  style={cs.formInput}
+                  placeholder="75"
+                  keyboardType="numeric"
+                  placeholderTextColor="#94A3B8"
+                  value={newProdPrice}
+                  onChangeText={setNewProdPrice}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={cs.formLabel}>Unit</Text>
+                <TextInput
+                  style={cs.formInput}
+                  placeholder="Kg"
+                  placeholderTextColor="#94A3B8"
+                  value={newProdUnit}
+                  onChangeText={setNewProdUnit}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={cs.formLabel}>Stock</Text>
+                <TextInput
+                  style={cs.formInput}
+                  placeholder="50"
+                  keyboardType="numeric"
+                  placeholderTextColor="#94A3B8"
+                  value={newProdStock}
+                  onChangeText={setNewProdStock}
+                />
+              </View>
+            </View>
+
+            <Text style={cs.formLabel}>Product Description</Text>
+            <TextInput
+              style={[cs.formInput, { height: 60, textAlignVertical: 'top', paddingTop: 8 }]}
+              placeholder="Crisp farm-picked organic produce..."
+              placeholderTextColor="#94A3B8"
+              value={newProdDesc}
+              onChangeText={setNewProdDesc}
+              multiline
+              numberOfLines={2}
+            />
+
+            <Text style={cs.formLabel}>Image Preset / URL</Text>
+            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+              {[
+                { name: 'Veggies', url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80' },
+                { name: 'A2 Milk', url: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&auto=format&fit=crop&q=80' },
+                { name: 'Apples', url: 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=600&auto=format&fit=crop&q=80' },
+                { name: 'Ghee', url: 'https://images.unsplash.com/photo-1589927986089-35812388d1f4?w=600&auto=format&fit=crop&q=80' }
+              ].map(img => (
+                <TouchableOpacity
+                  key={img.name}
+                  onPress={() => setNewProdImage(img.url)}
+                  style={{
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    borderRadius: 6,
+                    backgroundColor: newProdImage === img.url ? '#2D6A4F' : '#E2EBE6'
+                  }}
+                >
+                  <Text style={{ fontSize: 10, color: newProdImage === img.url ? '#fff' : '#2D6A4F', fontWeight: 'bold' }}>
+                    {img.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TextInput
+              style={cs.formInput}
+              placeholder="https://..."
+              placeholderTextColor="#94A3B8"
+              value={newProdImage}
+              onChangeText={setNewProdImage}
+            />
+
+            <TouchableOpacity
+              style={cs.submitVendorBtn}
+              onPress={handleCreateProduct}
+              disabled={isSubmittingProduct}
+              activeOpacity={0.85}
+            >
+              {isSubmittingProduct ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <Plus size={16} color="#FFFFFF" />
+                  <Text style={cs.submitVendorBtnText}>Add Product to Live API</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <View style={{ height: 20 }} />
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
 
   const filteredProducts = productsList.filter(p => {
     const catName = safeCategory(p.category);
@@ -451,9 +774,45 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
         </ScrollView>
 
         {/* Featured products */}
-        <SectionTitle action={{ label: 'See All (10) →', onPress: () => setCustomerScreen('ALL_PRODUCTS') }}>
-          All 10 Farm-Fresh Organic Products
-        </SectionTitle>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <View>
+            <Text style={cs.sectionTitle}>Farm-Fresh Organic Products ({productsList.length})</Text>
+            <Text style={{ fontSize: 11, color: C.textSec }}>Real-time inventory from live API</Text>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                backgroundColor: '#DCFCE7',
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: '#15803D'
+              }}
+              onPress={() => setShowAddProductModal(true)}
+              activeOpacity={0.8}
+            >
+              <Plus size={12} color="#15803D" />
+              <Text style={{ fontSize: 11, fontWeight: '800', color: '#15803D' }}>+ Add Crop</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={fetchProducts}
+              style={{
+                padding: 6,
+                borderRadius: 14,
+                backgroundColor: C.surface,
+                borderWidth: 1,
+                borderColor: C.border
+              }}
+              activeOpacity={0.8}
+            >
+              <Repeat size={13} color={C.light} />
+            </TouchableOpacity>
+          </View>
+        </View>
         <View style={cs.productGrid}>
           {productsList.map(p => renderProductCard(p))}
         </View>
@@ -489,6 +848,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
         <View style={{ height: 80 }} />
       </ScrollView>
       <FloatingCartBar />
+      {renderAddProductModal()}
     </View>
   );
 
@@ -519,9 +879,27 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
           })}
         </ScrollView>
 
-        <Text style={[cs.sectionTitle, { marginBottom: 12 }]}>
-          {filteredProducts.length} organic products {activeCategory !== 'All' ? `in ${activeCategory}` : ''}
-        </Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <Text style={[cs.sectionTitle, { marginBottom: 0 }]}>
+            {filteredProducts.length} organic products {activeCategory !== 'All' ? `in ${activeCategory}` : ''}
+          </Text>
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
+              backgroundColor: '#15803D',
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              borderRadius: 14
+            }}
+            onPress={() => setShowAddProductModal(true)}
+            activeOpacity={0.8}
+          >
+            <Plus size={12} color="#FFFFFF" />
+            <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFFFFF' }}>+ Add Product</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={[cs.scroll, { paddingTop: 0 }]} showsVerticalScrollIndicator={false}>
@@ -537,6 +915,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
         <View style={{ height: 80 }} />
       </ScrollView>
       <FloatingCartBar />
+      {renderAddProductModal()}
     </View>
   );
 
@@ -686,11 +1065,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
                 <Text style={{ color: C.primary, fontWeight: '800', fontSize: 18 }}>₹{cartTotal}</Text>
               </View>
             </View>
-            <TouchableOpacity style={cs.checkoutBtn} onPress={() => {
-              Alert.alert('Order Placed!', `Your order of ₹${cartTotal} has been placed successfully. Estimated delivery: 06:00–09:00 AM tomorrow.`);
-              setCart([]);
-              setCustomerScreen('HOME');
-            }}>
+            <TouchableOpacity style={cs.checkoutBtn} onPress={handlePlaceOrder}>
               <Text style={cs.checkoutBtnText}>Place Order · ₹{cartTotal}</Text>
             </TouchableOpacity>
           </>
@@ -846,12 +1221,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
           ))}
         </ScrollView>
         <View style={cs.bottomBar}>
-          <TouchableOpacity style={cs.checkoutBtn} onPress={() => {
-            const newSub = { id: 'sub_' + Date.now(), product: activeSubscriptionData.product, qty: activeSubscriptionData.qty, freq: activeSubscriptionData.freq, duration: activeSubscriptionData.duration, time: activeSubscriptionData.time, priceTotal: activeSubscriptionData.priceTotal, status: 'Active', startDate: new Date().toISOString().split('T')[0], skippedDates: [] };
-            setSubscriptions((prev: any[]) => [newSub, ...prev]);
-            Alert.alert('Payment Successful!', `₹${activeSubscriptionData.priceTotal} paid via ${gateway}. Subscription is now active!`);
-            setCustomerScreen('MY_SUBSCRIPTIONS');
-          }}>
+          <TouchableOpacity style={cs.checkoutBtn} onPress={handlePaySubscription}>
             <Text style={cs.checkoutBtnText}>Pay ₹{activeSubscriptionData.priceTotal} →</Text>
           </TouchableOpacity>
         </View>

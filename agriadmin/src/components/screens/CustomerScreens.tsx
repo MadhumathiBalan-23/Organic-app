@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Sprout, Tractor, MapPin, User, Search, Milk, Smartphone, CreditCard, Landmark, Briefcase, Lock, Star, ArrowLeft } from 'lucide-react';
+import { Sprout, Tractor, MapPin, User, Search, Milk, Smartphone, CreditCard, Landmark, Briefcase, Lock, Star, ArrowLeft, Plus, RefreshCw, X } from 'lucide-react';
 import { Product, fetchProductsFromDB } from '../../data/mockData';
+import { createProductAPI } from '../../services/api';
 
 // Shared styling helper for buttons and badges
 const cardShadow = {
@@ -63,17 +64,54 @@ export const CustomerHomeScreen: React.FC<{
 }> = ({ onNavigate, onSelectProduct }) => {
   const [search, setSearch] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newCat, setNewCat] = useState('Fresh Vegetables');
+  const [newPrice, setNewPrice] = useState('65');
+  const [newUnit, setNewUnit] = useState('Kg');
+  const [newStock, setNewStock] = useState('60');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
+  const loadData = () => {
     fetchProductsFromDB().then(data => {
       if (data) setProducts(data);
     });
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
+
+  const handleAddProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newName.trim()) return;
+    setIsSubmitting(true);
+    try {
+      await createProductAPI({
+        name: newName.trim(),
+        category: newCat,
+        categoryName: newCat,
+        price: parseFloat(newPrice) || 60,
+        stock: parseInt(newStock, 10) || 50,
+        unit: newUnit || 'Kg',
+        description: `Fresh organically grown ${newName.trim()} delivered directly to your doorstep.`,
+        imageUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80',
+        benefits: ['100% Organic Certified', 'Farm Fresh', 'Zero Pesticides']
+      });
+      setShowAddModal(false);
+      setNewName('');
+      loadData();
+    } catch (err) {
+      console.error('Failed to create product via API:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const activeProducts = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <div style={{ flex: 1, backgroundColor: '#FDFBF7', display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', fontFamily: 'sans-serif', boxSizing: 'border-box' }}>
+    <div style={{ flex: 1, backgroundColor: '#FDFBF7', display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', fontFamily: 'sans-serif', boxSizing: 'border-box', position: 'relative' }}>
       {/* Search Header */}
       <div style={{ padding: '16px', backgroundColor: '#2E7D32', color: '#fff', borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
@@ -131,12 +169,30 @@ export const CustomerHomeScreen: React.FC<{
 
         {/* Featured Products */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <h4 style={{ margin: '0', color: '#2C3E2F' }}>Organic Fresh Crops</h4>
-          <span onClick={() => onNavigate('ALL_PRODUCTS')} style={{ fontSize: '12px', color: '#2E7D32', cursor: 'pointer', fontWeight: 'bold' }}>See All</span>
+          <div>
+            <h4 style={{ margin: '0', color: '#2C3E2F' }}>Organic Fresh Crops ({products.length})</h4>
+            <span style={{ fontSize: '11px', color: '#7A8C7F' }}>Live API catalog</span>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button
+              onClick={() => setShowAddModal(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, backgroundColor: '#2E7D32', color: '#fff', border: 'none', borderRadius: '16px', padding: '5px 12px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
+            >
+              <Plus size={13} /> Add Crop
+            </button>
+            <button
+              onClick={loadData}
+              style={{ display: 'flex', alignItems: 'center', backgroundColor: '#E8F5E9', color: '#2E7D32', border: '1px solid #81C784', borderRadius: '16px', padding: '5px 8px', cursor: 'pointer' }}
+              title="Refresh API Data"
+            >
+              <RefreshCw size={13} />
+            </button>
+            <span onClick={() => onNavigate('ALL_PRODUCTS')} style={{ fontSize: '12px', color: '#2E7D32', cursor: 'pointer', fontWeight: 'bold' }}>See All</span>
+          </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
-          {activeProducts.slice(0, 4).map((product) => (
+          {activeProducts.map((product) => (
             <div 
               key={product.id} 
               onClick={() => onSelectProduct(product)}
@@ -158,6 +214,89 @@ export const CustomerHomeScreen: React.FC<{
           ))}
         </div>
       </div>
+
+      {/* Add Product Modal */}
+      {showAddModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '16px', padding: '20px', width: '100%', maxWidth: '380px', boxShadow: '0 8px 30px rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Sprout size={20} color="#2E7D32" />
+                <h4 style={{ margin: 0, color: '#2C3E2F' }}>Add Product via API</h4>
+              </div>
+              <button onClick={() => setShowAddModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888' }}>
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleAddProduct} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ fontSize: '11px', color: '#555', fontWeight: 'bold' }}>Product Name</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. Organic Strawberries" 
+                  value={newName} 
+                  onChange={(e) => setNewName(e.target.value)} 
+                  required
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #ccc', marginTop: '4px', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: '#555', fontWeight: 'bold' }}>Category</label>
+                <select 
+                  value={newCat} 
+                  onChange={(e) => setNewCat(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #ccc', marginTop: '4px', boxSizing: 'border-box' }}
+                >
+                  <option value="Fresh Vegetables">Fresh Vegetables</option>
+                  <option value="Dairy & Pure Ghee">Dairy & Pure Ghee</option>
+                  <option value="Fresh Fruits">Fresh Fruits</option>
+                  <option value="Groceries & Grains">Groceries & Grains</option>
+                  <option value="Organic Oils">Organic Oils</option>
+                  <option value="Dry Fruits & Snacks">Dry Fruits & Snacks</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '11px', color: '#555', fontWeight: 'bold' }}>Price (₹)</label>
+                  <input 
+                    type="number" 
+                    value={newPrice} 
+                    onChange={(e) => setNewPrice(e.target.value)} 
+                    required
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #ccc', marginTop: '4px', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '11px', color: '#555', fontWeight: 'bold' }}>Unit</label>
+                  <input 
+                    type="text" 
+                    value={newUnit} 
+                    onChange={(e) => setNewUnit(e.target.value)} 
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #ccc', marginTop: '4px', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '11px', color: '#555', fontWeight: 'bold' }}>Stock</label>
+                  <input 
+                    type="number" 
+                    value={newStock} 
+                    onChange={(e) => setNewStock(e.target.value)} 
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #ccc', marginTop: '4px', boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
+                <button type="button" onClick={() => setShowAddModal(false)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ccc', background: 'none', cursor: 'pointer' }}>
+                  Cancel
+                </button>
+                <button type="submit" disabled={isSubmitting} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#2E7D32', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}>
+                  {isSubmitting ? 'Adding...' : 'Add via API'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

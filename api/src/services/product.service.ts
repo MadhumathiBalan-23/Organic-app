@@ -44,11 +44,39 @@ export class ProductService {
   }
 
   public static async createProduct(data: any) {
-    const { benefits, ...rest } = data;
+    const { benefits, category, categoryDetails, id, createdAt, updatedAt, ...rest } = data;
+    const catName = rest.categoryName || (typeof category === 'string' ? category : category?.name) || 'Fresh Vegetables';
+
+    // Ensure category exists in SQLite or create it
+    try {
+      await prisma.category.upsert({
+        where: { name: catName },
+        update: {},
+        create: { name: catName, description: `${catName} category` }
+      });
+    } catch {
+      // Ignored if already existing
+    }
+
     const product = await prisma.product.create({
       data: {
-        ...rest,
-        benefits: Array.isArray(benefits) ? JSON.stringify(benefits) : benefits || '[]'
+        name: rest.name || 'Organic Harvest',
+        categoryName: catName,
+        brand: rest.brand || 'NatureFarm',
+        price: parseFloat(rest.price) || 50,
+        unit: rest.unit || 'Kg',
+        stock: parseInt(rest.stock, 10) || 50,
+        minStock: parseInt(rest.minStock, 10) || 10,
+        rating: parseFloat(rest.rating) || 4.8,
+        availabilityStart: rest.availabilityStart || '06:00 AM',
+        availabilityEnd: rest.availabilityEnd || '09:00 PM',
+        description: rest.description || `${rest.name || 'Organic product'} direct from certified organic farms.`,
+        imageUrl: rest.imageUrl || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80',
+        benefits: Array.isArray(benefits) ? JSON.stringify(benefits) : (typeof benefits === 'string' ? benefits : '["100% Organic", "Farm Fresh"]'),
+        subscriptionAllowed: rest.subscriptionAllowed !== undefined ? Boolean(rest.subscriptionAllowed) : true,
+        oneTimeAllowed: rest.oneTimeAllowed !== undefined ? Boolean(rest.oneTimeAllowed) : true,
+        organicCertified: rest.organicCertified !== undefined ? Boolean(rest.organicCertified) : true,
+        emoji: rest.emoji || '🌱'
       },
       include: { category: true }
     });

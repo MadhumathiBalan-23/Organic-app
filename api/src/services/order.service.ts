@@ -24,19 +24,26 @@ export class OrderService {
   }
 
   public static async createOrder(orderPayload: any) {
-    const { items, ...orderData } = orderPayload;
+    const { items, id, createdAt, ...orderData } = orderPayload;
     return prisma.order.create({
       data: {
-        ...orderData,
-        items: items ? {
+        customerName: orderData.customerName || 'Ananya Sharma',
+        customerPhone: orderData.customerPhone || '9876543210',
+        deliveryAddress: orderData.deliveryAddress || 'Indiranagar, Bangalore',
+        totalAmount: parseFloat(orderData.totalAmount) || 0,
+        orderType: orderData.orderType || 'One-Time',
+        paymentStatus: orderData.paymentStatus || 'SUCCESS',
+        deliveryStatus: orderData.deliveryStatus || 'CONFIRMED',
+        paymentMethod: orderData.paymentMethod || 'UPI',
+        items: items && items.length > 0 ? {
           create: items.map((it: any) => ({
             productId: it.productId,
-            quantity: it.quantity || 1,
-            price: it.price || 0
+            quantity: parseInt(it.quantity, 10) || 1,
+            price: parseFloat(it.price) || 0
           }))
         } : undefined
       },
-      include: { items: true }
+      include: { items: { include: { product: true } } }
     });
   }
 
