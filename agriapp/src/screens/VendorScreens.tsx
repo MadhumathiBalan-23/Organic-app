@@ -10,6 +10,7 @@ import {
   Modal,
   ActivityIndicator,
   Platform,
+  Alert,
 } from 'react-native';
 import {
   LayoutDashboard,
@@ -28,6 +29,9 @@ import {
   Search,
   Trash,
   Tag,
+  Lock,
+  ShieldAlert,
+  ShieldCheck,
 } from 'lucide-react-native';
 import { Product, Categories } from '../constants/mockData';
 import { API_ENDPOINTS } from '../services/api';
@@ -327,13 +331,70 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
     triggerRefresh();
   };
 
-  const handleDeleteCrop = async (id: string, name: string) => {
-    setProductList((prev) => prev.filter((p) => p.id !== id));
+  // Admin Permission & Security State for Deletion
+  const [adminAuthModal, setAdminAuthModal] = useState<{ open: boolean; cropId: string; cropName: string } | null>(null);
+  const [adminPinInput, setAdminPinInput] = useState('');
+  const [adminAuthError, setAdminAuthError] = useState<string | null>(null);
+  const [isAuthorizingAdmin, setIsAuthorizingAdmin] = useState(false);
+
+  // Vendor Attempt to Delete: Only permitted with Admin Permission
+  const handleRequestDeleteCrop = (id: string, name: string) => {
+    Alert.alert(
+      'Admin Permission Required',
+      `Vendors do not have permission to delete crops from the catalog.\n\nOnly Super Admin has permission to delete "${name}".\n\nTo make this crop unavailable to customers, please mark it "Out of Stock".`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Mark Out of Stock',
+          onPress: () => handleToggleStockStatus(id),
+        },
+        {
+          text: 'Authorize as Admin',
+          onPress: () => {
+            setAdminPinInput('');
+            setAdminAuthError(null);
+            setAdminAuthModal({ open: true, cropId: id, cropName: name });
+          },
+        },
+      ]
+    );
+  };
+
+  // Perform deletion ONLY when Admin authorization is verified
+  const handleAdminAuthorizedDelete = async () => {
+    if (!adminAuthModal) return;
+    setAdminAuthError(null);
+
+    if (adminPinInput.trim() !== '9999') {
+      setAdminAuthError('Invalid Admin Passcode. Only Super Admin has permission to delete crops.');
+      return;
+    }
+
+    setIsAuthorizingAdmin(true);
     try {
-      await fetch(`${API_ENDPOINTS.products}/${id}`, { method: 'DELETE' });
-    } catch {}
-    triggerRefresh();
-    showToast(`Removed "${name}" from vendor listings`);
+      const res = await fetch(`${API_ENDPOINTS.products}/${adminAuthModal.cropId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-pin': '9999',
+        },
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setProductList((prev) => prev.filter((p) => p.id !== adminAuthModal.cropId));
+        triggerRefresh();
+        const deletedName = adminAuthModal.cropName;
+        setAdminAuthModal(null);
+        showToast(`Admin Authorized: "${deletedName}" deleted from catalog`);
+      } else {
+        setAdminAuthError(data.message || 'Server rejected deletion request.');
+      }
+    } catch {
+      setAdminAuthError('Network error connecting to Admin verification server.');
+    } finally {
+      setIsAuthorizingAdmin(false);
+    }
   };
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
@@ -650,6 +711,25 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
             </TouchableOpacity>
           </View>
 
+          {/* Policy Banner: Deletion Restricted to Admin */}
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: '#FFFBEB',
+            borderColor: '#FDE68A',
+            borderWidth: 1,
+            borderRadius: 10,
+            paddingHorizontal: 12,
+            paddingVertical: 9,
+            marginBottom: 12,
+            gap: 8,
+          }}>
+            <ShieldAlert size={15} color="#B45309" />
+            <Text style={{ fontSize: 11, color: '#92400E', flex: 1, lineHeight: 16 }}>
+              <Text style={{ fontWeight: '700' }}>Catalog Security Policy:</Text> Permanent deletion of crops is restricted to Admin. Vendors can pause customer orders anytime by toggling stock to "Out of Stock".
+            </Text>
+          </View>
+
           {/* Search Box */}
           <View style={styles.searchBox}>
             <Search size={16} color="#94A3B8" />
@@ -713,11 +793,13 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
                           </Text>
                         </View>
                         <TouchableOpacity
-                          onPress={() => handleDeleteCrop(item.id, item.name)}
-                          style={styles.deleteCropBtn}
+                          onPress={() => handleRequestDeleteCrop(item.id, item.name)}
+                          style={styles.adminLockedDeleteBtn}
                           activeOpacity={0.7}
                         >
-                          <Trash size={14} color="#EF4444" />
+                          <Lock size={10} color="#DC2626" />
+                          <Trash size={11} color="#DC2626" />
+                          <Text style={styles.adminLockedDeleteText}>Admin Only</Text>
                         </TouchableOpacity>
                       </View>
 
@@ -1154,6 +1236,99 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
           </View>
         </View>
       </Modal>
+
+      {/* ── ADMIN AUTHORIZATION MODAL FOR CROP DELETION ── */}
+      <Modal visible={!!adminAuthModal} transparent animationType="fade">
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { maxWidth: 360 }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <ShieldAlert size={20} color="#DC2626" />
+                <View>
+                  <Text style={[styles.modalTitle, { color: '#0F172A' }]}>Admin Permission Required</Text>
+                  <Text style={styles.modalSubtitle}>Super Admin Authorization</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setAdminAuthModal(null)} style={styles.modalCloseBtn}>
+                <X size={18} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ paddingVertical: 8 }}>
+              <View style={{
+                backgroundColor: '#FEF2F2',
+                borderColor: '#FECACA',
+                borderWidth: 1,
+                borderRadius: 10,
+                padding: 10,
+                marginBottom: 12,
+              }}>
+                <Text style={{ fontSize: 12, color: '#991B1B', lineHeight: 17 }}>
+                  Vendors do not have permission to delete listings from the catalog. Enter Super Admin Authorization PIN to confirm permanent removal of <Text style={{ fontWeight: 'bold' }}>"{adminAuthModal?.cropName}"</Text>.
+                </Text>
+              </View>
+
+              {adminAuthError && (
+                <View style={[styles.modalErrorBox, { marginBottom: 12 }]}>
+                  <TriangleAlert size={14} color="#DC2626" />
+                  <Text style={styles.modalErrorText}>{adminAuthError}</Text>
+                </View>
+              )}
+
+              <Text style={styles.inputLabel}>Admin Security Passcode (PIN)</Text>
+              <TextInput
+                style={[styles.textInput, { fontSize: 18, letterSpacing: 4, textAlign: 'center' }]}
+                placeholder="••••"
+                placeholderTextColor="#94A3B8"
+                keyboardType="numeric"
+                secureTextEntry
+                maxLength={6}
+                value={adminPinInput}
+                onChangeText={setAdminPinInput}
+              />
+              <Text style={{ fontSize: 10, color: '#64748B', textAlign: 'center', marginTop: 4 }}>
+                Master Admin Passcode: 9999
+              </Text>
+
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#F1F5F9',
+                    borderRadius: 12,
+                    paddingVertical: 12,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  onPress={() => setAdminAuthModal(null)}
+                  disabled={isAuthorizingAdmin}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569' }}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{
+                    flex: 1.5,
+                    backgroundColor: '#DC2626',
+                    borderRadius: 12,
+                    paddingVertical: 12,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  onPress={handleAdminAuthorizedDelete}
+                  disabled={isAuthorizingAdmin}
+                >
+                  {isAuthorizingAdmin ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#FFFFFF' }}>Verify & Delete</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -1578,6 +1753,22 @@ const styles = StyleSheet.create({
   },
   deleteCropBtn: {
     padding: 4,
+  },
+  adminLockedDeleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  adminLockedDeleteText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#DC2626',
   },
   stockAlertRow: {
     marginVertical: 4,

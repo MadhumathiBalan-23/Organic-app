@@ -64,7 +64,8 @@ export async function updateProductAPI(id: string | number, productData: any) {
 
 export async function deleteProductAPI(id: string | number) {
   return request<{ success: boolean; message: string }>(`${API_ENDPOINTS.products}/${id}`, {
-    method: 'DELETE'
+    method: 'DELETE',
+    headers: { 'x-admin-pin': '9999' }
   });
 }
 

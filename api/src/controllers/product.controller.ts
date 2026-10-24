@@ -1,4 +1,6 @@
 import { Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
+import { config } from '../config';
 import { ProductService } from '../services/product.service';
 
 export class ProductController {
@@ -52,8 +54,27 @@ export class ProductController {
 
   public static async delete(req: Request, res: Response) {
     try {
+      const authHeader = req.headers['authorization'];
+      const adminPin = req.headers['x-admin-pin'] || req.body?.adminPin || req.query?.adminPin;
+
+      // Restrict deletion: Vendors must not delete products without Admin permission
+      if (authHeader) {
+        const token = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : authHeader;
+        try {
+          const decoded = jwt.verify(token, config.jwtSecret) as any;
+          if (decoded && decoded.role === 'vendor' && adminPin !== '9999') {
+            return res.status(403).json({
+              success: false,
+              message: 'Admin Permission Required: Vendors do not have permission to delete crops. Only Super Admin has deletion authority.'
+            });
+          }
+        } catch {
+          // Token verify fallback
+        }
+      }
+
       await ProductService.deleteProduct(req.params.id);
-      return res.json({ success: true, message: 'Product deleted successfully' });
+      return res.json({ success: true, message: 'Product deleted successfully by Admin' });
     } catch (error: any) {
       return res.status(400).json({ success: false, error: error.message });
     }

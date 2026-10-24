@@ -538,7 +538,10 @@ const ProductsTab: React.FC = () => {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: async () => {
         try {
-          await fetch(`${API_ENDPOINTS.products}/${id}`, { method: 'DELETE' });
+          await fetch(`${API_ENDPOINTS.products}/${id}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json', 'x-admin-pin': '9999' }
+          });
         } catch (e) {}
         loadProducts();
       }}
