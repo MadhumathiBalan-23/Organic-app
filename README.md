@@ -2,13 +2,12 @@
 
 AI-Powered Organic Product Management & Delivery Platform.
 
-The project is structured into **3 core packages** with a clear and decoupled flow:
+The project is structured into **2 core packages** with a clear and decoupled flow:
 
 ```
 Organic-app/
-├── api/          # Backend REST API (Node.js, Express, TypeScript, Prisma ORM)
-├── agriadmin/    # Administrative Web Portal (React 19, TypeScript, Vite)
-└── agriapp/      # Multi-Role Mobile Client (React Native, Expo, TypeScript)
+├── api/          # Backend REST API (Node.js, Express, TypeScript, Prisma ORM, PostgreSQL)
+└── agriapp/      # Unified Mobile Client & Admin Console (React Native, Expo, TypeScript)
 ```
 
 ---
@@ -17,9 +16,10 @@ Organic-app/
 
 ```mermaid
 graph TD
-    subgraph Clients
-        Admin["agriadmin (Vite + React)"]
-        Mobile["agriapp (React Native)"]
+    subgraph Client ["agriapp (React Native Mobile + In-App Admin Console)"]
+        Customer["Customer Market & Ordering"]
+        Vendor["Farmer / Producer Console"]
+        Admin["Super Admin Console & CMS"]
     end
 
     subgraph Backend ["api (Node/Express/Prisma)"]
@@ -27,11 +27,12 @@ graph TD
         Controllers["Controllers (HTTP Orchestration)"]
         Services["Services (Pure Business Logic)"]
         Prisma["Prisma ORM"]
-        DB[(Database: SQLite / PostgreSQL)]
+        DB[(Database: PostgreSQL)]
     end
 
+    Customer -->|"HTTP JSON (src/services/api.ts)"| Routes
+    Vendor -->|"HTTP JSON (src/services/api.ts)"| Routes
     Admin -->|"HTTP JSON (src/services/api.ts)"| Routes
-    Mobile -->|"HTTP JSON (src/services/api.ts)"| Routes
 
     Routes --> Controllers
     Controllers --> Services
@@ -39,7 +40,7 @@ graph TD
     Prisma --> DB
 ```
 
-Both clients communicate with the backend through a **dedicated centralized API service layer** (`src/services/api.ts`), ensuring zero hardcoding and single-point URL/endpoint configuration.
+The mobile client communicates with the backend through a **dedicated centralized API service layer** (`src/services/api.ts`), ensuring zero hardcoding and single-point URL/endpoint configuration.
 
 ---
 
@@ -61,22 +62,12 @@ Both clients communicate with the backend through a **dedicated centralized API 
   npm run build    # Production TypeScript compile
   ```
 
-### 2. `agriadmin/` (Administrative Web Portal)
-- **Tech Stack:** React 19, TypeScript, Vite 5.
-- **Features:** Dashboard KPI metrics, organic product catalog management, category & brand controls, customer records, audit logs, and farmer vendor approvals.
-- **Run:**
-  ```bash
-  cd agriadmin
-  npm run dev      # Start web portal on http://localhost:5173
-  npm run build    # Production build
-  ```
-
-### 3. `agriapp/` (Mobile Application)
+### 2. `agriapp/` (Unified Mobile Client & Admin Console)
 - **Tech Stack:** React Native, Expo, TypeScript.
 - **Roles:**
   - **Customer Portal:** Organic product discovery, smart subscriptions, one-time orders, and wallet balance.
-  - **Vendor Portal:** Crop catalog registration, inventory updates, and delivery dispatch.
-  - **Admin Portal:** Live verification and approval of farmer vendor requests.
+  - **Farmer / Vendor Portal:** Crop catalog registration, inventory updates, and delivery dispatch.
+  - **Super Admin Console & CMS:** Live KPIs, promotional banners with dark-to-light gradient palettes, product & category CRUD, vendor approvals, orders, customers, and system audit logs.
 - **Run:**
   ```bash
   cd agriapp
@@ -90,15 +81,9 @@ Both clients communicate with the backend through a **dedicated centralized API 
 From the root `Organic-app/` directory, you can also run workspace scripts:
 
 ```bash
-# Start backend API
+# Start backend API (Port 5050)
 npm run api:dev
 
-# Build backend API
-npm run api:build
-
-# Start Admin web portal
-npm run admin:dev
-
-# Build Admin web portal
-npm run admin:build
+# Start Mobile App & Admin Console
+npm run app:start
 ```

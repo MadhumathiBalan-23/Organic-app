@@ -7,7 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   X, LayoutDashboard, ShoppingBag, Tags, Sprout, Users,
   Package, FileText, Store, Calendar, Wallet, Home,
-  RefreshCw, User, MessageSquare, PhoneCall, LogOut, ChevronRight, MonitorCog
+  RefreshCw, User, MessageSquare, PhoneCall, LogOut, ChevronRight, MonitorCog,
+  Sparkles
 } from 'lucide-react-native';
 import { UserRole } from './RoleHeader';
 
@@ -42,12 +43,13 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
   // Ultra-clean, simplified menu lists (No clutter headers, standard mobile app names)
   const getAdminMenus = (): MenuItem[] => [
     { key: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={16} /> },
-    { key: 'vendorRequests', label: 'Vendor Approvals', badge: 'New', icon: <Users size={16} /> },
-    { key: 'products', label: 'Products', badge: '12', icon: <ShoppingBag size={16} /> },
+    { key: 'banners', label: 'Banners & Gradient CMS', badge: 'NEW', icon: <Sparkles size={16} /> },
+    { key: 'products', label: 'Products Catalog', badge: '12', icon: <ShoppingBag size={16} /> },
     { key: 'categories', label: 'Categories', icon: <Tags size={16} /> },
+    { key: 'vendorRequests', label: 'Vendor Approvals', badge: 'New', icon: <Users size={16} /> },
     { key: 'brands', label: 'Brands', icon: <Sprout size={16} /> },
     { key: 'customers', label: 'Customers', badge: 'VIP', icon: <Users size={16} /> },
-    { key: 'orders', label: 'Orders', badge: 'New', icon: <Package size={16} /> },
+    { key: 'orders', label: 'Orders', badge: 'Live', icon: <Package size={16} /> },
     { key: 'logs', label: 'System Logs', icon: <FileText size={16} /> },
     { key: 'CUSTOMER_SWITCH', label: 'View Customer Market', badge: 'STORE', icon: <Home size={16} /> },
   ];
@@ -71,10 +73,8 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
       { key: 'PROFILE', label: 'My Profile', icon: <User size={16} /> },
     ];
 
-    // Admin user return option
-    if (isAdminUser) {
-      menus.push({ key: 'ADMIN_SWITCH', label: 'Super Admin Console', badge: 'ADMIN', icon: <MonitorCog size={16} /> });
-    }
+    // Admin Console & CMS direct switch inside the app
+    menus.push({ key: 'ADMIN_SWITCH', label: 'Admin Console & CMS', badge: 'ADMIN', icon: <MonitorCog size={16} /> });
 
     // Only approved vendors get the vendor switch drawer option
     if (isApprovedVendor) {

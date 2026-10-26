@@ -110,6 +110,9 @@ export interface AdminCategory {
   emoji: string;
   productCount: number;
   color: string;
+  imageUrl?: string;
+  displayOrder?: number;
+  isActive?: boolean;
 }
 
 export interface AdminBrand {

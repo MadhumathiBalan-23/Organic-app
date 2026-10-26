@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Platform, Image } from 'react-native';
-import { MapPin, User, Menu as MenuIcon, Store, MonitorCog, Sprout, Settings } from 'lucide-react-native';
+import { MapPin, User, Menu as MenuIcon, Store, Sprout, Settings, ChevronDown } from 'lucide-react-native';
 
 export type UserRole = 'customer' | 'admin' | 'vendor' | null;
 
@@ -11,6 +11,8 @@ interface RoleHeaderProps {
   onOpenProfile?: () => void;
   onSwitchToCustomer?: () => void;
   customerScreen?: string;
+  selectedLocation?: { address: string; city?: string; isGpsVerified?: boolean } | null;
+  onChangeLocation?: () => void;
 }
 
 const STATUSBAR_HEIGHT = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
@@ -23,29 +25,41 @@ const roleTheme = {
 };
 
 export const RoleHeader: React.FC<RoleHeaderProps> = ({
-  role, onSelectRole, onOpenMenu, onOpenProfile, onSwitchToCustomer, customerScreen = 'HOME',
+  role,
+  onOpenMenu,
+  onOpenProfile,
+  onSwitchToCustomer,
+  selectedLocation,
+  onChangeLocation,
 }) => {
   const theme = role ? roleTheme[role] : roleTheme.customer;
 
-  const getMainTitle = () => {
-    return 'Mathira Organic Farming';
-  };
+  const getMainTitle = () => 'Mathira Organic Farming';
 
   const getSubTitle = () => {
     switch (role) {
-      case 'customer': return 'Indiranagar, Bangalore';
-      case 'vendor':   return 'Farmer Console';
-      case 'admin':    return 'Super Admin Console';
-      default:         return 'Fresh & Pure Direct from Farm';
+      case 'customer':
+        if (selectedLocation?.address) {
+          return selectedLocation.address.length > 28
+            ? `${selectedLocation.address.substring(0, 26)}...`
+            : selectedLocation.address;
+        }
+        return 'Select Location';
+      case 'vendor':
+        return 'Farmer Console';
+      case 'admin':
+        return 'Super Admin Console';
+      default:
+        return 'Fresh & Pure Direct from Farm';
     }
   };
 
   const renderSubIcon = () => {
     switch (role) {
-      case 'customer': return <MapPin size={11} color={theme.labelColor} style={{ marginRight: 3 }} />;
-      case 'vendor':   return <Sprout size={11} color={theme.labelColor} style={{ marginRight: 3 }} />;
-      case 'admin':    return <Settings size={11} color={theme.labelColor} style={{ marginRight: 3 }} />;
-      default:         return <Sprout size={11} color={theme.labelColor} style={{ marginRight: 3 }} />;
+      case 'customer': return <MapPin size={12} color={theme.labelColor} style={{ marginRight: 3 }} />;
+      case 'vendor':   return <Sprout size={12} color={theme.labelColor} style={{ marginRight: 3 }} />;
+      case 'admin':    return <Settings size={12} color={theme.labelColor} style={{ marginRight: 3 }} />;
+      default:         return <Sprout size={12} color={theme.labelColor} style={{ marginRight: 3 }} />;
     }
   };
 
@@ -57,7 +71,7 @@ export const RoleHeader: React.FC<RoleHeaderProps> = ({
           <MenuIcon size={20} color="#fff" strokeWidth={2.5} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }} onPress={onOpenMenu} activeOpacity={0.8}>
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <Image
             source={require('../../asset/logo.jpeg')}
             style={styles.logo}
@@ -65,15 +79,32 @@ export const RoleHeader: React.FC<RoleHeaderProps> = ({
           />
           <View style={{ flex: 1, paddingRight: 4 }}>
             <Text style={styles.titleText} numberOfLines={1}>{getMainTitle()}</Text>
-            <View style={styles.labelRow}>
-              {renderSubIcon()}
-              <Text style={[styles.labelText, { color: theme.labelColor }]} numberOfLines={1}>{getSubTitle()}</Text>
-              {role === 'admin' && (
-                <View style={styles.liveBadge}><Text style={styles.liveBadgeText}>LIVE</Text></View>
-              )}
-            </View>
+
+            {role === 'customer' && onChangeLocation ? (
+              <TouchableOpacity
+                style={styles.locationPill}
+                onPress={onChangeLocation}
+                activeOpacity={0.8}
+              >
+                {renderSubIcon()}
+                <Text style={[styles.labelText, { color: '#FFFFFF' }]} numberOfLines={1}>
+                  {getSubTitle()}
+                </Text>
+                <ChevronDown size={12} color="#FFFFFF" style={{ marginLeft: 2 }} />
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.labelRow}>
+                {renderSubIcon()}
+                <Text style={[styles.labelText, { color: theme.labelColor }]} numberOfLines={1}>
+                  {getSubTitle()}
+                </Text>
+                {role === 'admin' && (
+                  <View style={styles.liveBadge}><Text style={styles.liveBadgeText}>LIVE</Text></View>
+                )}
+              </View>
+            )}
           </View>
-        </TouchableOpacity>
+        </View>
       </View>
 
       {/* Right actions */}
@@ -112,73 +143,79 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   logo: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.25)',
+    width: 42,
+    height: 42,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+  },
+  titleText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
   },
   labelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginBottom: 2,
+    marginTop: 2,
+  },
+  locationPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginTop: 3,
+    alignSelf: 'flex-start',
+    maxWidth: '92%',
   },
   labelText: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 1.2,
+    fontSize: 11,
+    fontWeight: '700',
   },
-  titleText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '900',
-    letterSpacing: 0.2,
+  liveBadge: {
+    backgroundColor: '#DC2626',
+    borderRadius: 6,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    marginLeft: 6,
+  },
+  liveBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: 'bold',
   },
   rightBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginLeft: 6,
   },
   iconBtn: {
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  liveBadge: {
-    backgroundColor: '#0ea5e9',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    marginLeft: 4,
-  },
-  liveBadgeText: {
-    color: '#fff',
-    fontSize: 8,
-    fontWeight: '800',
-    letterSpacing: 0.5,
   },
   customerSwitchBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
+    paddingVertical: 7,
+    borderRadius: 10,
   },
   customerSwitchBtnText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: 'bold',
   },

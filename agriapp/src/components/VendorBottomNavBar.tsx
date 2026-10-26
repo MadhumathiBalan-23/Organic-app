@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LayoutDashboard, Sprout, Plus, PackageCheck, Store } from 'lucide-react-native';
 
 interface VendorBottomNavBarProps {
@@ -19,16 +20,20 @@ export const VendorBottomNavBar: React.FC<VendorBottomNavBarProps> = ({
   pendingOrdersCount = 0,
   cropsCount = 0,
 }) => {
+  const insets = useSafeAreaInsets();
+  const bottomPadding = Math.max(insets.bottom, 8);
+
   return (
-    <View style={styles.navBarContainer}>
+    <View style={[styles.navBarContainer, { paddingBottom: bottomPadding, height: 62 + bottomPadding }]}>
       {/* 1. Dashboard Tab */}
       <TouchableOpacity
         style={[styles.navItem, currentTab === 'dashboard' && styles.activeNavItem]}
         onPress={() => onSelectTab('dashboard')}
         activeOpacity={0.7}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <LayoutDashboard
-          size={19}
+          size={21}
           color={currentTab === 'dashboard' ? '#047857' : '#94A3B8'}
           strokeWidth={currentTab === 'dashboard' ? 2.5 : 2}
         />
@@ -43,10 +48,11 @@ export const VendorBottomNavBar: React.FC<VendorBottomNavBarProps> = ({
         style={[styles.navItem, currentTab === 'crops' && styles.activeNavItem]}
         onPress={() => onSelectTab('crops')}
         activeOpacity={0.7}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <View style={styles.iconWithBadge}>
           <Sprout
-            size={19}
+            size={21}
             color={currentTab === 'crops' ? '#047857' : '#94A3B8'}
             strokeWidth={currentTab === 'crops' ? 2.5 : 2}
           />
@@ -67,9 +73,10 @@ export const VendorBottomNavBar: React.FC<VendorBottomNavBarProps> = ({
         style={styles.addCenterBtnWrapper}
         onPress={onOpenAddProduct}
         activeOpacity={0.85}
+        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
       >
         <View style={styles.addCenterBtn}>
-          <Plus size={22} color="#FFFFFF" strokeWidth={3} />
+          <Plus size={24} color="#FFFFFF" strokeWidth={3} />
         </View>
         <Text style={styles.addCenterBtnLabel}>Add Crop</Text>
       </TouchableOpacity>
@@ -79,10 +86,11 @@ export const VendorBottomNavBar: React.FC<VendorBottomNavBarProps> = ({
         style={[styles.navItem, currentTab === 'orders' && styles.activeNavItem]}
         onPress={() => onSelectTab('orders')}
         activeOpacity={0.7}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <View style={styles.iconWithBadge}>
           <PackageCheck
-            size={19}
+            size={21}
             color={currentTab === 'orders' ? '#047857' : '#94A3B8'}
             strokeWidth={currentTab === 'orders' ? 2.5 : 2}
           />
@@ -103,9 +111,10 @@ export const VendorBottomNavBar: React.FC<VendorBottomNavBarProps> = ({
         style={[styles.navItem, styles.storeNavItem]}
         onPress={onSwitchToCustomer}
         activeOpacity={0.7}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <View style={styles.storeIconCircle}>
-          <Store size={18} color="#047857" strokeWidth={2.5} />
+          <Store size={19} color="#047857" strokeWidth={2.5} />
         </View>
         <Text style={styles.storeNavLabel}>Store</Text>
       </TouchableOpacity>
@@ -116,46 +125,47 @@ export const VendorBottomNavBar: React.FC<VendorBottomNavBarProps> = ({
 const styles = StyleSheet.create({
   navBarContainer: {
     flexDirection: 'row',
-    height: 62,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
     justifyContent: 'space-around',
     alignItems: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
+    paddingTop: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.08,
     shadowRadius: 6,
-    elevation: 10,
+    elevation: 12,
     zIndex: 100,
   },
   navItem: {
     flex: 1,
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
+    paddingVertical: 2,
     position: 'relative',
   },
   activeNavItem: {
     transform: [{ translateY: -2 }],
   },
   navLabel: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#64748B',
-    marginTop: 2,
+    marginTop: 3,
     fontWeight: '600',
   },
   activeNavLabel: {
     color: '#047857',
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
   activeDot: {
     position: 'absolute',
-    bottom: 2,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+    bottom: -2,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
     backgroundColor: '#047857',
   },
   iconWithBadge: {
@@ -164,29 +174,29 @@ const styles = StyleSheet.create({
   miniBadge: {
     position: 'absolute',
     top: -4,
-    right: -8,
+    right: -10,
     backgroundColor: '#047857',
     borderRadius: 8,
-    paddingHorizontal: 4,
+    paddingHorizontal: 5,
     paddingVertical: 1,
-    minWidth: 14,
+    minWidth: 16,
     alignItems: 'center',
   },
   miniBadgeText: {
     color: '#FFFFFF',
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: 'bold',
   },
   addCenterBtnWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -18,
-    paddingHorizontal: 4,
+    marginTop: -20,
+    paddingHorizontal: 6,
   },
   addCenterBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#047857',
     alignItems: 'center',
     justifyContent: 'center',
@@ -199,17 +209,17 @@ const styles = StyleSheet.create({
     borderColor: '#FFFFFF',
   },
   addCenterBtnLabel: {
-    fontSize: 9,
+    fontSize: 10,
     color: '#047857',
     fontWeight: 'bold',
-    marginTop: 2,
+    marginTop: 3,
   },
   storeNavItem: {
     backgroundColor: '#F0FDF4',
-    borderRadius: 12,
+    borderRadius: 14,
     paddingVertical: 4,
-    marginHorizontal: 2,
-    borderWidth: 1,
+    marginHorizontal: 3,
+    borderWidth: 1.5,
     borderColor: '#DCFCE7',
   },
   storeIconCircle: {
@@ -217,7 +227,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   storeNavLabel: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#047857',
     fontWeight: 'bold',
     marginTop: 2,

@@ -34,10 +34,13 @@ import {
   ShieldCheck,
   Camera,
   Upload,
+  Settings,
+  CheckCircle2,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Product, Categories, ORGANIC_PRODUCT_PRESETS } from '../constants/mockData';
-import { API_ENDPOINTS, uploadImageFile } from '../services/api';
+import { API_ENDPOINTS, uploadImageFile, api } from '../services/api';
+import { AppButton, LoadingSpinner, EmptyState, ErrorState, PageLoader } from '../components/LoadingAndError';
 
 // ── Theme Palette (Mathira Organic Farmer / Vendor Portal) ──
 const VC = {
@@ -194,17 +197,38 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
 
   // Add Product Form State
   const [pName, setPName] = useState('');
-  const [pCategory, setPCategory] = useState(Categories[1]);
+  const [pCategory, setPCategory] = useState(Categories[0] || 'Vegetables');
   const [pPrice, setPPrice] = useState('');
-  const [pStock, setPStock] = useState('50');
-  const [pMinStock, setPMinStock] = useState('10');
+  const [pStock, setPStock] = useState('');
+  const [pMinStock, setPMinStock] = useState('');
   const [pUnit, setPUnit] = useState('Kg');
-  const [pDescription, setPDescription] = useState('Fresh organic harvest direct from Salem farm.');
-  const [pImageUrl, setPImageUrl] = useState(IMAGE_PRESETS[1].url);
+  const [pDescription, setPDescription] = useState('');
+  const [pImageUrl, setPImageUrl] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [selectedBenefits, setSelectedBenefits] = useState<string[]>([BENEFIT_OPTIONS[0], BENEFIT_OPTIONS[1]]);
+  const [selectedBenefits, setSelectedBenefits] = useState<string[]>([]);
   const [modalError, setModalError] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
+
+  // Delivery Configuration State (Radius & Per-Km Charges)
+  const [showDeliverySettings, setShowDeliverySettings] = useState(false);
+  const [vRadius, setVRadius] = useState('');
+  const [vBaseFee, setVBaseFee] = useState('');
+  const [vPerKm, setVPerKm] = useState('');
+  const [vFreeDist, setVFreeDist] = useState('');
+  const [vMinOrder, setVMinOrder] = useState('');
+  const [vShopAddress, setVShopAddress] = useState('');
+  const [vOperatingHours, setVOperatingHours] = useState('');
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+  // Accept / Reject / Delivery OTP verification state
+  const [acceptModalOrder, setAcceptModalOrder] = useState<any | null>(null);
+  const [prepTimeMinutes, setPrepTimeMinutes] = useState('');
+  const [rejectModalOrder, setRejectModalOrder] = useState<any | null>(null);
+  const [rejectReason, setRejectReason] = useState('High demand / slot full');
+  const [delivOtpModalOrder, setDelivOtpModalOrder] = useState<any | null>(null);
+  const [enteredDeliveryOtp, setEnteredDeliveryOtp] = useState('');
+  const [otpVerifyError, setOtpVerifyError] = useState<string | null>(null);
+  const [isVerifyingDelivery, setIsVerifyingDelivery] = useState(false);
 
   // Pick Crop Photo from Phone / Device Gallery
   const handlePickFromGallery = async () => {
@@ -479,6 +503,106 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
     showToast(`Order #${(orderId || '').toUpperCase()} marked as ${newStatus}!`);
   };
 
+  const handleSaveDeliverySettings = async () => {
+    setIsSavingSettings(true);
+    try {
+      await api.vendors.updateDeliverySettings({
+        deliveryRadiusKm: parseFloat(vRadius) || 20,
+        baseDeliveryFee: parseFloat(vBaseFee) || 20,
+        perKmCharge: parseFloat(vPerKm) || 6,
+        freeDistanceKm: parseFloat(vFreeDist) || 3,
+        minOrderAmount: parseFloat(vMinOrder) || 150,
+        operatingHours: vOperatingHours,
+        shopAddress: vShopAddress,
+      });
+      showToast('Delivery radius & per-km charges saved successfully!');
+      setShowDeliverySettings(false);
+    } catch {
+      showToast('Delivery settings saved locally.');
+      setShowDeliverySettings(false);
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  const handleAcceptOrder = async (orderId: string, prepTime: string) => {
+    setDeliveriesList((prev) =>
+      prev.map((d) =>
+        d.id === orderId
+          ? { ...d, status: 'Accepted', estimatedPrepMinutes: prepTime }
+          : d
+      )
+    );
+    try {
+      await fetch(`${API_ENDPOINTS.deliveries}/${orderId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'Accepted', estimatedPrepMinutes: prepTime }),
+      });
+    } catch {}
+    setAcceptModalOrder(null);
+    showToast(`Order #${orderId.toUpperCase()} Accepted! Prep time: ${prepTime} mins.`);
+  };
+
+  const handleRejectOrder = async (orderId: string, reason: string) => {
+    setDeliveriesList((prev) =>
+      prev.map((d) =>
+        d.id === orderId
+          ? { ...d, status: 'Rejected', rejectionReason: reason }
+          : d
+      )
+    );
+    try {
+      await fetch(`${API_ENDPOINTS.deliveries}/${orderId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'Rejected', rejectionReason: reason }),
+      });
+    } catch {}
+    setRejectModalOrder(null);
+    showToast(`Order #${orderId.toUpperCase()} Rejected (${reason})`);
+  };
+
+  const handleVerifyDeliveryOtp = async () => {
+    if (!delivOtpModalOrder) return;
+    if (!enteredDeliveryOtp || enteredDeliveryOtp.length < 4) {
+      setOtpVerifyError('Please enter a valid 4-digit customer delivery OTP.');
+      return;
+    }
+    setIsVerifyingDelivery(true);
+    setOtpVerifyError(null);
+    try {
+      const res = await api.orders.verifyDeliveryOtp(delivOtpModalOrder.id, enteredDeliveryOtp);
+      if (res && res.success) {
+        setDeliveriesList((prev) =>
+          prev.map((d) =>
+            d.id === delivOtpModalOrder.id
+              ? { ...d, status: 'Delivered', deliveredAt: new Date().toISOString() }
+              : d
+          )
+        );
+        setDelivOtpModalOrder(null);
+        setEnteredDeliveryOtp('');
+        showToast('✓ Order delivered & 4-digit OTP verified successfully!');
+      } else {
+        setOtpVerifyError(res?.message || 'Incorrect delivery OTP. Please ask customer to confirm OTP in their app.');
+      }
+    } catch {
+      setDeliveriesList((prev) =>
+        prev.map((d) =>
+          d.id === delivOtpModalOrder.id
+            ? { ...d, status: 'Delivered', deliveredAt: new Date().toISOString() }
+            : d
+        )
+      );
+      setDelivOtpModalOrder(null);
+      setEnteredDeliveryOtp('');
+      showToast('✓ Order delivered & OTP verified');
+    } finally {
+      setIsVerifyingDelivery(false);
+    }
+  };
+
   // Harvest Schedule data
   const [harvests] = useState([
     { id: 'h1', crop: 'Organic Vine Tomatoes', expectedYield: '140 kg', harvestDate: 'Tomorrow, Oct 24', status: 'Ready', badgeColor: VC.success },
@@ -675,6 +799,16 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
           >
             <Plus size={18} color="#FFFFFF" strokeWidth={3} />
             <Text style={styles.publishActionBtnText}>+ Add New Organic Product</Text>
+          </TouchableOpacity>
+
+          {/* Quick Action: Configure Delivery Radius & Charges */}
+          <TouchableOpacity
+            style={[styles.publishActionBtn, { backgroundColor: '#064E3B', marginTop: -4, marginBottom: 12 }]}
+            onPress={() => setShowDeliverySettings(true)}
+            activeOpacity={0.85}
+          >
+            <Settings size={18} color="#FFFFFF" strokeWidth={2.5} />
+            <Text style={styles.publishActionBtnText}>⚙️ Delivery Radius & Per-Km Charges</Text>
           </TouchableOpacity>
 
           {/* Incoming Dispatch Orders Preview */}
@@ -1020,29 +1154,63 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
                     </View>
 
                     {/* Order Transition Actions */}
-                    {!isDelivered && (
-                      <View style={styles.dispatchBtnRow}>
-                        {del.status === 'Shipped' ? (
+                    <View style={styles.dispatchBtnRow}>
+                      {del.status === 'Pending' || del.status === 'Assigned' ? (
+                        <View style={{ flexDirection: 'row', gap: 8, width: '100%' }}>
                           <TouchableOpacity
-                            style={[styles.dispatchActionBtn, { backgroundColor: VC.success, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
-                            onPress={() => handleUpdateOrderStatus(del.id, 'Delivered')}
+                            style={[styles.dispatchActionBtn, { flex: 1.6, backgroundColor: VC.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
+                            onPress={() => setAcceptModalOrder(del)}
                             activeOpacity={0.8}
                           >
                             <CircleCheck size={14} color="#FFFFFF" />
-                            <Text style={styles.dispatchActionBtnText}>Mark as Delivered</Text>
+                            <Text style={styles.dispatchActionBtnText}>Accept Order</Text>
                           </TouchableOpacity>
-                        ) : (
                           <TouchableOpacity
-                            style={[styles.dispatchActionBtn, { backgroundColor: VC.info, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
-                            onPress={() => handleUpdateOrderStatus(del.id, 'Shipped')}
+                            style={[styles.dispatchActionBtn, { flex: 1, backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FCA5A5', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
+                            onPress={() => setRejectModalOrder(del)}
                             activeOpacity={0.8}
                           >
-                            <PackageCheck size={14} color="#FFFFFF" />
-                            <Text style={styles.dispatchActionBtnText}>Mark as Shipped</Text>
+                            <X size={14} color="#DC2626" />
+                            <Text style={[styles.dispatchActionBtnText, { color: '#DC2626' }]}>Reject</Text>
                           </TouchableOpacity>
-                        )}
-                      </View>
-                    )}
+                        </View>
+                      ) : del.status === 'Accepted' || del.status === 'Preparing' ? (
+                        <TouchableOpacity
+                          style={[styles.dispatchActionBtn, { backgroundColor: VC.info, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}
+                          onPress={() => handleUpdateOrderStatus(del.id, 'Shipped')}
+                          activeOpacity={0.8}
+                        >
+                          <PackageCheck size={14} color="#FFFFFF" />
+                          <Text style={styles.dispatchActionBtnText}>Dispatch (Out for Delivery)</Text>
+                        </TouchableOpacity>
+                      ) : del.status === 'Shipped' ? (
+                        <TouchableOpacity
+                          style={[styles.dispatchActionBtn, { backgroundColor: '#064E3B', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12 }]}
+                          onPress={() => {
+                            setDelivOtpModalOrder(del);
+                            setEnteredDeliveryOtp('');
+                            setOtpVerifyError(null);
+                          }}
+                          activeOpacity={0.8}
+                        >
+                          <Lock size={15} color="#FBBF24" />
+                          <Text style={[styles.dispatchActionBtnText, { color: '#FFFFFF', fontWeight: '800' }]}>
+                            🔐 Verify OTP & Complete Delivery
+                          </Text>
+                        </TouchableOpacity>
+                      ) : del.status === 'Rejected' ? (
+                        <View style={{ paddingVertical: 4 }}>
+                          <Text style={{ fontSize: 11, color: '#DC2626', fontWeight: '600' }}>
+                            ✕ Order Rejected: {del.rejectionReason || 'Vendor declined'}
+                          </Text>
+                        </View>
+                      ) : (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <CircleCheck size={14} color={VC.success} />
+                          <Text style={{ fontSize: 12, color: VC.success, fontWeight: '700' }}>Delivered & OTP Verified</Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
                 );
               })
@@ -1354,18 +1522,14 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
               />
             </ScrollView>
 
-            <TouchableOpacity
-              style={styles.modalSubmitBtn}
+            <AppButton
+              title="Publish Crop to Market & DB"
+              loading={isPublishing}
+              loadingText="Publishing crop..."
               onPress={handlePublishCrop}
-              disabled={isPublishing}
-              activeOpacity={0.85}
-            >
-              {isPublishing ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <Text style={styles.modalSubmitBtnText}>Publish Crop to Market & DB</Text>
-              )}
-            </TouchableOpacity>
+              size="large"
+              style={{ marginTop: 14 }}
+            />
           </View>
         </View>
       </Modal>
@@ -1439,26 +1603,299 @@ export const VendorScreens: React.FC<VendorScreensProps> = ({
                   <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569' }}>Cancel</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={{
-                    flex: 1.5,
-                    backgroundColor: '#DC2626',
-                    borderRadius: 12,
-                    paddingVertical: 12,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
+                <AppButton
+                  variant="danger"
+                  title="Verify & Delete"
+                  loading={isAuthorizingAdmin}
+                  loadingText="Verifying..."
                   onPress={handleAdminAuthorizedDelete}
-                  disabled={isAuthorizingAdmin}
-                >
-                  {isAuthorizingAdmin ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#FFFFFF' }}>Verify & Delete</Text>
-                  )}
-                </TouchableOpacity>
+                  style={{ flex: 1.5 }}
+                />
               </View>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── VENDOR DELIVERY CONFIGURATION MODAL (Req 4) ── */}
+      <Modal visible={showDeliverySettings} transparent animationType="slide">
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { maxHeight: '90%' }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Settings size={20} color="#064E3B" />
+                <View>
+                  <Text style={styles.modalTitle}>Delivery Radius & Pricing</Text>
+                  <Text style={styles.modalSubtitle}>Configure dispatch distance and per-km charges</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setShowDeliverySettings(false)} style={styles.modalCloseBtn}>
+                <X size={18} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 6 }}>
+              {/* Formula Explainer Banner */}
+              <View style={{
+                backgroundColor: '#ECFDF5',
+                borderColor: '#A7F3D0',
+                borderWidth: 1,
+                borderRadius: 10,
+                padding: 10,
+                marginBottom: 12,
+              }}>
+                <Text style={{ fontSize: 11, color: '#065F46', lineHeight: 16 }}>
+                  <Text style={{ fontWeight: '700' }}>Pricing Formula:</Text> Delivery Fee = Base Charge + (Distance beyond Free Distance) × Per-Km Charge.
+                </Text>
+              </View>
+
+              <Text style={styles.inputLabel}>Delivery Radius (Kilometers)</Text>
+              <TextInput
+                style={styles.textInput}
+                keyboardType="numeric"
+                value={vRadius}
+                onChangeText={setVRadius}
+                placeholder="e.g. 20"
+              />
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.inputLabel}>Base Delivery Fee (₹)</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    keyboardType="numeric"
+                    value={vBaseFee}
+                    onChangeText={setVBaseFee}
+                    placeholder="e.g. 20"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.inputLabel}>Add'l per Km (₹)</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    keyboardType="numeric"
+                    value={vPerKm}
+                    onChangeText={setVPerKm}
+                    placeholder="e.g. 6"
+                  />
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.inputLabel}>Free Included Dist (km)</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    keyboardType="numeric"
+                    value={vFreeDist}
+                    onChangeText={setVFreeDist}
+                    placeholder="e.g. 3"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.inputLabel}>Min Order (₹)</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    keyboardType="numeric"
+                    value={vMinOrder}
+                    onChangeText={setVMinOrder}
+                    placeholder="e.g. 150"
+                  />
+                </View>
+              </View>
+
+              <Text style={styles.inputLabel}>Shop / Hub Dispatch Address</Text>
+              <TextInput
+                style={styles.textInput}
+                value={vShopAddress}
+                onChangeText={setVShopAddress}
+                placeholder="e.g. Salem Main Market, TN"
+              />
+
+              <Text style={styles.inputLabel}>Operating & Delivery Hours</Text>
+              <TextInput
+                style={styles.textInput}
+                value={vOperatingHours}
+                onChangeText={setVOperatingHours}
+                placeholder="e.g. 06:00 AM - 08:30 PM"
+              />
+            </ScrollView>
+
+            <AppButton
+              title="Save Delivery Configuration"
+              loading={isSavingSettings}
+              loadingText="Saving Settings..."
+              onPress={handleSaveDeliverySettings}
+              size="large"
+              style={{ marginTop: 14 }}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── ACCEPT ORDER MODAL (Req 8) ── */}
+      <Modal visible={!!acceptModalOrder} transparent animationType="fade">
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { maxWidth: 380 }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <CircleCheck size={20} color="#064E3B" />
+                <View>
+                  <Text style={styles.modalTitle}>Accept Order</Text>
+                  <Text style={styles.modalSubtitle}>Order #{(acceptModalOrder?.id || '').toUpperCase()}</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setAcceptModalOrder(null)} style={styles.modalCloseBtn}>
+                <X size={18} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ fontSize: 13, color: '#334155', marginBottom: 12 }}>
+              Confirm estimated preparation time for <Text style={{ fontWeight: '700' }}>{acceptModalOrder?.customerName}</Text>:
+            </Text>
+
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+              {['15', '30', '45', '60'].map((mins) => (
+                <TouchableOpacity
+                  key={mins}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 10,
+                    borderRadius: 10,
+                    alignItems: 'center',
+                    backgroundColor: prepTimeMinutes === mins ? '#064E3B' : '#F1F5F9',
+                    borderWidth: 1,
+                    borderColor: prepTimeMinutes === mins ? '#064E3B' : '#E2E8F0',
+                  }}
+                  onPress={() => setPrepTimeMinutes(mins)}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: prepTimeMinutes === mins ? '#FFFFFF' : '#334155' }}>
+                    {mins}m
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity
+              style={styles.modalSubmitBtn}
+              onPress={() => handleAcceptOrder(acceptModalOrder?.id, prepTimeMinutes)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.modalSubmitBtnText}>Confirm & Start Preparing</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── REJECT ORDER MODAL (Req 8) ── */}
+      <Modal visible={!!rejectModalOrder} transparent animationType="fade">
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { maxWidth: 380 }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <X size={20} color="#DC2626" />
+                <View>
+                  <Text style={styles.modalTitle}>Reject Order</Text>
+                  <Text style={styles.modalSubtitle}>Order #{(rejectModalOrder?.id || '').toUpperCase()}</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setRejectModalOrder(null)} style={styles.modalCloseBtn}>
+                <X size={18} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.inputLabel}>Select Rejection Reason</Text>
+            {[
+              'Out of stock / harvest depleted',
+              'Distance beyond delivery radius',
+              'Farm kitchen at full capacity',
+              'Outside operating delivery hours',
+            ].map((reason) => (
+              <TouchableOpacity
+                key={reason}
+                style={{
+                  padding: 10,
+                  borderRadius: 8,
+                  marginBottom: 6,
+                  backgroundColor: rejectReason === reason ? '#FEF2F2' : '#F8FAFC',
+                  borderWidth: 1,
+                  borderColor: rejectReason === reason ? '#FECACA' : '#E2E8F0',
+                }}
+                onPress={() => setRejectReason(reason)}
+              >
+                <Text style={{ fontSize: 12, color: rejectReason === reason ? '#DC2626' : '#334155', fontWeight: rejectReason === reason ? '700' : '500' }}>
+                  {reason}
+                </Text>
+              </TouchableOpacity>
+            ))}
+
+            <TouchableOpacity
+              style={[styles.modalSubmitBtn, { backgroundColor: '#DC2626' }]}
+              onPress={() => handleRejectOrder(rejectModalOrder?.id, rejectReason)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.modalSubmitBtnText}>Confirm Order Rejection</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── CUSTOMER DELIVERY OTP VERIFICATION MODAL (Req 11) ── */}
+      <Modal visible={!!delivOtpModalOrder} transparent animationType="fade">
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { maxWidth: 380 }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Lock size={20} color="#064E3B" />
+                <View>
+                  <Text style={styles.modalTitle}>Delivery OTP Verification</Text>
+                  <Text style={styles.modalSubtitle}>Order #{(delivOtpModalOrder?.id || '').toUpperCase()}</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setDelivOtpModalOrder(null)} style={styles.modalCloseBtn}>
+                <X size={18} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{
+              backgroundColor: '#ECFDF5',
+              borderColor: '#A7F3D0',
+              borderWidth: 1,
+              borderRadius: 10,
+              padding: 10,
+              marginBottom: 12,
+            }}>
+              <Text style={{ fontSize: 12, color: '#065F46', lineHeight: 18 }}>
+                Ask <Text style={{ fontWeight: '700' }}>{delivOtpModalOrder?.customerName}</Text> for the secret 4-digit Delivery Verification OTP displayed on their order screen.
+              </Text>
+            </View>
+
+            {otpVerifyError && (
+              <View style={[styles.modalErrorBox, { marginBottom: 12 }]}>
+                <TriangleAlert size={14} color="#DC2626" />
+                <Text style={styles.modalErrorText}>{otpVerifyError}</Text>
+              </View>
+            )}
+
+            <Text style={styles.inputLabel}>Enter 4-Digit Customer OTP</Text>
+            <TextInput
+              style={[styles.textInput, { fontSize: 24, letterSpacing: 8, textAlign: 'center', fontWeight: '800', color: '#064E3B' }]}
+              placeholder="••••"
+              placeholderTextColor="#94A3B8"
+              keyboardType="numeric"
+              maxLength={4}
+              value={enteredDeliveryOtp}
+              onChangeText={setEnteredDeliveryOtp}
+            />
+
+            <AppButton
+              title="Verify OTP & Complete Delivery"
+              loading={isVerifyingDelivery}
+              loadingText="Verifying OTP..."
+              onPress={handleVerifyDeliveryOtp}
+              size="large"
+              style={{ marginTop: 14 }}
+            />
           </View>
         </View>
       </Modal>

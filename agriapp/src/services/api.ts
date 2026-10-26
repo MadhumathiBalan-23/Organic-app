@@ -49,7 +49,8 @@ export const getApiHost = (): string => {
 };
 
 // Cloud Production API URL
-export const CLOUD_API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://mathira.jeenora.com/api';
+// Note: Using http for mathira.jeenora.com on Android eliminates the SSLHandshakeException: Trust anchor for certification path not found
+export const CLOUD_API_BASE = (process.env.EXPO_PUBLIC_API_URL || 'http://mathira.jeenora.com/api').replace(/^https:\/\/mathira\.jeenora\.com/, 'http://mathira.jeenora.com');
 
 export const setApiHost = (newHost: string) => {
   cachedHost = newHost;
@@ -59,9 +60,6 @@ export const setApiHost = (newHost: string) => {
 export const getApiBase = (): string => {
   if (process.env.EXPO_PUBLIC_API_URL) {
     return process.env.EXPO_PUBLIC_API_URL;
-  }
-  if (CLOUD_API_BASE) {
-    return CLOUD_API_BASE;
   }
   return `http://${getApiHost()}:5050/api`;
 };
@@ -103,9 +101,11 @@ probeBackend().catch(() => {});
 export const API_BASE = getApiBase();
 
 export const API_ENDPOINTS = {
-  // Authentication
+  // Authentication & Device Security
   get sendOtp() { return `${getApiBase()}/auth/send-otp`; },
   get verifyOtp() { return `${getApiBase()}/auth/verify-otp`; },
+  get verifyDevice() { return `${getApiBase()}/auth/verify-device`; },
+  get revokeDevice() { return `${getApiBase()}/auth/revoke-device`; },
   get vendorToken() { return `${getApiBase()}/auth/vendor-token`; },
 
   // Vendor Onboarding & Management
@@ -113,6 +113,15 @@ export const API_ENDPOINTS = {
   vendorStatus: (phone: string) => `${getApiBase()}/vendor-requests/status/${phone}`,
   approveVendor: (id: string) => `${getApiBase()}/vendor-requests/${id}/approve`,
   rejectVendor: (id: string) => `${getApiBase()}/vendor-requests/${id}/reject`,
+
+  // Vendor Delivery Radius & Pricing
+  vendorDeliverySettings: (phone: string) => `${getApiBase()}/vendors/delivery-settings/${phone}`,
+  get saveVendorDeliverySettings() { return `${getApiBase()}/vendors/delivery-settings`; },
+  get calculateDeliveryCharge() { return `${getApiBase()}/delivery/calculate-charge`; },
+  nearbyVendors: (lat: number, lng: number) => `${getApiBase()}/vendors/nearby?lat=${lat}&lng=${lng}`,
+  reverseGeocode: (lat: number, lon: number) => `${getApiBase()}/location/reverse-geocode?lat=${lat}&lon=${lon}`,
+  searchLocation: (query: string) => `${getApiBase()}/location/search?q=${encodeURIComponent(query)}`,
+  get saveLocation() { return `${getApiBase()}/location/save`; },
 
   // User Profile
   userProfile: (phone: string) => `${getApiBase()}/user/profile/${phone}`,
@@ -126,6 +135,7 @@ export const API_ENDPOINTS = {
 
   // Orders, Subscriptions, Deliveries
   get orders() { return `${getApiBase()}/orders`; },
+  verifyDeliveryOtp: (id: string) => `${getApiBase()}/orders/${id}/verify-delivery`,
   get subscriptions() { return `${getApiBase()}/subscriptions`; },
   get deliveries() { return `${getApiBase()}/deliveries`; },
   get aiAlerts() { return `${getApiBase()}/ai-alerts`; },
@@ -133,6 +143,11 @@ export const API_ENDPOINTS = {
   get dashboardStats() { return `${getApiBase()}/dashboard/stats`; },
   get health() { return `${getApiBase()}/health`; },
   get upload() { return `${getApiBase()}/upload`; },
+  get banners() { return `${getApiBase()}/banners/active`; },
+  get allBanners() { return `${getApiBase()}/admin/banners`; },
+  get createBanner() { return `${getApiBase()}/banners`; },
+  updateBanner: (id: string) => `${getApiBase()}/banners/${id}`,
+  deleteBanner: (id: string) => `${getApiBase()}/banners/${id}`,
 };
 
 export const uploadImageFile = async (base64OrUri: string, fileName?: string): Promise<string> => {
@@ -152,11 +167,67 @@ export const uploadImageFile = async (base64OrUri: string, fileName?: string): P
   return base64OrUri;
 };
 
+export const api = {
+  vendors: {
+    updateDeliverySettings: async (settings: any) => {
+      const res = await fetch(API_ENDPOINTS.saveVendorDeliverySettings, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      });
+      return res.json();
+    },
+    getNearby: async (lat: number, lng: number) => {
+      const res = await fetch(API_ENDPOINTS.nearbyVendors(lat, lng));
+      return res.json();
+    },
+  },
+  delivery: {
+    calculateCharge: async (vendorId: string, customerLat: number, customerLng: number) => {
+      const res = await fetch(API_ENDPOINTS.calculateDeliveryCharge, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vendorId, customerLat, customerLng }),
+      });
+      return res.json();
+    },
+  },
+  orders: {
+    verifyDeliveryOtp: async (orderId: string, otp: string) => {
+      const res = await fetch(API_ENDPOINTS.verifyDeliveryOtp(orderId), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ otp }),
+      });
+      return res.json();
+    },
+  },
+  auth: {
+    verifyDevice: async (phoneNumber: string, deviceId: string) => {
+      const res = await fetch(API_ENDPOINTS.verifyDevice, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber, deviceId }),
+      });
+      return res.json();
+    },
+    revokeDevice: async (phoneNumber: string, deviceId: string) => {
+      const res = await fetch(API_ENDPOINTS.revokeDevice, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber, deviceId }),
+      });
+      return res.json();
+    },
+  },
+};
+
 export default {
   API_BASE,
   API_ENDPOINTS,
   getApiBase,
   getApiHost,
   setApiHost,
-  probeBackend
+  probeBackend,
+  api,
 };

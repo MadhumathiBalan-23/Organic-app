@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Image,
-  TouchableOpacity, Alert, TextInput, Modal, ActivityIndicator
+  TouchableOpacity, Alert, TextInput, Modal, ActivityIndicator,
+  Dimensions, NativeSyntheticEvent, NativeScrollEvent
 } from 'react-native';
 import {
   Search, X, ShoppingCart, Package, Repeat, MessageSquare, Phone,
@@ -9,17 +10,95 @@ import {
   Briefcase, Clock, Calendar, Pencil, LogOut, Sprout, Check,
   CircleCheck, Sparkles, Star, Leaf, Droplets,
   Apple, Wheat, Milk, ChevronRight, Zap, Gift, User, Store,
-  Truck, Trash, Plus, Minus, Mail, FileText, Camera, Upload
+  Truck, Trash, Plus, Minus, Mail, FileText, Camera, Upload,
+  Heart, LayoutGrid, ArrowLeft, Share2
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Product, ORGANIC_PRODUCT_PRESETS } from '../constants/mockData';
 import { API_ENDPOINTS, uploadImageFile } from '../services/api';
+import { SubscriptionButton } from '../components/SubscriptionButton';
+import Svg, { Defs, LinearGradient as SvgLinearGradient, Stop, Rect } from 'react-native-svg';
+import { getGradientTheme } from '../components/HomeHeader';
+import {
+  LoadingSpinner,
+  PageLoader,
+  ErrorState,
+  AppButton,
+  EmptyState,
+  InlineError,
+} from '../components/LoadingAndError';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const BANNER_WIDTH = Math.min(SCREEN_WIDTH - 24, 460);
+
+export interface DynamicBanner {
+  id: string;
+  title: string;
+  subtitle?: string;
+  imageUrl?: string;
+  cloudinaryPublicId?: string;
+  backgroundColor?: string;
+  textColor?: string;
+  buttonColor?: string;
+  buttonTextColor?: string;
+  buttonText?: string;
+  targetType?: string;
+  targetId?: string;
+  displayOrder?: number;
+  isActive?: boolean;
+}
+
+export interface DynamicCategory {
+  id: string;
+  name: string;
+  description?: string;
+  imageUrl?: string;
+  cloudinaryPublicId?: string;
+  displayOrder?: number;
+  isActive?: boolean;
+  color?: string;
+}
+
+// Helper to match category dynamically
+const matchCategory = (prodCategory: string, selectedCat: string) => {
+  if (!selectedCat || selectedCat === 'All') return true;
+  const pCat = (prodCategory || '').toLowerCase();
+  const sCat = selectedCat.toLowerCase();
+  if (pCat.includes(sCat) || sCat.includes(pCat)) return true;
+  if (sCat.includes('dairy') && (pCat.includes('milk') || pCat.includes('ghee') || pCat.includes('paneer') || pCat.includes('curd') || pCat.includes('butter'))) return true;
+  if (sCat.includes('veg') && (pCat.includes('veg') || pCat.includes('tomato') || pCat.includes('carrot') || pCat.includes('spinach') || pCat.includes('potato') || pCat.includes('onion') || pCat.includes('produce'))) return true;
+  if (sCat.includes('fruit') && (pCat.includes('fruit') || pCat.includes('apple') || pCat.includes('banana') || pCat.includes('orange') || pCat.includes('berry') || pCat.includes('mango'))) return true;
+  if (sCat.includes('groc') && (pCat.includes('grain') || pCat.includes('rice') || pCat.includes('wheat') || pCat.includes('flour') || pCat.includes('pulse') || pCat.includes('dal') || pCat.includes('grocer'))) return true;
+  if (sCat.includes('oil') && (pCat.includes('oil') || pCat.includes('cold-pressed'))) return true;
+  if (sCat.includes('dry') && (pCat.includes('nut') || pCat.includes('almond') || pCat.includes('cashew') || pCat.includes('snack'))) return true;
+  return false;
+};
+
+// Helper for dynamic product badge
+const getProductBadge = (p: Product) => {
+  if ((p as any).discountBadge) {
+    return { label: (p as any).discountBadge, bg: '#EF4444', color: '#FFFFFF' };
+  }
+  if ((p as any).originalPrice && (p as any).originalPrice > p.price) {
+    const orig = (p as any).originalPrice;
+    const pct = Math.round(((orig - p.price) / orig) * 100);
+    return { label: `${pct}% OFF`, bg: '#EF4444', color: '#FFFFFF' };
+  }
+  const name = (p.name || '').toLowerCase();
+  if (name.includes('milk') || name.includes('cow') || name.includes('a2')) {
+    return { label: 'Pure A2', bg: '#07843D', color: '#FFFFFF' };
+  }
+  if (name.includes('carrot') || name.includes('ghee') || name.includes('apple')) {
+    return { label: 'Best Seller', bg: '#F2C500', color: '#18352B' };
+  }
+  return { label: 'Fresh', bg: '#07843D', color: '#FFFFFF' };
+};
 
 // ── Colour Palette ───────────────────────────────────────
 const C = {
-  primary: '#0D2B1D', light: '#2D6A4F', accent: '#D4AC0D',
-  bg: '#F0F4F1', surface: '#FFFFFF', surface2: '#F7FAF8',
-  border: '#E2EBE6', textPrimary: '#1a1a2e', textSec: '#5a6a63',
+  primary: '#07843D', deepGreen: '#003B25', light: '#2D6A4F', accent: '#F2C500',
+  bg: '#F0F7F2', surface: '#FFFFFF', surface2: '#F7FAF8',
+  border: '#DFE9E1', textPrimary: '#18352B', textSec: '#718078',
   textMuted: '#9aada6', success: '#22c55e', warning: '#f59e0b',
   danger: '#ef4444', info: '#3b82f6',
 };
@@ -49,6 +128,11 @@ interface CustomerScreensProps {
   vendorApplicationStatus?: 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
   onRefreshVendorStatus?: () => void;
   onSwitchToVendor?: () => void;
+  cart?: { product: Product; qty: number }[];
+  setCart?: React.Dispatch<React.SetStateAction<{ product: Product; qty: number }[]>>;
+  selectedLocation?: any;
+  onChangeLocation?: () => void;
+  onBannerThemeChange?: (color: string) => void;
 }
 
 // ── Shared mini components ────────────────────────────────
@@ -77,22 +161,39 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
   vendorApplicationStatus = 'NONE',
   onRefreshVendorStatus,
   onSwitchToVendor,
+  selectedLocation,
+  onChangeLocation,
+  cart: propCart,
+  setCart: propSetCart,
+  onBannerThemeChange,
 }) => {
   // Vendor Application State in Profile
   const [showVendorModal, setShowVendorModal] = useState(false);
+  const [vApplicantPhone, setVApplicantPhone] = useState(userPhone || '');
   const [vFarmName, setVFarmName] = useState('');
-  const [vFarmLocation, setVFarmLocation] = useState('Salem, Tamil Nadu');
-  const [vCropCategories, setVCropCategories] = useState('Organic Vegetables & A2 Dairy');
-  const [vExperience, setVExperience] = useState('4');
-  const [vCertNo, setVCertNo] = useState('TN-ORG-2026-9042');
+  const [vFarmLocation, setVFarmLocation] = useState('');
+  const [vCropCategories, setVCropCategories] = useState('');
+  const [vExperience, setVExperience] = useState('');
+  const [vCertNo, setVCertNo] = useState('');
   const [isSubmittingVendor, setIsSubmittingVendor] = useState(false);
   const [vApplyError, setVApplyError] = useState<string | null>(null);
 
+  const handleOpenVendorModal = () => {
+    setVApplicantPhone(userPhone || '');
+    setVFarmName('');
+    setVFarmLocation('');
+    setVCropCategories('');
+    setVExperience('');
+    setVCertNo('');
+    setVApplyError(null);
+    setShowVendorModal(true);
+  };
+
   const handleApplyVendor = async () => {
     setVApplyError(null);
-    const cleanPhone = (userPhone || '').replace(/[^0-9]/g, '');
+    const cleanPhone = (vApplicantPhone || userPhone || '').replace(/[^0-9]/g, '');
     if (!cleanPhone || cleanPhone.length !== 10) {
-      setVApplyError('Please log in with a valid 10-digit mobile number first.');
+      setVApplyError('Please enter a valid 10-digit mobile number.');
       return;
     }
     if (!vFarmName.trim()) {
@@ -111,12 +212,12 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phoneNumber: cleanPhone,
-          userName: profileName || 'Partner Farmer',
+          userName: profileName ? profileName.trim() : 'Partner Farmer',
           farmName: vFarmName.trim(),
           farmLocation: vFarmLocation.trim(),
-          cropCategories: vCropCategories.trim() || 'Fresh Organic Vegetables & Dairy',
-          experienceYears: vExperience.trim() || '3',
-          certificateNo: vCertNo.trim() || 'TN-ORG-2026-9042',
+          cropCategories: vCropCategories.trim(),
+          experienceYears: vExperience.trim(),
+          certificateNo: vCertNo.trim(),
         }),
       });
       const data = await res.json();
@@ -140,16 +241,23 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
   };
 
   // ── Customer Profile State ──────────────────────────────────
-  const [profileName, setProfileName] = useState('Ananya Sharma');
-  const [profileEmail, setProfileEmail] = useState('ananya.sharma@mathira.org');
-  const [profileLocation, setProfileLocation] = useState('Flat 402, Green Valley Apts, Indiranagar, Bangalore - 560038');
+  const [profileName, setProfileName] = useState('');
+  const [profileEmail, setProfileEmail] = useState('');
+  const [profileLocation, setProfileLocation] = useState(selectedLocation?.address || '');
   const [profileStats, setProfileStats] = useState({ orders: 0, subs: subscriptions.length, spent: 0, points: 0 });
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
-  const [editName, setEditName] = useState('Ananya Sharma');
-  const [editEmail, setEditEmail] = useState('ananya.sharma@mathira.org');
-  const [editLocation, setEditLocation] = useState('Flat 402, Green Valley Apts, Indiranagar, Bangalore - 560038');
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editLocation, setEditLocation] = useState(selectedLocation?.address || '');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (selectedLocation?.address) {
+      setProfileLocation(selectedLocation.address);
+      setEditLocation(selectedLocation.address);
+    }
+  }, [selectedLocation?.address]);
 
   useEffect(() => {
     const cleanPhone = (userPhone || '9876543210').replace(/[^0-9]/g, '');
@@ -192,7 +300,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
         body: JSON.stringify({
           fullName: editName.trim() || 'Ananya Sharma',
           email: editEmail.trim() || 'ananya.sharma@mathira.org',
-          location: editLocation.trim() || 'Indiranagar, Bangalore'
+          location: editLocation.trim() || selectedLocation?.address || 'Current Location'
         })
       });
       const data = await res.json();
@@ -216,7 +324,9 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
     }
   };
 
-  const [cart, setCart] = useState<{ product: Product; qty: number }[]>([]);
+  const [internalCart, setInternalCart] = useState<{ product: Product; qty: number }[]>([]);
+  const cart = propCart !== undefined ? propCart : internalCart;
+  const setCart = propSetCart !== undefined ? propSetCart : setInternalCart;
   const [activeCategory, setActiveCategory] = useState('All');
 
   // Screen specific top-level state hooks (Rules of Hooks compliant)
@@ -255,32 +365,45 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
 
   const removeFromCart = (id: string) => setCart(prev => prev.filter(i => i.product.id !== id));
 
-  const categories = ['All', 'Dairy & Pure Ghee', 'Fresh Vegetables', 'Fresh Fruits', 'Groceries & Grains', 'Organic Oils', 'Dry Fruits & Snacks'];
+  const [categoriesList, setCategoriesList] = useState<DynamicCategory[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  const categories = ['All', ...categoriesList.map(c => c.name)];
+
   const getCategoryIcon = (cat: string, color: string) => {
-    switch (cat) {
-      case 'All': return <Leaf size={14} color={color} />;
-      case 'Dairy & Pure Ghee': return <Milk size={14} color={color} />;
-      case 'Fresh Vegetables': return <Sprout size={14} color={color} />;
-      case 'Fresh Fruits': return <Apple size={14} color={color} />;
-      case 'Groceries & Grains': return <Wheat size={14} color={color} />;
-      case 'Organic Oils': return <Droplets size={14} color={color} />;
-      case 'Dry Fruits & Snacks': return <Sparkles size={14} color={color} />;
-      default: return <Leaf size={14} color={color} />;
-    }
+    const cLower = (cat || '').toLowerCase();
+    if (cLower === 'all') return <Leaf size={14} color={color} />;
+    if (cLower.includes('dairy') || cLower.includes('milk') || cLower.includes('ghee')) return <Milk size={14} color={color} />;
+    if (cLower.includes('veg')) return <Sprout size={14} color={color} />;
+    if (cLower.includes('fruit')) return <Apple size={14} color={color} />;
+    if (cLower.includes('groc') || cLower.includes('grain')) return <Wheat size={14} color={color} />;
+    if (cLower.includes('oil')) return <Droplets size={14} color={color} />;
+    if (cLower.includes('dry') || cLower.includes('snack')) return <Sparkles size={14} color={color} />;
+    return <Leaf size={14} color={color} />;
   };
 
+  const [bannersList, setBannersList] = useState<DynamicBanner[]>([]);
+  const [isLoadingBanners, setIsLoadingBanners] = useState(false);
   const [productsList, setProductsList] = useState<Product[]>([]);
   const [userOrders, setUserOrders] = useState<any[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [productsError, setProductsError] = useState<string | null>(null);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [activeBannerIdx, setActiveBannerIdx] = useState(0);
+  const [favorites, setFavorites] = useState<Record<string, boolean>>({});
+  const bannerScrollRef = useRef<ScrollView>(null);
 
-  // Dynamic Add Product via API state
+  const toggleFavorite = (productId: string) => {
+    setFavorites(prev => ({ ...prev, [productId]: !prev[productId] }));
+  };
+
+  // Dynamic Add Product via API state (Vendor only - manual inputs with zero autofill)
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [newProdName, setNewProdName] = useState('');
   const [newProdCategory, setNewProdCategory] = useState('Fresh Vegetables');
-  const [newProdPrice, setNewProdPrice] = useState('75');
+  const [newProdPrice, setNewProdPrice] = useState('');
   const [newProdUnit, setNewProdUnit] = useState('Kg');
-  const [newProdStock, setNewProdStock] = useState('50');
-  const [newProdDesc, setNewProdDesc] = useState('Hand-picked farm fresh organic produce directly from certified local farmers.');
+  const [newProdStock, setNewProdStock] = useState('');
+  const [newProdDesc, setNewProdDesc] = useState('');
   const [newProdImage, setNewProdImage] = useState(ORGANIC_PRODUCT_PRESETS[0]?.url || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80');
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -349,20 +472,62 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
     }
   };
 
+  const handleBannerChange = (idx: number) => {
+    if (idx >= 0 && idx < bannersList.length) {
+      setActiveBannerIdx(idx);
+      const b = bannersList[idx];
+      if (b?.backgroundColor && onBannerThemeChange) {
+        onBannerThemeChange(b.backgroundColor);
+      }
+    }
+  };
+
+  const fetchBanners = async () => {
+    setIsLoadingBanners(true);
+    try {
+      const res = await fetch(API_ENDPOINTS.banners);
+      const json = await res.json();
+      const list = json.success && Array.isArray(json.data) ? json.data : (Array.isArray(json) ? json : []);
+      setBannersList(list);
+      if (list.length > 0 && onBannerThemeChange && list[0]?.backgroundColor) {
+        onBannerThemeChange(list[0].backgroundColor);
+      }
+    } catch (e) {
+      console.warn('Error fetching banners from API:', e);
+    } finally {
+      setIsLoadingBanners(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    setIsLoadingCategories(true);
+    try {
+      const res = await fetch(API_ENDPOINTS.categories);
+      const json = await res.json();
+      const list = json.success && Array.isArray(json.data) ? json.data : (Array.isArray(json) ? json : []);
+      setCategoriesList(list);
+    } catch (e) {
+      console.warn('Error fetching categories from API:', e);
+    } finally {
+      setIsLoadingCategories(false);
+    }
+  };
+
   const fetchProducts = async () => {
     setIsLoadingProducts(true);
+    setProductsError(null);
     try {
       const res = await fetch(API_ENDPOINTS.products);
       const json = await res.json();
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-        const sanitized = json.data.map((p: any) => ({
-          ...p,
-          category: safeCategory(p.category || p.categoryName)
-        }));
-        setProductsList(sanitized);
-      }
-    } catch (e) {
+      const list = json.success && Array.isArray(json.data) ? json.data : (Array.isArray(json) ? json : []);
+      const sanitized = list.map((p: any) => ({
+        ...p,
+        category: safeCategory(p.category || p.categoryName)
+      }));
+      setProductsList(sanitized);
+    } catch (e: any) {
       console.warn('Error fetching products from API:', e);
+      setProductsError('Unable to load organic products from the server. Please verify connection.');
     } finally {
       setIsLoadingProducts(false);
     }
@@ -386,20 +551,62 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
     } catch {}
   };
 
+  const handleBannerPress = (banner: DynamicBanner) => {
+    if (!banner.targetType || banner.targetType === 'ALL_PRODUCTS' || banner.targetType === 'SCREEN') {
+      if (banner.targetId) {
+        setCustomerScreen(banner.targetId as any);
+      } else {
+        setCustomerScreen('ALL_PRODUCTS');
+      }
+    } else if (banner.targetType === 'CATEGORY' && banner.targetId) {
+      setActiveCategory(banner.targetId);
+    } else if (banner.targetType === 'PRODUCT' && banner.targetId) {
+      const found = productsList.find(p => p.id === banner.targetId || p.name.toLowerCase() === banner.targetId?.toLowerCase());
+      if (found) {
+        setSelectedProduct(found);
+        setCustomerScreen('PRODUCT_DETAILS');
+      } else {
+        setCustomerScreen('ALL_PRODUCTS');
+      }
+    } else if (banner.targetType === 'SUBSCRIPTION') {
+      setCustomerScreen('MY_SUBSCRIPTIONS');
+    } else {
+      setCustomerScreen('ALL_PRODUCTS');
+    }
+  };
+
   useEffect(() => {
+    fetchBanners();
+    fetchCategories();
     fetchProducts();
     fetchOrders();
   }, [customerScreen]);
 
   const handleCreateProduct = async () => {
     setAddProdError(null);
-    if (!newProdName.trim()) {
-      setAddProdError('Please enter a product / crop name.');
+    if (!isApprovedVendor) {
+      Alert.alert(
+        'Vendor Access Required',
+        'Only verified and approved partner farmers can add crops or products. Please apply in your profile.'
+      );
+      return;
+    }
+    if (!newProdName.trim() || newProdName.trim().length < 2) {
+      setAddProdError('Please enter a valid crop or product name (at least 2 characters).');
       return;
     }
     const priceNum = parseFloat(newProdPrice);
     if (isNaN(priceNum) || priceNum <= 0) {
-      setAddProdError('Please enter a valid price greater than 0.');
+      setAddProdError('Please enter a valid price greater than ₹0.');
+      return;
+    }
+    const stockNum = parseInt(newProdStock, 10);
+    if (isNaN(stockNum) || stockNum <= 0) {
+      setAddProdError('Please enter available stock quantity (at least 1).');
+      return;
+    }
+    if (!newProdUnit.trim()) {
+      setAddProdError('Please enter unit of measure (e.g. Kg, Litre, Bunch).');
       return;
     }
 
@@ -410,7 +617,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
         categoryName: newProdCategory,
         price: priceNum,
         unit: newProdUnit.trim() || 'Kg',
-        stock: parseInt(newProdStock, 10) || 50,
+        stock: stockNum,
         description: newProdDesc.trim() || `${newProdName.trim()} direct from certified organic farms.`,
         imageUrl: newProdImage.trim() || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80',
         benefits: ['100% Certified Organic', 'Farm Fresh Harvest', 'Zero Chemical Residue'],
@@ -434,10 +641,12 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
         setProductsList(prev => [created, ...prev.filter(p => p.id !== created.id)]);
         setShowAddProductModal(false);
         setNewProdName('');
-        setNewProdPrice('75');
+        setNewProdPrice('');
+        setNewProdStock('');
+        setNewProdDesc('');
         Alert.alert(
-          'Product Added Dynamically!',
-          `"${created.name}" (₹${created.price}/${created.unit}) was added to the SQLite database via API and is immediately live on the customer page!`
+          'Product Added Successfully!',
+          `"${created.name}" (₹${created.price}/${created.unit}) has been added to the catalog and is now live!`
         );
         fetchProducts();
       } else {
@@ -452,6 +661,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
 
   const handlePlaceOrder = async () => {
     if (cart.length === 0) return;
+    setIsPlacingOrder(true);
     try {
       const res = await fetch(API_ENDPOINTS.orders, {
         method: 'POST',
@@ -459,7 +669,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
         body: JSON.stringify({
           customerName: profileName || 'Ananya Sharma',
           customerPhone: userPhone || '9876543210',
-          deliveryAddress: profileLocation || 'Indiranagar, Bangalore',
+          deliveryAddress: profileLocation || selectedLocation?.address || 'Current Location',
           totalAmount: cartTotal,
           paymentMethod: 'UPI',
           items: cart.map(item => ({
@@ -487,6 +697,8 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
       Alert.alert('Order Placed!', `Your order of ₹${cartTotal} has been recorded.`);
       setCart([]);
       setCustomerScreen('HOME');
+    } finally {
+      setIsPlacingOrder(false);
     }
   };
 
@@ -541,104 +753,106 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
     }
   };
 
-  // Render modal to add product dynamically via API
-  const renderAddProductModal = () => (
-    <Modal visible={showAddProductModal} transparent animationType="slide">
-      <View style={cs.vendorModalBackdrop}>
-        <View style={cs.vendorModalCard}>
-          <View style={cs.vendorModalHeader}>
-            <View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Sprout size={18} color={C.light} />
-                <Text style={cs.vendorModalTitle}>Add Product via API</Text>
+  // Render modal to add product dynamically via API (Approved Partner Farmers Only)
+  const renderAddProductModal = () => {
+    if (!isApprovedVendor) return null;
+    return (
+      <Modal visible={showAddProductModal} transparent animationType="slide">
+        <View style={cs.vendorModalBackdrop}>
+          <View style={cs.vendorModalCard}>
+            <View style={cs.vendorModalHeader}>
+              <View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Sprout size={18} color={C.light} />
+                  <Text style={cs.vendorModalTitle}>Add Crop / Product</Text>
+                </View>
+                <Text style={cs.vendorModalSub}>Publish verified harvest to local subscriber catalog</Text>
               </View>
-              <Text style={cs.vendorModalSub}>Dynamically post new crop to SQLite catalog</Text>
-            </View>
-            <TouchableOpacity onPress={() => setShowAddProductModal(false)} style={cs.modalCloseBtn}>
-              <X size={18} color="#64748B" />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
-            {addProdError ? (
-              <View style={cs.modalErrorBox}>
-                <Text style={cs.modalErrorText}>{addProdError}</Text>
-              </View>
-            ) : null}
-
-            <Text style={cs.formLabel}>Crop / Product Name *</Text>
-            <TextInput
-              style={cs.formInput}
-              placeholder="e.g. Organic Ooty Carrots"
-              placeholderTextColor="#94A3B8"
-              value={newProdName}
-              onChangeText={setNewProdName}
-            />
-
-            <Text style={cs.formLabel}>Category</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
-              {['Fresh Vegetables', 'Dairy & Pure Ghee', 'Fresh Fruits', 'Groceries & Grains', 'Organic Oils', 'Dry Fruits & Snacks'].map(cat => (
-                <TouchableOpacity
-                  key={cat}
-                  onPress={() => setNewProdCategory(cat)}
-                  style={[
-                    cs.catChip,
-                    newProdCategory === cat && cs.catChipActive,
-                    { marginRight: 8, paddingHorizontal: 10, paddingVertical: 6 }
-                  ]}
-                >
-                  <Text style={[cs.catChipText, newProdCategory === cat && cs.catChipTextActive, { fontSize: 11 }]}>
-                    {cat}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={cs.formLabel}>Price (₹) *</Text>
-                <TextInput
-                  style={cs.formInput}
-                  placeholder="75"
-                  keyboardType="numeric"
-                  placeholderTextColor="#94A3B8"
-                  value={newProdPrice}
-                  onChangeText={setNewProdPrice}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={cs.formLabel}>Unit</Text>
-                <TextInput
-                  style={cs.formInput}
-                  placeholder="Kg"
-                  placeholderTextColor="#94A3B8"
-                  value={newProdUnit}
-                  onChangeText={setNewProdUnit}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={cs.formLabel}>Stock</Text>
-                <TextInput
-                  style={cs.formInput}
-                  placeholder="50"
-                  keyboardType="numeric"
-                  placeholderTextColor="#94A3B8"
-                  value={newProdStock}
-                  onChangeText={setNewProdStock}
-                />
-              </View>
+              <TouchableOpacity onPress={() => setShowAddProductModal(false)} style={cs.modalCloseBtn}>
+                <X size={18} color="#64748B" />
+              </TouchableOpacity>
             </View>
 
-            <Text style={cs.formLabel}>Product Description</Text>
-            <TextInput
-              style={[cs.formInput, { height: 60, textAlignVertical: 'top', paddingTop: 8 }]}
-              placeholder="Crisp farm-picked organic produce..."
-              placeholderTextColor="#94A3B8"
-              value={newProdDesc}
-              onChangeText={setNewProdDesc}
-              multiline
-              numberOfLines={2}
-            />
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+              {addProdError ? (
+                <View style={cs.modalErrorBox}>
+                  <Text style={cs.modalErrorText}>{addProdError}</Text>
+                </View>
+              ) : null}
+
+              <Text style={cs.formLabel}>Crop / Product Name *</Text>
+              <TextInput
+                style={cs.formInput}
+                placeholder="e.g. Organic Ooty Carrots"
+                placeholderTextColor="#94A3B8"
+                value={newProdName}
+                onChangeText={setNewProdName}
+              />
+
+              <Text style={cs.formLabel}>Category</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+                {['Fresh Vegetables', 'Dairy & Pure Ghee', 'Fresh Fruits', 'Groceries & Grains', 'Organic Oils', 'Dry Fruits & Snacks'].map(cat => (
+                  <TouchableOpacity
+                    key={cat}
+                    onPress={() => setNewProdCategory(cat)}
+                    style={[
+                      cs.catChip,
+                      newProdCategory === cat && cs.catChipActive,
+                      { marginRight: 8, paddingHorizontal: 10, paddingVertical: 6 }
+                    ]}
+                  >
+                    <Text style={[cs.catChipText, newProdCategory === cat && cs.catChipTextActive, { fontSize: 11 }]}>
+                      {cat}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={cs.formLabel}>Price (₹) *</Text>
+                  <TextInput
+                    style={cs.formInput}
+                    placeholder="e.g. 75"
+                    keyboardType="numeric"
+                    placeholderTextColor="#94A3B8"
+                    value={newProdPrice}
+                    onChangeText={setNewProdPrice}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={cs.formLabel}>Unit</Text>
+                  <TextInput
+                    style={cs.formInput}
+                    placeholder="e.g. Kg"
+                    placeholderTextColor="#94A3B8"
+                    value={newProdUnit}
+                    onChangeText={setNewProdUnit}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={cs.formLabel}>Stock</Text>
+                  <TextInput
+                    style={cs.formInput}
+                    placeholder="e.g. 50"
+                    keyboardType="numeric"
+                    placeholderTextColor="#94A3B8"
+                    value={newProdStock}
+                    onChangeText={setNewProdStock}
+                  />
+                </View>
+              </View>
+
+              <Text style={cs.formLabel}>Product Description</Text>
+              <TextInput
+                style={[cs.formInput, { height: 60, textAlignVertical: 'top', paddingTop: 8 }]}
+                placeholder="Describe freshness, harvest source, and crop grade..."
+                placeholderTextColor="#94A3B8"
+                value={newProdDesc}
+                onChangeText={setNewProdDesc}
+                multiline
+                numberOfLines={2}
+              />
 
             {/* Product Photo Selection & Live Preview */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 4 }}>
@@ -775,27 +989,22 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
               onChangeText={setNewProdImage}
             />
 
-            <TouchableOpacity
-              style={cs.submitVendorBtn}
+            <AppButton
+              title="Add Product to Live API"
+              loading={isSubmittingProduct}
+              loadingText="Publishing Product..."
               onPress={handleCreateProduct}
-              disabled={isSubmittingProduct}
-              activeOpacity={0.85}
-            >
-              {isSubmittingProduct ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                  <Plus size={16} color="#FFFFFF" />
-                  <Text style={cs.submitVendorBtnText}>Add Product to Live API</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+              size="large"
+              icon={<Plus size={16} color="#FFFFFF" />}
+              style={{ marginTop: 16 }}
+            />
             <View style={{ height: 20 }} />
           </ScrollView>
         </View>
       </View>
     </Modal>
   );
+};
 
   const filteredProducts = productsList.filter(p => {
     const catName = safeCategory(p.category);
@@ -831,6 +1040,13 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
             <Zap size={11} color={C.light} />
             <Text style={cs.deliveryBadge}>Delivery by 6:30 AM Tomorrow</Text>
+          </View>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+            <MapPin size={10} color="#059669" />
+            <Text style={{ fontSize: 10, color: '#059669', fontWeight: '600' }}>
+              Salem Farm Hub · 2.4 km · ₹20 del.
+            </Text>
           </View>
 
           <View style={cs.priceRow}>
@@ -893,146 +1109,364 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
     );
   };
 
-  // ── HOME SCREEN ─────────────────────────────────────────
-  if (customerScreen === 'HOME') return (
-    <View style={{ flex: 1, backgroundColor: C.bg }}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={cs.scroll}>
-        {/* Hero Banner */}
-        <View style={cs.heroBanner}>
-          <View style={{ flex: 1 }}>
-            <View style={[cs.heroBadge, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
-              <Sparkles size={11} color="#fff" />
-              <Text style={cs.heroBadgeText}>DAILY FRESH HARVEST</Text>
-            </View>
-            <Text style={cs.heroTitle}>Farm-to-Door{'\n'}Organic Goodness</Text>
-            <Text style={cs.heroSub}>Pure certified organic milk, veggies & ghee.</Text>
-            <TouchableOpacity style={cs.heroBtn} onPress={() => setCustomerScreen('ALL_PRODUCTS')}>
-              <Text style={cs.heroBtnText}>Shop Now →</Text>
-            </TouchableOpacity>
-          </View>
-          <Sprout size={52} color="rgba(255,255,255,0.85)" />
-        </View>
+  // Render modern Blinkit-inspired 2-column Product Card matching reference screenshot
+  const renderHomeProductCard = (p: Product) => {
+    const cartItem = cart.find(i => i.product.id === p.id);
+    const qty = cartItem ? cartItem.qty : 0;
+    const badge = getProductBadge(p);
+    const isFav = !!favorites[p.id];
+    const origPrice = (p as any).originalPrice || Math.round(p.price * 1.15);
+    const isOutOfStock = p.stock !== undefined && p.stock <= 0;
 
-        {/* Search */}
-        <View style={cs.searchBox}>
-          <Search size={16} color={C.textMuted} style={{ marginRight: 8 }} />
-          <TextInput
-            style={cs.searchInput} placeholder="Search milk, ghee, fruits…"
-            value={searchQuery} onChangeText={setSearchQuery}
-            placeholderTextColor={C.textMuted}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <X size={16} color={C.textMuted} />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Categories */}
-        <SectionTitle>Browse Categories</SectionTitle>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 18 }}>
-          {categories.map(cat => {
-            const isActive = activeCategory === cat;
-            return (
-              <TouchableOpacity
-                key={cat}
-                style={[cs.catChip, isActive && cs.catChipActive, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}
-                onPress={() => { setActiveCategory(cat); setCustomerScreen('ALL_PRODUCTS'); }}
-              >
-                {getCategoryIcon(cat, isActive ? '#fff' : C.primary)}
-                <Text style={[cs.catChipText, isActive && cs.catChipTextActive]}>
-                  {cat}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        {/* Featured products */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <View>
-            <Text style={cs.sectionTitle}>Farm-Fresh Organic Products ({productsList.length})</Text>
-            <Text style={{ fontSize: 11, color: C.textSec }}>Real-time inventory from live API</Text>
+    return (
+      <TouchableOpacity
+        key={p.id}
+        style={cs.blinkitProductCard}
+        onPress={() => {
+          setSelectedProduct(p);
+          setCustomerScreen('PRODUCT_DETAILS');
+        }}
+        activeOpacity={0.88}
+      >
+        {/* Top: Badge Tag & Favorite Heart Icon */}
+        <View style={cs.cardTopRow}>
+          <View style={[cs.badgePill, { backgroundColor: badge.bg }]}>
+            <Text style={[cs.badgePillText, { color: badge.color }]}>{badge.label}</Text>
           </View>
-          <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
-            <TouchableOpacity
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 4,
-                backgroundColor: '#DCFCE7',
-                paddingHorizontal: 10,
-                paddingVertical: 6,
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: '#15803D'
-              }}
-              onPress={() => setShowAddProductModal(true)}
-              activeOpacity={0.8}
-            >
-              <Plus size={12} color="#15803D" />
-              <Text style={{ fontSize: 11, fontWeight: '800', color: '#15803D' }}>+ Add Crop</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={fetchProducts}
-              style={{
-                padding: 6,
-                borderRadius: 14,
-                backgroundColor: C.surface,
-                borderWidth: 1,
-                borderColor: C.border
-              }}
-              activeOpacity={0.8}
-            >
-              <Repeat size={13} color={C.light} />
-            </TouchableOpacity>
-          </View>
-        </View>
-        <View style={cs.productGrid}>
-          {productsList.map(p => renderProductCard(p))}
-        </View>
-
-        {/* Offers Banner */}
-        <View style={cs.offerBanner}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Gift size={16} color="#B45309" />
-            <Text style={cs.offerTitle}>Subscribe Daily & Save 10% Extra</Text>
-          </View>
-          <Text style={cs.offerSub}>Set up daily A2 Milk or Fresh Vegetable deliveries & get 10% cashback on advance monthly passes.</Text>
-          <TouchableOpacity style={cs.offerBtn} onPress={() => setCustomerScreen('ALL_PRODUCTS')}>
-            <Text style={cs.offerBtnText}>Explore Subscription Plans →</Text>
+          <TouchableOpacity
+            style={cs.heartBtn}
+            onPress={() => toggleFavorite(p.id)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Heart
+              size={16}
+              color={isFav ? '#EF4444' : '#94A3B8'}
+              fill={isFav ? '#EF4444' : 'transparent'}
+            />
           </TouchableOpacity>
         </View>
 
-        {/* Quick links */}
-        <SectionTitle>My Account & Shortcuts</SectionTitle>
-        <View style={cs.quickLinks}>
-          {[
-            { icon: <Package size={22} color={C.primary} />, label: 'My Orders', screen: 'ORDER_HISTORY' },
-            { icon: <Repeat size={22} color={C.primary} />, label: 'Subscriptions', screen: 'MY_SUBSCRIPTIONS' },
-            { icon: <ShoppingCart size={22} color={C.primary} />, label: `Cart (${cartCount})`, screen: 'CART' },
-            { icon: <MessageSquare size={22} color={C.primary} />, label: 'WhatsApp AI', screen: 'WHATSAPP_AI' },
-          ].map(item => (
-            <TouchableOpacity key={item.screen} style={cs.quickLinkCard} onPress={() => setCustomerScreen(item.screen)}>
-              {item.icon}
-              <Text style={cs.quickLinkLabel}>{item.label}</Text>
-            </TouchableOpacity>
-          ))}
+        {/* Center: Clean Product Image */}
+        <View style={cs.cardImgContainer}>
+          <Image
+            source={{ uri: p.imageUrl || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&q=80&w=400' }}
+            style={cs.cardProductImg}
+            resizeMode="cover"
+          />
         </View>
 
-        <View style={{ height: 80 }} />
-      </ScrollView>
-      <FloatingCartBar />
-      {renderAddProductModal()}
-    </View>
-  );
+        {/* Product Name */}
+        <Text style={cs.cardProductName} numberOfLines={1}>
+          {p.name}
+        </Text>
+
+        {/* Quantity / Unit */}
+        <Text style={cs.cardProductUnit} numberOfLines={1}>
+          {p.unit || '1 kg'}
+        </Text>
+
+        {/* Bottom: Price & Green Add Button / Quantity Selector */}
+        <View style={cs.cardBottomRow}>
+          <View style={cs.priceCol}>
+            <Text style={cs.cardPrice}>₹{p.price}</Text>
+            {origPrice > p.price && (
+              <Text style={cs.cardOrigPrice}>₹{origPrice}</Text>
+            )}
+          </View>
+
+          {isOutOfStock ? (
+            <View style={[cs.addBtn, { backgroundColor: '#94A3B8' }]}>
+              <Text style={cs.addBtnText}>Out of Stock</Text>
+            </View>
+          ) : qty > 0 ? (
+            <View style={cs.cardQtySelector}>
+              <TouchableOpacity
+                style={cs.cardQtyBtn}
+                onPress={() => updateCartQty(p, -1)}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              >
+                <Text style={cs.cardQtyBtnText}>−</Text>
+              </TouchableOpacity>
+              <Text style={cs.cardQtyText}>{qty}</Text>
+              <TouchableOpacity
+                style={cs.cardQtyBtn}
+                onPress={() => updateCartQty(p, 1)}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              >
+                <Text style={cs.cardQtyBtnText}>+</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={cs.addBtn}
+              onPress={() => addToCart(p)}
+              activeOpacity={0.8}
+            >
+              <Text style={cs.addBtnText}>Add</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  // ── HOME SCREEN (Amazon Connected Header + Dynamic Database Banners, Categories, Products) ──
+  if (customerScreen === 'HOME') {
+    const displayedHomeProducts = productsList.filter(p => {
+      const matchCat = matchCategory(safeCategory(p.category), activeCategory);
+      const matchSearch = searchQuery.trim() === '' || p.name.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchCat && matchSearch;
+    });
+
+    const activeBanner = bannersList[activeBannerIdx] || bannersList[0];
+    const headerGrad = getGradientTheme(activeBanner?.backgroundColor || '#07843D');
+
+    return (
+      <View style={{ flex: 1, backgroundColor: '#F0F7F2' }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 130 }}>
+          {/* Half-Banner Gradient Backdrop extending from Header down to half of the promotional banner */}
+          <View
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 104, // 12px top margin + 84px (half of 168px banner height) + 8px bleed
+              overflow: 'hidden',
+            }}
+            pointerEvents="none"
+          >
+            <Svg width="100%" height="100%">
+              <Defs>
+                <SvgLinearGradient id="homeHalfBannerGrad" x1="0" y1="0" x2="0" y2="1">
+                  <Stop offset="0%" stopColor={headerGrad.light} stopOpacity="1" />
+                  <Stop offset="70%" stopColor={headerGrad.light} stopOpacity="0.75" />
+                  <Stop offset="100%" stopColor="#F0F7F2" stopOpacity="0" />
+                </SvgLinearGradient>
+              </Defs>
+              <Rect width="100%" height="100%" fill="url(#homeHalfBannerGrad)" />
+            </Svg>
+          </View>
+
+          {/* 1. Dynamic Promotional Banner Carousel (Connected with Dynamic Header Theme Color) */}
+          {isLoadingBanners ? (
+            <View style={{ height: 165, marginHorizontal: 12, marginTop: 12, borderRadius: 20, backgroundColor: '#EBF6EE', justifyContent: 'center', alignItems: 'center' }}>
+              <LoadingSpinner size="small" message="Loading festive banners..." showLeafIcon />
+            </View>
+          ) : bannersList.length > 0 ? (
+            <View style={{ marginTop: 12 }}>
+              <ScrollView
+                ref={bannerScrollRef}
+                horizontal
+                pagingEnabled={false}
+                snapToInterval={BANNER_WIDTH + 12}
+                decelerationRate="fast"
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 12 }}
+                onMomentumScrollEnd={(e) => {
+                  const offsetX = e.nativeEvent.contentOffset.x;
+                  const idx = Math.min(Math.max(0, Math.round(offsetX / (BANNER_WIDTH + 12))), bannersList.length - 1);
+                  handleBannerChange(idx);
+                }}
+                onScrollEndDrag={(e) => {
+                  const offsetX = e.nativeEvent.contentOffset.x;
+                  const idx = Math.min(Math.max(0, Math.round(offsetX / (BANNER_WIDTH + 12))), bannersList.length - 1);
+                  handleBannerChange(idx);
+                }}
+              >
+                {bannersList.map((banner) => {
+                  const grad = getGradientTheme(banner.backgroundColor);
+
+                  return (
+                    <TouchableOpacity
+                      key={banner.id}
+                      activeOpacity={0.92}
+                      onPress={() => handleBannerPress(banner)}
+                      style={[
+                        cs.bannerCard,
+                        {
+                          backgroundColor: grad.dark,
+                          width: BANNER_WIDTH
+                        }
+                      ]}
+                    >
+                      {/* Dark-to-Light Linear Gradient Background */}
+                      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                        <Svg width="100%" height="100%">
+                          <Defs>
+                            <SvgLinearGradient id={`bannerGrad_${banner.id}`} x1="0" y1="0" x2="1" y2="1">
+                              <Stop offset="0%" stopColor={grad.dark} stopOpacity="1" />
+                              <Stop offset="45%" stopColor={grad.mid} stopOpacity="1" />
+                              <Stop offset="100%" stopColor={grad.light} stopOpacity="1" />
+                            </SvgLinearGradient>
+                          </Defs>
+                          <Rect width="100%" height="100%" rx="20" ry="20" fill={`url(#bannerGrad_${banner.id})`} />
+                        </Svg>
+                      </View>
+
+                      {/* Uploaded Image only on Gradient Background */}
+                      {banner.imageUrl ? (
+                        <View style={cs.bannerOnlyImgWrapper}>
+                          <Image
+                            source={{ uri: banner.imageUrl }}
+                            style={cs.bannerOnlyImage}
+                            resizeMode="cover"
+                          />
+                        </View>
+                      ) : null}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              {/* Interactive Pagination Dots with Theme Color Sync */}
+              {bannersList.length > 1 && (
+                <View style={cs.bannerPaginationRow}>
+                  {bannersList.map((b, i) => {
+                    const isActive = i === activeBannerIdx;
+                    return (
+                      <TouchableOpacity
+                        key={b.id || i}
+                        onPress={() => {
+                          bannerScrollRef.current?.scrollTo({ x: i * (BANNER_WIDTH + 12), animated: true });
+                          handleBannerChange(i);
+                        }}
+                        style={[
+                          isActive ? cs.bannerDotActive : cs.bannerDotInactive,
+                          isActive && {
+                            backgroundColor: bannersList[activeBannerIdx]?.backgroundColor || '#07843D',
+                            width: 20
+                          }
+                        ]}
+                        activeOpacity={0.7}
+                      />
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          ) : null}
+
+          {/* 2. Dynamic Product Categories Loaded from Database */}
+          {isLoadingCategories ? (
+            <View style={{ height: 70, justifyContent: 'center', alignItems: 'center' }}>
+              <ActivityIndicator size="small" color="#07843D" />
+            </View>
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={cs.categoryRow}
+            >
+              {/* "All" Category Pill */}
+              <TouchableOpacity
+                style={cs.categoryCard}
+                onPress={() => setActiveCategory('All')}
+                activeOpacity={0.8}
+              >
+                <View style={[cs.categoryIconBox, activeCategory === 'All' && cs.categoryIconBoxActive]}>
+                  <LayoutGrid size={22} color="#07843D" />
+                </View>
+                <Text
+                  style={[cs.categoryLabel, activeCategory === 'All' && cs.categoryLabelActive]}
+                  numberOfLines={1}
+                >
+                  All
+                </Text>
+              </TouchableOpacity>
+
+              {/* Dynamic Database Categories */}
+              {categoriesList
+                .filter(cat => cat.isActive !== false)
+                .map((cat) => {
+                  const isActive = activeCategory === cat.name;
+                  return (
+                    <TouchableOpacity
+                      key={cat.id}
+                      style={cs.categoryCard}
+                      onPress={() => setActiveCategory(cat.name)}
+                      activeOpacity={0.8}
+                    >
+                      <View style={[cs.categoryIconBox, isActive && cs.categoryIconBoxActive]}>
+                        {cat.imageUrl ? (
+                          <Image
+                            source={{ uri: cat.imageUrl }}
+                            style={cs.categoryImg}
+                            resizeMode="cover"
+                          />
+                        ) : (cat as any).emoji ? (
+                          <Text style={{ fontSize: 24 }}>{(cat as any).emoji}</Text>
+                        ) : (
+                          <Sprout size={22} color={isActive ? '#07843D' : '#52645B'} />
+                        )}
+                      </View>
+                      <Text
+                        style={[cs.categoryLabel, isActive && cs.categoryLabelActive]}
+                        numberOfLines={1}
+                      >
+                        {cat.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+            </ScrollView>
+          )}
+
+          {/* 3. Fresh Products Header Row */}
+          <View style={cs.freshProductsHeaderRow}>
+            <Text style={cs.freshProductsTitle}>Fresh Products</Text>
+            <TouchableOpacity
+              style={cs.viewAllBtn}
+              onPress={() => setCustomerScreen('ALL_PRODUCTS')}
+              activeOpacity={0.7}
+            >
+              <Text style={cs.viewAllText}>View All ({displayedHomeProducts.length}) →</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* 4. Two-Column Clean Product Grid from Live Database */}
+          {isLoadingProducts ? (
+            <PageLoader
+              message="Harvesting Fresh Organic Catalog..."
+              subMessage="Fetching certified organic produce directly from Mathira partner farms"
+            />
+          ) : productsError ? (
+            <ErrorState
+              title="Catalog temporarily unavailable"
+              message={productsError}
+              onRetry={fetchProducts}
+            />
+          ) : (
+            <View style={cs.productGridContainer}>
+              {displayedHomeProducts.map((p) => renderHomeProductCard(p))}
+              {displayedHomeProducts.length === 0 && (
+                <EmptyState
+                  title="No organic products found"
+                  description={
+                    searchQuery.trim() !== ''
+                      ? `No organic products match "${searchQuery}"`
+                      : `No products available in ${activeCategory}`
+                  }
+                  actionLabel="View All Products"
+                  onAction={() => {
+                    setActiveCategory('All');
+                    fetchProducts();
+                  }}
+                />
+              )}
+            </View>
+          )}
+        </ScrollView>
+        <FloatingCartBar />
+        {renderAddProductModal()}
+      </View>
+    );
+  }
 
   // ── ALL PRODUCTS ─────────────────────────────────────────
   if (customerScreen === 'ALL_PRODUCTS') return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <View style={cs.scroll}>
-        <BackBtn onPress={() => setCustomerScreen('HOME')} label="← Home" />
-
         {/* Search */}
         <View style={cs.searchBox}>
           <Search size={16} color={C.textMuted} style={{ marginRight: 8 }} />
@@ -1058,22 +1492,24 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
           <Text style={[cs.sectionTitle, { marginBottom: 0 }]}>
             {filteredProducts.length} organic products {activeCategory !== 'All' ? `in ${activeCategory}` : ''}
           </Text>
-          <TouchableOpacity
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 4,
-              backgroundColor: '#15803D',
-              paddingHorizontal: 10,
-              paddingVertical: 6,
-              borderRadius: 14
-            }}
-            onPress={() => setShowAddProductModal(true)}
-            activeOpacity={0.8}
-          >
-            <Plus size={12} color="#FFFFFF" />
-            <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFFFFF' }}>+ Add Product</Text>
-          </TouchableOpacity>
+          {isApprovedVendor && (
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                backgroundColor: '#15803D',
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 14
+              }}
+              onPress={() => setShowAddProductModal(true)}
+              activeOpacity={0.8}
+            >
+              <Plus size={12} color="#FFFFFF" />
+              <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFFFFF' }}>Add Product</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -1093,99 +1529,310 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
       {renderAddProductModal()}
     </View>
   );
-
-  // ── PRODUCT DETAILS ───────────────────────────────────────
   if (customerScreen === 'PRODUCT_DETAILS') {
+    const origPrice = (selectedProduct as any).originalPrice || Math.round(selectedProduct.price * 1.25);
+    const savings = Math.max(0, origPrice - selectedProduct.price);
+    const discountPct = origPrice > selectedProduct.price ? Math.round(((origPrice - selectedProduct.price) / origPrice) * 100) : 20;
+    const isFav = !!favorites[selectedProduct.id];
+    const farmerName = (selectedProduct as any).farmerName || 'Thiru. Selvam Organic Estate';
+    const farmerLocation = (selectedProduct as any).farmerLocation || 'Pollachi Foothills, Coimbatore';
+    const harvestInfo = (selectedProduct as any).harvestDate || 'Harvested 05:30 AM today';
+    const certNumber = (selectedProduct as any).certificationNumber || 'NPOP/NAB/0019';
+    const relatedProducts = productsList.filter(p => p.id !== selectedProduct.id && (safeCategory(p.category) === safeCategory(selectedProduct.category) || p.organicCertified)).slice(0, 6);
+
     return (
       <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <View style={{ position: 'relative' }}>
-            <Image source={{ uri: selectedProduct.imageUrl }} style={cs.detailHeroImg} resizeMode="cover" />
-            <TouchableOpacity 
-              style={{
-                position: 'absolute',
-                top: 16,
-                left: 16,
-                backgroundColor: 'rgba(13, 43, 29, 0.85)',
-                paddingHorizontal: 14,
-                paddingVertical: 8,
-                borderRadius: 20,
-                flexDirection: 'row',
-                alignItems: 'center',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.3,
-                shadowRadius: 4,
-                elevation: 4
-              }}
-              onPress={() => setCustomerScreen('HOME')}
-              activeOpacity={0.8}
-            >
-              <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 12 }}>← Back to Products</Text>
-            </TouchableOpacity>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
+          {/* 1. Elevated Hero Media & Floating Glass Actions */}
+          <View style={cs.pdHeroContainer}>
+            <Image
+              source={{ uri: selectedProduct.imageUrl || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80' }}
+              style={cs.pdHeroImg}
+              resizeMode="cover"
+            />
+            {/* Top Floating Glass Navigation Row */}
+            <View style={cs.pdTopNav}>
+              <TouchableOpacity
+                style={cs.pdNavCircleBtn}
+                onPress={() => setCustomerScreen('HOME')}
+                activeOpacity={0.8}
+              >
+                <ArrowLeft size={20} color="#0F172A" />
+              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TouchableOpacity
+                  style={cs.pdNavCircleBtn}
+                  onPress={() => toggleFavorite(selectedProduct.id)}
+                  activeOpacity={0.8}
+                >
+                  <Heart
+                    size={20}
+                    color={isFav ? '#EF4444' : '#0F172A'}
+                    fill={isFav ? '#EF4444' : 'transparent'}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={cs.pdNavCircleBtn}
+                  onPress={() => Alert.alert('Share Product', `Share link copied for ${selectedProduct.name}!`)}
+                  activeOpacity={0.8}
+                >
+                  <Share2 size={18} color="#0F172A" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Ambient Badges Floating at bottom of Hero */}
+            <View style={cs.pdHeroBottomOverlay}>
+              {selectedProduct.organicCertified ? (
+                <View style={cs.pdTrustPill}>
+                  <ShieldCheck size={14} color="#86EFAC" />
+                  <Text style={cs.pdTrustPillText}>100% Organic Certified</Text>
+                </View>
+              ) : (
+                <View style={[cs.pdTrustPill, { backgroundColor: 'rgba(15,23,42,0.85)' }]}>
+                  <Sprout size={14} color="#86EFAC" />
+                  <Text style={cs.pdTrustPillText}>Farm Direct</Text>
+                </View>
+              )}
+              {savings > 0 && (
+                <View style={cs.pdSavingsPill}>
+                  <Text style={cs.pdSavingsPillText}>{discountPct}% OFF</Text>
+                </View>
+              )}
+            </View>
           </View>
-          <View style={cs.detailCard}>
-            {selectedProduct.organicCertified && (
-              <View style={[cs.certBadgeInline, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
-                <ShieldCheck size={12} color={C.light} />
-                <Text style={cs.certBadgeText}>100% Organic Certified</Text>
+
+          {/* 2. Main Product Identity & Pricing Card */}
+          <View style={cs.pdMainBody}>
+            {/* Category tag & Rating Pill */}
+            <View style={cs.pdCatBadgeRow}>
+              <View style={cs.pdCatBadge}>
+                <Text style={cs.pdCatBadgeText}>{safeCategory(selectedProduct.category).toUpperCase()}</Text>
+              </View>
+              <View style={cs.pdRatingBox}>
+                <Star size={13} color="#F59E0B" fill="#F59E0B" />
+                <Text style={cs.pdRatingText}>{selectedProduct.rating || 4.9}</Text>
+                <Text style={cs.pdReviewsCount}>(120+ reviews)</Text>
+              </View>
+            </View>
+
+            {/* Product Title */}
+            <Text style={cs.pdTitle}>{selectedProduct.name}</Text>
+
+            {/* Price & Savings Row */}
+            <View style={cs.pdPriceContainer}>
+              <Text style={cs.pdPriceLarge}>₹{selectedProduct.price}</Text>
+              <Text style={cs.pdUnitText}>/ {selectedProduct.unit}</Text>
+              {origPrice > selectedProduct.price && (
+                <Text style={cs.pdOrigPrice}>₹{origPrice}</Text>
+              )}
+              {savings > 0 && (
+                <View style={cs.pdSaveBadge}>
+                  <Text style={cs.pdSaveBadgeText}>Save ₹{savings}</Text>
+                </View>
+              )}
+            </View>
+
+            {/* 3. Express Farm Delivery Banner */}
+            <View style={cs.pdDeliveryCard}>
+              <View style={cs.pdDeliveryIconBox}>
+                <Zap size={20} color="#16A34A" fill="#16A34A" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={cs.pdDeliveryTitle}>Express Delivery in 15–20 Mins</Text>
+                <Text style={cs.pdDeliverySub}>Direct cold-chain transit · Harvested fresh daily</Text>
+              </View>
+              <View style={cs.pdStockBadge}>
+                <View style={cs.pdStockDot} />
+                <Text style={cs.pdStockText}>In Stock</Text>
+              </View>
+            </View>
+
+            {/* 4. Quantity Stepper */}
+            <View style={cs.pdQtyCard}>
+              <View>
+                <Text style={cs.pdQtyLabel}>Quantity</Text>
+                <Text style={cs.pdQtySub}>Total: ₹{selectedProduct.price * detailQty} for {detailQty} {selectedProduct.unit}</Text>
+              </View>
+              <View style={cs.pdStepper}>
+                <TouchableOpacity
+                  style={cs.pdStepperBtn}
+                  onPress={() => setDetailQty(Math.max(1, detailQty - 1))}
+                  activeOpacity={0.7}
+                >
+                  <Text style={cs.pdStepperBtnText}>−</Text>
+                </TouchableOpacity>
+                <Text style={cs.pdStepperValue}>{detailQty} {selectedProduct.unit}</Text>
+                <TouchableOpacity
+                  style={cs.pdStepperBtn}
+                  onPress={() => setDetailQty(detailQty + 1)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={cs.pdStepperBtnText}>+</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* 5. Meet Your Farmer Provenance Card */}
+            <View style={cs.pdFarmerCard}>
+              <View style={cs.pdFarmerRow}>
+                <View style={cs.pdFarmerAvatar}>
+                  <User size={22} color="#065F46" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={cs.pdFarmerName}>{farmerName}</Text>
+                  <Text style={cs.pdFarmerLoc}>📍 {farmerLocation}</Text>
+                </View>
+              </View>
+              <View style={cs.pdFarmerCertBox}>
+                <ShieldCheck size={14} color="#059669" />
+                <Text style={cs.pdFarmerCertText}>
+                  {harvestInfo} · Cert #{certNumber}
+                </Text>
+              </View>
+            </View>
+
+            {/* 6. Four Organic Purity Highlights */}
+            <Text style={cs.pdSectionHeader}>Why Choose Mathira Organic?</Text>
+            <View style={cs.pdPurityGrid}>
+              <View style={cs.pdPurityTile}>
+                <ShieldCheck size={18} color="#16A34A" />
+                <Text style={cs.pdPurityTileTitle}>Zero Pesticides</Text>
+                <Text style={cs.pdPurityTileDesc}>Lab tested for 120+ chemical residues</Text>
+              </View>
+              <View style={cs.pdPurityTile}>
+                <Sprout size={18} color="#059669" />
+                <Text style={cs.pdPurityTileTitle}>Native Seeds</Text>
+                <Text style={cs.pdPurityTileDesc}>Non-GMO traditional heirloom crops</Text>
+              </View>
+              <View style={cs.pdPurityTile}>
+                <Truck size={18} color="#2563EB" />
+                <Text style={cs.pdPurityTileTitle}>Direct Cold Chain</Text>
+                <Text style={cs.pdPurityTileDesc}>From farm to doorstep in under 12 hours</Text>
+              </View>
+              <View style={cs.pdPurityTile}>
+                <Award size={18} color="#D97706" />
+                <Text style={cs.pdPurityTileTitle}>Fair Trade</Text>
+                <Text style={cs.pdPurityTileDesc}>100% fair payout to partner farmers</Text>
+              </View>
+            </View>
+
+            {/* 7. Product Description */}
+            <Text style={cs.pdSectionHeader}>Product Details</Text>
+            <View style={cs.pdDescCard}>
+              <Text style={cs.pdDescText}>
+                {selectedProduct.description || 'Nurtured organically in nutrient-rich soil without synthetic fertilizers or chemical pesticides. Picked at peak ripeness to ensure exceptional natural taste and maximum nutritional retention.'}
+              </Text>
+            </View>
+
+            {/* 8. Nutritional & Health Benefits */}
+            {selectedProduct.benefits && selectedProduct.benefits.length > 0 && (
+              <>
+                <Text style={cs.pdSectionHeader}>Nutritional & Health Benefits</Text>
+                <View style={cs.pdBenefitsCard}>
+                  {selectedProduct.benefits.map((b: string, i: number) => (
+                    <View key={i} style={cs.pdBenefitRow}>
+                      <View style={cs.pdBenefitBullet}>
+                        <Check size={11} color="#16A34A" />
+                      </View>
+                      <Text style={cs.pdBenefitText}>{b}</Text>
+                    </View>
+                  ))}
+                </View>
+              </>
+            )}
+
+            {/* Storage Advice Tip */}
+            <View style={cs.pdStorageTip}>
+              <Sparkles size={16} color="#CA8A04" />
+              <Text style={cs.pdStorageTipText}>
+                <Text style={{ fontWeight: '800' }}>Freshness Tip: </Text>
+                Store in a cool dry place or refrigerator at 4°C to 8°C. Best consumed within 3–4 days of delivery.
+              </Text>
+            </View>
+
+            {/* 9. Frequently Paired Farm Fresh Produce (Related Products) */}
+            {relatedProducts.length > 0 && (
+              <View style={cs.pdRelatedSection}>
+                <Text style={cs.pdSectionHeader}>Pairs Well With</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={cs.pdRelatedScroll}
+                >
+                  {relatedProducts.map(rp => (
+                    <TouchableOpacity
+                      key={rp.id}
+                      style={cs.pdRelatedCard}
+                      onPress={() => {
+                        setSelectedProduct(rp);
+                        setDetailQty(1);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Image
+                        source={{ uri: rp.imageUrl || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=300&auto=format&fit=crop&q=80' }}
+                        style={cs.pdRelatedImg}
+                        resizeMode="cover"
+                      />
+                      <Text style={cs.pdRelatedName} numberOfLines={1}>{rp.name}</Text>
+                      <View style={cs.pdRelatedPriceRow}>
+                        <Text style={cs.pdRelatedPrice}>₹{rp.price}</Text>
+                        <TouchableOpacity
+                          style={cs.pdRelatedAddBtn}
+                          onPress={() => addToCart(rp, 1)}
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                        >
+                          <Text style={cs.pdRelatedAddBtnText}>+ ADD</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
               </View>
             )}
-            <Text style={cs.detailName}>{selectedProduct.name}</Text>
-            <Text style={cs.detailCat}>{safeCategory(selectedProduct.category)}</Text>
-            <Text style={cs.detailPrice}>₹{selectedProduct.price} <Text style={cs.detailUnit}>/{selectedProduct.unit}</Text></Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
-              <Star size={13} color="#f59e0b" fill="#f59e0b" />
-              <Text style={cs.detailRating}>{selectedProduct.rating} · Available {selectedProduct.availabilityStart}–{selectedProduct.availabilityEnd}</Text>
-            </View>
-
-            <View style={cs.divider} />
-
-            <Text style={cs.detailSection}>Description</Text>
-            <Text style={cs.detailDesc}>{selectedProduct.description}</Text>
-
-            <Text style={cs.detailSection}>Key Benefits</Text>
-            {selectedProduct.benefits.map((b: string, i: number) => (
-              <View key={i} style={cs.benefitRow}>
-                <Sprout size={14} color={C.light} style={{ marginRight: 8, marginTop: 2 }} />
-                <Text style={cs.benefitText}>{b}</Text>
-              </View>
-            ))}
-
-            {/* Quantity */}
-            <View style={cs.divider} />
-            <View style={cs.qtyRow}>
-              <Text style={cs.detailSection}>Quantity</Text>
-              <View style={cs.qtyControl}>
-                <TouchableOpacity style={cs.qtyBtn} onPress={() => setDetailQty(Math.max(1, detailQty - 1))}><Text style={cs.qtyBtnText}>−</Text></TouchableOpacity>
-                <Text style={cs.qtyVal}>{detailQty} {selectedProduct.unit}</Text>
-                <TouchableOpacity style={cs.qtyBtn} onPress={() => setDetailQty(detailQty + 1)}><Text style={cs.qtyBtnText}>+</Text></TouchableOpacity>
-              </View>
-            </View>
           </View>
         </ScrollView>
 
-        {/* Bottom action bar */}
-        <View style={cs.bottomBar}>
-          <View>
-            <Text style={cs.bottomBarLabel}>TOTAL</Text>
-            <Text style={cs.bottomBarTotal}>₹{selectedProduct.price * detailQty}</Text>
+        {/* 10. Floating Sticky Bottom Bar */}
+        <View style={cs.pdFixedBottomBar}>
+          <View style={cs.pdBottomPriceCol}>
+            <Text style={cs.pdBottomLabel}>TOTAL PRICE</Text>
+            <Text style={cs.pdBottomTotal}>₹{selectedProduct.price * detailQty}</Text>
+            <Text style={cs.pdBottomSub}>for {detailQty} {selectedProduct.unit} · Incl. all taxes</Text>
           </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={cs.pdBottomActionGroup}>
             {selectedProduct.oneTimeAllowed && (
-              <TouchableOpacity style={[cs.buyOnceBtn, { flexDirection: 'row', alignItems: 'center', gap: 6 }]} onPress={() => { addToCart(selectedProduct, detailQty); setCustomerScreen('HOME'); }}>
-                <ShoppingCart size={15} color="#fff" />
-                <Text style={cs.buyOnceBtnText}>Add to Cart</Text>
+              <TouchableOpacity
+                style={cs.pdCartBtn}
+                onPress={() => {
+                  addToCart(selectedProduct, detailQty);
+                  setCustomerScreen('HOME');
+                }}
+                activeOpacity={0.85}
+              >
+                <ShoppingCart size={16} color="#FFFFFF" />
+                <Text style={cs.pdCartBtnText}>Add to Cart</Text>
               </TouchableOpacity>
             )}
             {selectedProduct.subscriptionAllowed && (
-              <TouchableOpacity style={[cs.subscribeBtn, { flexDirection: 'row', alignItems: 'center', gap: 6 }]} onPress={() => {
-                setActiveSubscriptionData({ product: selectedProduct, qty: detailQty, freq: 'Daily', duration: 30, time: '06:30 AM', priceTotal: selectedProduct.price * detailQty * 30 });
-                setCustomerScreen('SUBSCRIPTION_CREATE');
-              }}>
-                <Repeat size={15} color={C.primary} />
-                <Text style={cs.subscribeBtnText}>Subscribe</Text>
-              </TouchableOpacity>
+              <SubscriptionButton
+                title="Subscribe"
+                icon={<Repeat size={14} color="#FFFFFF" />}
+                variant="primary"
+                size="small"
+                onPress={() => {
+                  setActiveSubscriptionData({
+                    product: selectedProduct,
+                    qty: detailQty,
+                    freq: 'Daily',
+                    duration: 30,
+                    time: '06:30 AM',
+                    priceTotal: selectedProduct.price * detailQty * 30,
+                  });
+                  setCustomerScreen('SUBSCRIPTION_CREATE');
+                }}
+              />
             )}
           </View>
         </View>
@@ -1197,19 +1844,18 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
   if (customerScreen === 'CART') return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <ScrollView contentContainerStyle={cs.scroll} showsVerticalScrollIndicator={false}>
-        <BackBtn onPress={() => setCustomerScreen('HOME')} />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
           <ShoppingCart size={20} color={C.textPrimary} />
           <Text style={cs.screenTitle}>My Cart</Text>
         </View>
         {cart.length === 0 ? (
-          <View style={{ alignItems: 'center', padding: 50 }}>
-            <ShoppingCart size={48} color={C.textMuted} />
-            <Text style={{ color: C.textMuted, marginTop: 12, fontSize: 14 }}>Your cart is empty</Text>
-            <TouchableOpacity style={[cs.buyOnceBtn, { marginTop: 16 }]} onPress={() => setCustomerScreen('ALL_PRODUCTS')}>
-              <Text style={cs.buyOnceBtnText}>Browse Products</Text>
-            </TouchableOpacity>
-          </View>
+          <EmptyState
+            icon={<ShoppingCart size={44} color={C.textMuted} />}
+            title="Your cart is empty"
+            description="Explore fresh organic milk, ghee, fruits, and vegetables from local partner farms."
+            actionLabel="Browse Products"
+            onAction={() => setCustomerScreen('ALL_PRODUCTS')}
+          />
         ) : (
           <>
             {cart.map(item => (
@@ -1225,24 +1871,62 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
                 </TouchableOpacity>
               </View>
             ))}
+            {/* Delivery Address Card with Change option */}
+            <View style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: 14,
+              padding: 14,
+              marginTop: 12,
+              marginBottom: 10,
+              borderWidth: 1,
+              borderColor: C.border
+            }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <MapPin size={15} color={C.light} />
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: C.textPrimary }}>Delivery Address</Text>
+                </View>
+                {onChangeLocation && (
+                  <TouchableOpacity onPress={onChangeLocation} activeOpacity={0.7}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: C.light }}>Change</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              <Text style={{ fontSize: 12, color: C.textSec, lineHeight: 18 }}>
+                {selectedLocation?.address || profileLocation}
+              </Text>
+              <Text style={{ fontSize: 10, color: C.light, fontWeight: '700', marginTop: 4 }}>
+                ✓ Distance to farm: 2.4 km (Within vendor delivery radius)
+              </Text>
+            </View>
+
             <View style={cs.cartSummary}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                <Text style={{ color: C.textSec, fontSize: 13 }}>Subtotal ({cartCount} items)</Text>
+                <Text style={{ color: C.textSec, fontSize: 13 }}>Items Subtotal ({cartCount} items)</Text>
                 <Text style={{ fontWeight: '700', fontSize: 13 }}>₹{cartTotal}</Text>
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                <Text style={{ color: C.textSec, fontSize: 13 }}>Delivery</Text>
-                <Text style={{ fontWeight: '700', fontSize: 13, color: C.success }}>FREE</Text>
+                <View>
+                  <Text style={{ color: C.textSec, fontSize: 13 }}>Delivery Charge (2.4 km)</Text>
+                  <Text style={{ color: C.textMuted, fontSize: 10 }}>Base ₹15 + Distance fee ₹5</Text>
+                </View>
+                <Text style={{ fontWeight: '700', fontSize: 13, color: C.textPrimary }}>₹20</Text>
               </View>
               <View style={cs.divider} />
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-                <Text style={{ color: C.textPrimary, fontWeight: '800', fontSize: 16 }}>Total</Text>
-                <Text style={{ color: C.primary, fontWeight: '800', fontSize: 18 }}>₹{cartTotal}</Text>
+                <Text style={{ color: C.textPrimary, fontWeight: '800', fontSize: 16 }}>Total Payable</Text>
+                <Text style={{ color: C.primary, fontWeight: '800', fontSize: 18 }}>₹{cartTotal + 20}</Text>
               </View>
             </View>
-            <TouchableOpacity style={cs.checkoutBtn} onPress={handlePlaceOrder}>
-              <Text style={cs.checkoutBtnText}>Place Order · ₹{cartTotal}</Text>
-            </TouchableOpacity>
+
+            <AppButton
+              title={`Place Order · ₹${cartTotal + 20}`}
+              loading={isPlacingOrder}
+              loadingText="Placing Order..."
+              onPress={handlePlaceOrder}
+              size="large"
+              style={{ marginTop: 14 }}
+            />
           </>
         )}
       </ScrollView>
@@ -1253,9 +1937,29 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
   if (customerScreen === 'SUBSCRIPTION_CREATE') {
     const total = subQty * activeSubscriptionData.product.price * (subFreq === 'Daily' ? subDuration : subFreq === 'Weekly' ? Math.ceil(subDuration / 7) : 1);
     return (
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, backgroundColor: C.bg }}>
+        {/* Compact Product Header Card */}
+        <View style={{ backgroundColor: '#FFFFFF', padding: 14, marginHorizontal: 16, marginTop: 12, marginBottom: 4, borderRadius: 16, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#DFE9E1' }}>
+          <Image
+            source={{ uri: activeSubscriptionData.product.imageUrl || 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=300' }}
+            style={{ width: 56, height: 56, borderRadius: 12, backgroundColor: '#F8FAF8' }}
+            resizeMode="cover"
+          />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Sparkles size={11} color="#15803D" />
+              <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#15803D', letterSpacing: 0.5 }}>DAILY SUBSCRIPTION</Text>
+            </View>
+            <Text style={{ fontSize: 15, fontWeight: '800', color: '#18352B', marginTop: 2 }} numberOfLines={1}>
+              {activeSubscriptionData.product.name}
+            </Text>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#07843D', marginTop: 2 }}>
+              ₹{activeSubscriptionData.product.price} / {activeSubscriptionData.product.unit}
+            </Text>
+          </View>
+        </View>
+
         <ScrollView contentContainerStyle={cs.scroll} showsVerticalScrollIndicator={false}>
-          <BackBtn onPress={() => setCustomerScreen('PRODUCT_DETAILS')} />
           <Text style={cs.screenTitle}>Configure Subscription</Text>
           <Text style={cs.screenSub}>Set up automated deliveries for {activeSubscriptionData.product.name}</Text>
 
@@ -1306,12 +2010,16 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
             <Text style={cs.bottomBarLabel}>ESTIMATED TOTAL</Text>
             <Text style={cs.bottomBarTotal}>₹{total}</Text>
           </View>
-          <TouchableOpacity style={cs.subscribeBtn} onPress={() => {
-            setActiveSubscriptionData({ ...activeSubscriptionData, qty: subQty, freq: subFreq, time: subTime, duration: subDuration, priceTotal: total });
-            setCustomerScreen('SUBSCRIPTION_SUMMARY');
-          }}>
-            <Text style={cs.subscribeBtnText}>Review Plan →</Text>
-          </TouchableOpacity>
+          <SubscriptionButton
+            title="Review Plan →"
+            size="large"
+            variant="primary"
+            onPress={() => {
+              setActiveSubscriptionData({ ...activeSubscriptionData, qty: subQty, freq: subFreq, time: subTime, duration: subDuration, priceTotal: total });
+              setCustomerScreen('SUBSCRIPTION_SUMMARY');
+            }}
+            style={{ minWidth: 180 }}
+          />
         </View>
       </View>
     );
@@ -1321,7 +2029,6 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
   if (customerScreen === 'SUBSCRIPTION_SUMMARY') return (
     <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={cs.scroll} showsVerticalScrollIndicator={false}>
-        <BackBtn onPress={() => setCustomerScreen('SUBSCRIPTION_CREATE')} />
         <Text style={cs.screenTitle}>Plan Summary</Text>
         <View style={cs.configCard}>
           <Text style={cs.configCardTitle}>Order Details</Text>
@@ -1354,9 +2061,13 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
       </ScrollView>
       <View style={cs.bottomBar}>
         <Text style={{ fontSize: 12, color: C.textSec }}>Advance payment required</Text>
-        <TouchableOpacity style={cs.checkoutBtn} onPress={() => setCustomerScreen('PAYMENT')}>
-          <Text style={cs.checkoutBtnText}>Proceed to Payment</Text>
-        </TouchableOpacity>
+        <SubscriptionButton
+          title="Proceed to Payment →"
+          size="large"
+          variant="primary"
+          onPress={() => setCustomerScreen('PAYMENT')}
+          style={{ minWidth: 200 }}
+        />
       </View>
     </View>
   );
@@ -1366,7 +2077,6 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
     return (
       <View style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={cs.scroll} showsVerticalScrollIndicator={false}>
-          <BackBtn onPress={() => setCustomerScreen('SUBSCRIPTION_SUMMARY')} />
           <Text style={cs.screenTitle}>Secure Checkout</Text>
           <View style={cs.payBanner}>
             <Text style={cs.payBannerLabel}>AMOUNT TO PAY</Text>
@@ -1424,6 +2134,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
             </TouchableOpacity>
           ))}
         </View>
+
         <ScrollView contentContainerStyle={cs.scroll} showsVerticalScrollIndicator={false}>
           {subTab === 'Active' && subscriptions.map((sub: any) => {
             const today = new Date().toISOString().split('T')[0];
@@ -1431,7 +2142,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
             return (
               <View key={sub.id} style={cs.subCard}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Image source={{ uri: sub.product.imageUrl }} style={{ width: 44, height: 44, borderRadius: 8, marginRight: 10, backgroundColor: C.border }} resizeMode="cover" />
+                  <Image source={{ uri: sub.product.imageUrl }} style={{ width: 48, height: 48, borderRadius: 10, marginRight: 12, backgroundColor: C.border }} resizeMode="cover" />
                   <View style={{ flex: 1 }}>
                     <Text style={cs.subCardName}>{sub.product.name}</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
@@ -1449,31 +2160,54 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
                 </View>
                 <View style={cs.divider} />
                 <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <TouchableOpacity style={[cs.subActionBtn, { borderColor: C.warning }]} onPress={() => handleSkip(sub.id)}>
-                    <Text style={{ color: C.warning, fontSize: 11, fontWeight: '700' }}>{skippedToday ? 'Resume' : 'Skip Today'}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[cs.subActionBtn, { borderColor: C.info }]} onPress={() => handlePause(sub.id)}>
-                    <Text style={{ color: C.info, fontSize: 11, fontWeight: '700' }}>{sub.status === 'Paused' ? 'Resume' : 'Pause'}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[cs.subActionBtn, { borderColor: C.danger, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3 }]} onPress={() => {
-                    Alert.alert('Cancel Subscription', 'Are you sure?', [{ text: 'No', style: 'cancel' }, { text: 'Yes, Cancel', style: 'destructive', onPress: () => setSubscriptions((prev: any[]) => prev.filter((s: any) => s.id !== sub.id)) }]);
-                  }}>
-                    <X size={11} color={C.danger} />
-                    <Text style={{ color: C.danger, fontSize: 11, fontWeight: '700' }}>Cancel</Text>
-                  </TouchableOpacity>
+                  <SubscriptionButton
+                    title={skippedToday ? 'Resume' : 'Skip Today'}
+                    size="small"
+                    variant={skippedToday ? 'primary' : 'outline'}
+                    onPress={() => handleSkip(sub.id)}
+                    style={{ flex: 1 }}
+                  />
+                  <SubscriptionButton
+                    title={sub.status === 'Paused' ? 'Resume' : 'Pause'}
+                    size="small"
+                    variant={sub.status === 'Paused' ? 'primary' : 'secondary'}
+                    onPress={() => handlePause(sub.id)}
+                    style={{ flex: 1 }}
+                  />
+                  <SubscriptionButton
+                    title="Cancel"
+                    size="small"
+                    variant="danger"
+                    onPress={() => {
+                      Alert.alert('Cancel Subscription', 'Are you sure you want to cancel this plan?', [
+                        { text: 'No', style: 'cancel' },
+                        { text: 'Yes, Cancel', style: 'destructive', onPress: () => setSubscriptions((prev: any[]) => prev.filter((s: any) => s.id !== sub.id)) }
+                      ]);
+                    }}
+                    style={{ flex: 0.8 }}
+                  />
                 </View>
               </View>
             );
           })}
           {(subTab === 'History' || subscriptions.length === 0) && (
-            <View style={{ alignItems: 'center', padding: 40 }}>
-              <Package size={40} color={C.textMuted} />
-              <Text style={{ color: C.textMuted, fontSize: 13, marginTop: 10 }}>
-                {subTab === 'History' ? 'No past subscriptions' : 'No active subscriptions'}
+            <View style={{ alignItems: 'center', padding: 32 }}>
+              <Package size={44} color={C.textMuted} />
+              <Text style={{ color: C.textPrimary, fontSize: 15, fontWeight: '700', marginTop: 12 }}>
+                {subTab === 'History' ? 'No past subscriptions' : 'No active recurring deliveries'}
               </Text>
-              <TouchableOpacity style={[cs.subscribeBtn, { marginTop: 16 }]} onPress={() => setCustomerScreen('ALL_PRODUCTS')}>
-                <Text style={cs.subscribeBtnText}>Browse & Subscribe</Text>
-              </TouchableOpacity>
+              <Text style={{ color: C.textSec, fontSize: 12, textAlign: 'center', marginTop: 4, maxWidth: 260 }}>
+                Set up automated morning deliveries of fresh milk, veggies, and daily organic staples.
+              </Text>
+              <SubscriptionButton
+                title="Explore Plans & Subscribe"
+                icon={<Sprout size={16} color="#FFFFFF" />}
+                variant="primary"
+                size="large"
+                onPress={() => setCustomerScreen('ALL_PRODUCTS')}
+                style={{ marginTop: 20, minWidth: 240 }}
+                badge="SAVE 10%"
+              />
             </View>
           )}
         </ScrollView>
@@ -1484,7 +2218,6 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
   // ── ORDER HISTORY ─────────────────────────────────────────
   if (customerScreen === 'ORDER_HISTORY') return (
     <ScrollView contentContainerStyle={cs.scroll} showsVerticalScrollIndicator={false}>
-      <BackBtn onPress={() => setCustomerScreen('HOME')} />
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <Package size={20} color={C.textPrimary} />
         <Text style={cs.screenTitle}>My Orders</Text>
@@ -1522,6 +2255,43 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
                 </View>
               </View>
             </View>
+
+            {/* Delivery Verification OTP (Requirement 11) */}
+            {order.deliveryStatus !== 'DELIVERED' && (
+              <View style={{
+                marginTop: 10,
+                padding: 10,
+                borderRadius: 10,
+                backgroundColor: '#ECFDF5',
+                borderWidth: 1,
+                borderColor: '#A7F3D0',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <View style={{ flex: 1, paddingRight: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                    <ShieldCheck size={13} color="#047857" />
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#064E3B' }}>Delivery Verification Code</Text>
+                  </View>
+                  <Text style={{ fontSize: 10, color: '#047857', marginTop: 2 }}>
+                    Give this 4-digit OTP to vendor upon arrival
+                  </Text>
+                </View>
+                <View style={{
+                  backgroundColor: '#FFFFFF',
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 8,
+                  borderWidth: 1.5,
+                  borderColor: '#047857'
+                }}>
+                  <Text style={{ fontSize: 16, fontWeight: '900', color: '#047857', letterSpacing: 2 }}>
+                    {order.deliveryOtp || '4821'}
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
         ))
       )}
@@ -1532,15 +2302,12 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
   // ── PROFILE ───────────────────────────────────────────────
   if (customerScreen === 'PROFILE') return (
     <ScrollView contentContainerStyle={cs.scroll} showsVerticalScrollIndicator={false}>
-      {/* Top Navigation Bar with Back & Title */}
+      {/* Top Navigation Bar with Title & Edit */}
       <View style={cs.profileTopNav}>
-        <TouchableOpacity style={cs.profileBackBtn} onPress={() => setCustomerScreen('HOME')} activeOpacity={0.7}>
-          <Text style={cs.profileBackBtnText}>← Back to Market</Text>
-        </TouchableOpacity>
         <Text style={cs.profileTopNavTitle}>My Account</Text>
         <TouchableOpacity style={[cs.profileEditTopBtn, { flexDirection: 'row', alignItems: 'center', gap: 4 }]} onPress={() => setShowEditProfileModal(true)} activeOpacity={0.7}>
           <Pencil size={12} color={C.light} />
-          <Text style={cs.profileEditTopBtnText}>Edit</Text>
+          <Text style={cs.profileEditTopBtnText}>Edit Profile</Text>
         </TouchableOpacity>
       </View>
 
@@ -1664,7 +2431,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
             <Text style={cs.producerRejectedDesc}>
               Admin requested updated organic certificate. Please review and re-apply.
             </Text>
-            <TouchableOpacity style={cs.reapplyBtn} onPress={() => setShowVendorModal(true)} activeOpacity={0.8}>
+            <TouchableOpacity style={cs.reapplyBtn} onPress={handleOpenVendorModal} activeOpacity={0.8}>
               <Text style={cs.reapplyBtnText}>Update & Re-apply</Text>
             </TouchableOpacity>
           </View>
@@ -1673,7 +2440,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
             <Text style={cs.producerApplyDesc}>
               Cultivate certified organic crops or produce A2 dairy? Register to sell directly to local subscribers.
             </Text>
-            <TouchableOpacity style={[cs.applyFarmerBtn, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]} onPress={() => setShowVendorModal(true)} activeOpacity={0.85}>
+            <TouchableOpacity style={[cs.applyFarmerBtn, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]} onPress={handleOpenVendorModal} activeOpacity={0.85}>
               <FileText size={14} color="#FFFFFF" />
               <Text style={cs.applyFarmerBtnText}>Apply as Partner Farmer</Text>
             </TouchableOpacity>
@@ -1846,7 +2613,9 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
               <Text style={cs.formLabel}>Registered Mobile Number</Text>
               <TextInput
                 style={[cs.formInput, { backgroundColor: '#F1F5F9', color: '#64748B' }]}
-                value={'+91 ' + (userPhone || '9876543210')}
+                value={userPhone ? `+91 ${userPhone}` : ''}
+                placeholder="Enter 10-digit mobile number"
+                placeholderTextColor="#94A3B8"
                 editable={false}
               />
 
@@ -1872,18 +2641,14 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
                 numberOfLines={3}
               />
 
-              <TouchableOpacity
-                style={cs.submitVendorBtn}
+              <AppButton
+                title="Save Profile Changes"
+                loading={isSavingProfile}
+                loadingText="Saving Profile..."
                 onPress={handleSaveProfile}
-                disabled={isSavingProfile}
-                activeOpacity={0.85}
-              >
-                {isSavingProfile ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <Text style={cs.submitVendorBtnText}>Save Profile Changes</Text>
-                )}
-              </TouchableOpacity>
+                size="large"
+                style={{ marginTop: 14 }}
+              />
               <View style={{ height: 20 }} />
             </ScrollView>
           </View>
@@ -1911,17 +2676,21 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
                 </View>
               ) : null}
 
-              <Text style={cs.formLabel}>Applicant Mobile</Text>
+              <Text style={cs.formLabel}>Applicant Mobile *</Text>
               <TextInput
-                style={[cs.formInput, { backgroundColor: '#F1F5F9', color: '#64748B' }]}
-                value={userPhone ? `+91 ${userPhone}` : 'Please log in with mobile number'}
-                editable={false}
+                style={cs.formInput}
+                placeholder="Enter 10-digit mobile number"
+                placeholderTextColor="#94A3B8"
+                keyboardType="phone-pad"
+                maxLength={10}
+                value={vApplicantPhone}
+                onChangeText={setVApplicantPhone}
               />
 
               <Text style={cs.formLabel}>Farm / Producer Name *</Text>
               <TextInput
                 style={cs.formInput}
-                placeholder="e.g. Salem Green Valley Orchards"
+                placeholder="Enter farm or producer name"
                 placeholderTextColor="#94A3B8"
                 value={vFarmName}
                 onChangeText={setVFarmName}
@@ -1930,7 +2699,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
               <Text style={cs.formLabel}>Farm Location & District *</Text>
               <TextInput
                 style={cs.formInput}
-                placeholder="e.g. Salem, Tamil Nadu"
+                placeholder="Enter farm location and district"
                 placeholderTextColor="#94A3B8"
                 value={vFarmLocation}
                 onChangeText={setVFarmLocation}
@@ -1939,7 +2708,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
               <Text style={cs.formLabel}>Crop Types / Harvest Categories</Text>
               <TextInput
                 style={cs.formInput}
-                placeholder="e.g. Organic Tomatoes, A2 Cow Milk, Wild Honey"
+                placeholder="Enter crop types (e.g. Vegetables, Dairy)"
                 placeholderTextColor="#94A3B8"
                 value={vCropCategories}
                 onChangeText={setVCropCategories}
@@ -1950,7 +2719,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
                   <Text style={cs.formLabel}>Experience (Yrs)</Text>
                   <TextInput
                     style={cs.formInput}
-                    placeholder="4"
+                    placeholder="e.g. 5"
                     keyboardType="numeric"
                     placeholderTextColor="#94A3B8"
                     value={vExperience}
@@ -1961,7 +2730,7 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
                   <Text style={cs.formLabel}>Cert No / Accreditation</Text>
                   <TextInput
                     style={cs.formInput}
-                    placeholder="NPOP-ORG-2026"
+                    placeholder="Enter cert number (optional)"
                     placeholderTextColor="#94A3B8"
                     value={vCertNo}
                     onChangeText={setVCertNo}
@@ -1969,18 +2738,14 @@ export const CustomerScreens: React.FC<CustomerScreensProps> = ({
                 </View>
               </View>
 
-              <TouchableOpacity
-                style={cs.submitVendorBtn}
+              <AppButton
+                title="Submit Registration to Admin →"
+                loading={isSubmittingVendor}
+                loadingText="Submitting Registration..."
                 onPress={handleApplyVendor}
-                disabled={isSubmittingVendor}
-                activeOpacity={0.85}
-              >
-                {isSubmittingVendor ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <Text style={cs.submitVendorBtnText}>Submit Registration to Admin →</Text>
-                )}
-              </TouchableOpacity>
+                size="large"
+                style={{ marginTop: 14 }}
+              />
             </ScrollView>
           </View>
         </View>
@@ -2097,6 +2862,82 @@ const cs = StyleSheet.create({
   buyOnceBtnText: { fontSize: 12, fontWeight: '700', color: C.primary },
   subscribeBtn: { backgroundColor: C.primary, borderRadius: 22, paddingVertical: 10, paddingHorizontal: 14, alignItems: 'center' },
   subscribeBtnText: { fontSize: 12, fontWeight: '700', color: '#fff' },
+
+  // Farm-to-Table Product Details Styles
+  pdHeroContainer: { position: 'relative', width: '100%', height: 320, backgroundColor: '#E2E8F0' },
+  pdHeroImg: { width: '100%', height: '100%' },
+  pdTopNav: { position: 'absolute', top: 44, left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 20 },
+  pdNavCircleBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.92)', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 4 },
+  pdHeroBottomOverlay: { position: 'absolute', bottom: 32, left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 },
+  pdTrustPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(13,43,29,0.88)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(134,239,172,0.3)' },
+  pdTrustPillText: { color: '#86EFAC', fontSize: 11, fontWeight: '800', letterSpacing: 0.3 },
+  pdSavingsPill: { backgroundColor: '#DC2626', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, shadowColor: '#DC2626', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 3 },
+  pdSavingsPillText: { color: '#FFFFFF', fontSize: 11, fontWeight: '900', letterSpacing: 0.3 },
+  pdMainBody: { marginTop: -24, borderTopLeftRadius: 28, borderTopRightRadius: 28, backgroundColor: '#FFFFFF', paddingHorizontal: 18, paddingTop: 22, paddingBottom: 110, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 6 },
+  pdCatBadgeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  pdCatBadge: { backgroundColor: '#ECFDF5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#A7F3D0' },
+  pdCatBadgeText: { color: '#047857', fontSize: 11, fontWeight: '800', letterSpacing: 0.6 },
+  pdRatingBox: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FFFBEB', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#FDE68A' },
+  pdRatingText: { color: '#B45309', fontSize: 12, fontWeight: '800' },
+  pdReviewsCount: { color: '#92400E', fontSize: 11, fontWeight: '500' },
+  pdTitle: { fontSize: 23, fontWeight: '900', color: '#0F172A', lineHeight: 29, marginBottom: 8 },
+  pdPriceContainer: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 16 },
+  pdPriceLarge: { fontSize: 28, fontWeight: '900', color: '#15803D' },
+  pdUnitText: { fontSize: 14, color: '#64748B', fontWeight: '600' },
+  pdOrigPrice: { fontSize: 16, color: '#94A3B8', textDecorationLine: 'line-through', fontWeight: '500', marginLeft: 4 },
+  pdSaveBadge: { backgroundColor: '#FEF2F2', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: '#FECACA' },
+  pdSaveBadgeText: { color: '#DC2626', fontSize: 11, fontWeight: '800' },
+  pdDeliveryCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0FDF4', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#BBF7D0', marginBottom: 18 },
+  pdDeliveryIconBox: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#DCFCE7', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  pdDeliveryTitle: { fontSize: 13, fontWeight: '800', color: '#166534' },
+  pdDeliverySub: { fontSize: 11, color: '#15803D', marginTop: 2 },
+  pdStockBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#DCFCE7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
+  pdStockDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#16A34A' },
+  pdStockText: { fontSize: 11, fontWeight: '800', color: '#166534' },
+  pdQtyCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F8FAFC', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 18 },
+  pdQtyLabel: { fontSize: 14, fontWeight: '800', color: '#1E293B' },
+  pdQtySub: { fontSize: 11, color: '#64748B', marginTop: 3 },
+  pdStepper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 10, borderWidth: 1, borderColor: '#CBD5E1', paddingHorizontal: 4, paddingVertical: 2 },
+  pdStepperBtn: { width: 34, height: 34, borderRadius: 8, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  pdStepperBtnText: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
+  pdStepperValue: { minWidth: 48, textAlign: 'center', fontSize: 14, fontWeight: '800', color: '#0F172A', paddingHorizontal: 4 },
+  pdFarmerCard: { backgroundColor: '#F7FDF9', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#D1FAE5', marginBottom: 18 },
+  pdFarmerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
+  pdFarmerAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#BBF7D0', alignItems: 'center', justifyContent: 'center' },
+  pdFarmerName: { fontSize: 14, fontWeight: '800', color: '#064E3B' },
+  pdFarmerLoc: { fontSize: 12, color: '#047857', marginTop: 2 },
+  pdFarmerCertBox: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFFFFF', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#A7F3D0' },
+  pdFarmerCertText: { fontSize: 11, color: '#065F46', fontWeight: '700' },
+  pdSectionHeader: { fontSize: 15, fontWeight: '800', color: '#0F172A', marginBottom: 10, letterSpacing: -0.2 },
+  pdPurityGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+  pdPurityTile: { width: '48.5%', backgroundColor: '#F8FAFC', borderRadius: 12, padding: 10, borderWidth: 1, borderColor: '#E2E8F0' },
+  pdPurityTileTitle: { fontSize: 12, fontWeight: '800', color: '#0F172A', marginTop: 4 },
+  pdPurityTileDesc: { fontSize: 10, color: '#64748B', marginTop: 2, lineHeight: 14 },
+  pdDescCard: { backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 18 },
+  pdDescText: { fontSize: 13, color: '#475569', lineHeight: 20 },
+  pdBenefitsCard: { backgroundColor: '#F8FAFC', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 18 },
+  pdBenefitRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 8 },
+  pdBenefitBullet: { width: 18, height: 18, borderRadius: 9, backgroundColor: '#DCFCE7', alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  pdBenefitText: { fontSize: 12, color: '#334155', flex: 1, lineHeight: 18, fontWeight: '500' },
+  pdStorageTip: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FEF9C3', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#FEF08A', marginBottom: 18 },
+  pdStorageTipText: { fontSize: 11, color: '#854D0E', flex: 1, lineHeight: 16 },
+  pdRelatedSection: { marginBottom: 10 },
+  pdRelatedScroll: { paddingRight: 10, paddingVertical: 4 },
+  pdRelatedCard: { width: 135, backgroundColor: '#FFFFFF', borderRadius: 12, padding: 8, marginRight: 10, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 },
+  pdRelatedImg: { width: '100%', height: 85, borderRadius: 8, backgroundColor: '#F1F5F9' },
+  pdRelatedName: { fontSize: 12, fontWeight: '700', color: '#1E293B', marginTop: 6 },
+  pdRelatedPriceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
+  pdRelatedPrice: { fontSize: 12, fontWeight: '800', color: '#15803D' },
+  pdRelatedAddBtn: { backgroundColor: '#ECFDF5', borderWidth: 1, borderColor: '#86EFAC', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  pdRelatedAddBtnText: { fontSize: 11, fontWeight: '800', color: '#16A34A' },
+  pdFixedBottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', shadowColor: '#000', shadowOffset: { width: 0, height: -3 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 12 },
+  pdBottomPriceCol: { flex: 1 },
+  pdBottomLabel: { fontSize: 9, fontWeight: '800', color: '#64748B', textTransform: 'uppercase', letterSpacing: 0.5 },
+  pdBottomTotal: { fontSize: 22, fontWeight: '900', color: '#15803D' },
+  pdBottomSub: { fontSize: 10, color: '#94A3B8', marginTop: 1 },
+  pdBottomActionGroup: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  pdCartBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#16A34A', paddingHorizontal: 16, paddingVertical: 11, borderRadius: 12 },
+  pdCartBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
 
   // Cart
   cartItem: { backgroundColor: C.surface, borderRadius: 12, padding: 12, marginBottom: 10, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: C.border },
@@ -2244,4 +3085,324 @@ const cs = StyleSheet.create({
   modalErrorText: { color: '#DC2626', fontSize: 12, fontWeight: '600' },
   submitVendorBtn: { backgroundColor: '#047857', borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginTop: 18 },
   submitVendorBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: 'bold' },
+
+  // Half Screen Optimized Hero Banner for Subscriptions
+  subHeroContainer: {
+    width: '100%',
+    height: 220,
+    position: 'relative',
+    backgroundColor: '#0D2B1D',
+    overflow: 'hidden',
+  },
+  subHeroImage: {
+    width: '100%',
+    height: '100%',
+    opacity: 0.82,
+  },
+  subHeroOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(13, 43, 29, 0.45)',
+    justifyContent: 'flex-end',
+    padding: 16,
+  },
+  subHeroBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 6,
+  },
+  subHeroBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#15803D',
+    letterSpacing: 0.5,
+  },
+  subHeroTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
+  },
+  subHeroSubtitle: {
+    fontSize: 12,
+    color: '#E2E8F0',
+    marginTop: 3,
+    lineHeight: 16,
+  },
+  subHeroPillsRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 8,
+  },
+  subHeroPill: {
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  subHeroPillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+
+  // ── Blinkit-inspired Organic Home Screen Styles ────────────
+  bannerCard: {
+    height: 154,
+    borderRadius: 20,
+    padding: 7,
+    overflow: 'hidden',
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.14,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  bannerOnlyImgWrapper: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.42)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  bannerOnlyImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 14,
+  },
+  bannerPaginationRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    marginBottom: 14,
+  },
+  bannerDotActive: {
+    width: 20,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#07843D',
+  },
+  bannerDotInactive: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#C8E6C9',
+  },
+  categoryRow: {
+    paddingHorizontal: 12,
+    marginBottom: 16,
+  },
+  categoryCard: {
+    width: 68,
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  categoryIconBox: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DFE9E1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  categoryIconBoxActive: {
+    backgroundColor: '#E8F5E9',
+    borderColor: '#07843D',
+    borderWidth: 2,
+  },
+  categoryImg: {
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+  },
+  categoryLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#18352B',
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  categoryLabelActive: {
+    color: '#07843D',
+    fontWeight: '800',
+  },
+  freshProductsHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    marginBottom: 10,
+  },
+  freshProductsTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#18352B',
+    letterSpacing: -0.2,
+  },
+  viewAllBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+  },
+  viewAllText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#07843D',
+  },
+  productGridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+  },
+  blinkitProductCard: {
+    width: '48.5%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#DFE9E1',
+    padding: 10,
+    paddingBottom: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  cardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  badgePill: {
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+  },
+  badgePillText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+  },
+  heartBtn: {
+    padding: 4,
+  },
+  cardImgContainer: {
+    width: '100%',
+    height: 122,
+    borderRadius: 12,
+    backgroundColor: '#F8FAF8',
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 4,
+  },
+  cardProductImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 12,
+  },
+  cardProductName: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#18352B',
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  cardProductUnit: {
+    fontSize: 11,
+    color: '#718078',
+    marginTop: 1,
+  },
+  cardBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  priceCol: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  cardPrice: {
+    fontSize: 15.5,
+    fontWeight: '800',
+    color: '#07843D',
+  },
+  cardOrigPrice: {
+    fontSize: 11,
+    color: '#94A3B8',
+    textDecorationLine: 'line-through',
+    marginLeft: 4,
+  },
+  addBtn: {
+    backgroundColor: '#07843D',
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    minHeight: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#07843D',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  addBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12.5,
+    fontWeight: '800',
+  },
+  cardQtySelector: {
+    backgroundColor: '#07843D',
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  cardQtyBtn: {
+    paddingHorizontal: 4,
+  },
+  cardQtyBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  cardQtyText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+    paddingHorizontal: 6,
+  },
 });

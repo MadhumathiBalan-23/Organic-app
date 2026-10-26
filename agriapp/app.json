@@ -8,14 +8,42 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "icon": "./asset/logo.jpeg",
+    "splash": {
+      "image": "./asset/logo.jpeg",
+      "resizeMode": "contain",
+      "backgroundColor": "#FDFBF7"
+    },
     "ios": {
       "supportsTablet": true
     },
     "android": {
-      "backgroundColor": "#FDFBF7"
+      "package": "com.mathira.organicfarming",
+      "backgroundColor": "#FDFBF7",
+      "usesCleartextTraffic": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./asset/logo.jpeg",
+        "backgroundColor": "#FDFBF7"
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
     },
     "plugins": [
-      "expo-status-bar"
-    ]
+      "expo-status-bar",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Mathira Organic Farming to access your location to discover nearby organic vendors and calculate delivery charges."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "6bade273-bc73-4652-b8b8-0ec083ef1594"
+      }
+    },
+    "owner": "madhu_mathi"
   }
 }

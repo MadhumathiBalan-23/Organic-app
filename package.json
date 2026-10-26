@@ -5,15 +5,12 @@
   "description": "AI-Powered Organic Product Management & Delivery Platform",
   "workspaces": [
     "api",
-    "agriadmin",
     "agriapp"
   ],
   "scripts": {
     "api:dev": "npm --prefix api run dev",
     "api:build": "npm --prefix api run build",
     "api:start": "npm --prefix api run start",
-    "admin:dev": "npm --prefix agriadmin run dev",
-    "admin:build": "npm --prefix agriadmin run build",
     "app:start": "npm --prefix agriapp run start",
     "app:web": "npm --prefix agriapp run web",
     "app:android": "npm --prefix agriapp run android"

@@ -10,14 +10,24 @@ import {
   Check, X, CheckCircle2, XCircle, Clock, Star, Crown,
   MapPin, Phone, Calendar, CreditCard, TrendingUp, Eye,
   LogIn, LogOut, Activity, Sprout, Store, ShoppingBag,
-  Camera, Upload
+  Camera, Upload, Sparkles
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
+import Svg, { Defs, LinearGradient as SvgLinearGradient, Stop, Rect } from 'react-native-svg';
 import {
   Categories, Product, ORGANIC_PRODUCT_PRESETS,
   AdminCategory, AdminBrand, AdminCustomer, AdminOrder, AdminUserLog
 } from '../constants/mockData';
 import { API_ENDPOINTS, uploadImageFile } from '../services/api';
+import { getGradientTheme } from '../components/HomeHeader';
+import {
+  LoadingSpinner,
+  PageLoader,
+  ErrorState,
+  AppButton,
+  EmptyState,
+  InlineError,
+} from '../components/LoadingAndError';
 
 // ── Colour tokens ───────────────────────────────────────
 const C = {
@@ -42,9 +52,10 @@ const C = {
 // ── Tab config ───────────────────────────────────────────
 const TABS = [
   { key: 'dashboard',      label: 'Dashboard',        Icon: LayoutDashboard },
-  { key: 'vendorRequests', label: 'Vendor Approvals', Icon: UserCheck },
+  { key: 'banners',        label: 'Banners',          Icon: Sparkles },
   { key: 'products',       label: 'Products',        Icon: Package },
   { key: 'categories',     label: 'Categories',      Icon: Tags },
+  { key: 'vendorRequests', label: 'Vendor Approvals', Icon: UserCheck },
   { key: 'brands',         label: 'Brands',          Icon: Award },
   { key: 'customers',      label: 'Customers',       Icon: Users },
   { key: 'orders',         label: 'Orders',          Icon: ShoppingCart },
@@ -143,16 +154,27 @@ const VendorRequestsTab: React.FC = () => {
   const [requests, setRequests] = useState<VendorReqItem[]>([]);
   const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
   const [actionId, setActionId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const loadRequests = () => {
+    setIsLoading(true);
+    setError(null);
     fetch(API_ENDPOINTS.vendorRequests)
       .then(res => res.json())
       .then(json => {
         if (json.success && Array.isArray(json.data)) {
           setRequests(json.data);
+        } else {
+          setRequests([]);
         }
       })
-      .catch(() => {});
+      .catch((err) => {
+        setError('Could not connect to API server. Please retry.');
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   };
 
   React.useEffect(() => {
@@ -220,106 +242,110 @@ const VendorRequestsTab: React.FC = () => {
         ))}
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {filtered.map(req => {
-          const isPending = req.status === 'PENDING';
-          const isApproved = req.status === 'APPROVED';
-          const isProcessing = actionId === req.id;
+      {isLoading ? (
+        <PageLoader message="Loading Vendor Applications..." subMessage="Fetching partner registrations from SQLite database" />
+      ) : error ? (
+        <ErrorState title="Unable to load vendor requests" message={error} onRetry={loadRequests} />
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {filtered.map(req => {
+            const isPending = req.status === 'PENDING';
+            const isApproved = req.status === 'APPROVED';
+            const isProcessing = actionId === req.id;
 
-          return (
-            <View key={req.id} style={[s.card, { marginBottom: 12, borderLeftWidth: 4, borderLeftColor: isApproved ? C.success : isPending ? C.warning : C.danger }]}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                <View style={{ flex: 1, marginRight: 8 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Sprout size={16} color={C.primary} strokeWidth={2.2} />
-                    <Text style={{ fontSize: 16, fontWeight: '800', color: C.primary }}>{req.farmName}</Text>
-                  </View>
-                  <Text style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>
-                    Applicant: <Text style={{ fontWeight: '700', color: C.textPrimary }}>{req.userName}</Text> · +91 {req.phoneNumber}
-                  </Text>
-                </View>
-                <View style={[s.chip, { backgroundColor: isApproved ? '#DCFCE7' : isPending ? '#FEF3C7' : '#FEE2E2', borderColor: isApproved ? '#A7F3D0' : isPending ? '#FDE68A' : '#FECACA' }]}>
-                  <Text style={{ fontSize: 10, fontWeight: '800', color: isApproved ? C.success : isPending ? '#B45309' : C.danger }}>
-                    {req.status}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={{ backgroundColor: C.surface2, borderRadius: 8, padding: 10, gap: 6, marginBottom: 10 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <MapPin size={12} color={C.textSec} />
-                  <Text style={{ fontSize: 11, color: C.textSec }}>
-                    <Text style={{ fontWeight: '600' }}>Location:</Text> {req.farmLocation}
-                  </Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Sprout size={12} color={C.textSec} />
-                  <Text style={{ fontSize: 11, color: C.textSec }}>
-                    <Text style={{ fontWeight: '600' }}>Crops:</Text> {req.cropCategories}
-                  </Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Award size={12} color={C.textSec} />
-                  <Text style={{ fontSize: 11, color: C.textSec }}>
-                    <Text style={{ fontWeight: '600' }}>Experience:</Text> {req.experienceYears || '3'} Years · Cert: {req.certificateNo || 'Verified'}
-                  </Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Calendar size={12} color={C.textMuted} />
-                  <Text style={{ fontSize: 10, color: C.textMuted }}>
-                    Submitted: {new Date(req.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Action Buttons */}
-              {isPending && (
-                <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
-                  <TouchableOpacity
-                    style={[s.modalBtn, { backgroundColor: C.success, height: 38, flexDirection: 'row', gap: 6 }]}
-                    onPress={() => handleApprove(req.id, req.farmName)}
-                    disabled={isProcessing}
-                    activeOpacity={0.8}
-                  >
-                    <Check size={14} color="#fff" strokeWidth={2.5} />
-                    <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>
-                      {isProcessing ? 'Approving...' : 'Approve as Vendor'}
+            return (
+              <View key={req.id} style={[s.card, { marginBottom: 12, borderLeftWidth: 4, borderLeftColor: isApproved ? C.success : isPending ? C.warning : C.danger }]}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Sprout size={16} color={C.primary} strokeWidth={2.2} />
+                      <Text style={{ fontSize: 16, fontWeight: '800', color: C.primary }}>{req.farmName}</Text>
+                    </View>
+                    <Text style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>
+                      Applicant: <Text style={{ fontWeight: '700', color: C.textPrimary }}>{req.userName}</Text> · +91 {req.phoneNumber}
                     </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[s.modalBtn, s.modalBtnGhost, { height: 38, borderColor: C.danger, flexDirection: 'row', gap: 6 }]}
-                    onPress={() => handleReject(req.id)}
-                    disabled={isProcessing}
-                    activeOpacity={0.8}
-                  >
-                    <X size={14} color={C.danger} strokeWidth={2.5} />
-                    <Text style={{ color: C.danger, fontWeight: '700', fontSize: 12 }}>Reject</Text>
-                  </TouchableOpacity>
+                  </View>
+                  <View style={[s.chip, { backgroundColor: isApproved ? '#DCFCE7' : isPending ? '#FEF3C7' : '#FEE2E2', borderColor: isApproved ? '#A7F3D0' : isPending ? '#FDE68A' : '#FECACA' }]}>
+                    <Text style={{ fontSize: 10, fontWeight: '800', color: isApproved ? C.success : isPending ? '#B45309' : C.danger }}>
+                      {req.status}
+                    </Text>
+                  </View>
                 </View>
-              )}
 
-              {isApproved && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <CheckCircle2 size={13} color={C.success} strokeWidth={2.5} />
-                  <Text style={{ fontSize: 11, color: C.success, fontWeight: '700' }}>
-                    Customer verified. Role updated to vendor in SQLite Prisma DB.
-                  </Text>
+                <View style={{ backgroundColor: C.surface2, borderRadius: 8, padding: 10, gap: 6, marginBottom: 10 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <MapPin size={12} color={C.textSec} />
+                    <Text style={{ fontSize: 11, color: C.textSec }}>
+                      <Text style={{ fontWeight: '600' }}>Location:</Text> {req.farmLocation}
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Sprout size={12} color={C.textSec} />
+                    <Text style={{ fontSize: 11, color: C.textSec }}>
+                      <Text style={{ fontWeight: '600' }}>Crops:</Text> {req.cropCategories}
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Award size={12} color={C.textSec} />
+                    <Text style={{ fontSize: 11, color: C.textSec }}>
+                      <Text style={{ fontWeight: '600' }}>Experience:</Text> {req.experienceYears || '3'} Years · Cert: {req.certificateNo || 'Verified'}
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Calendar size={12} color={C.textMuted} />
+                    <Text style={{ fontSize: 10, color: C.textMuted }}>
+                      Submitted: {new Date(req.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </Text>
+                  </View>
                 </View>
-              )}
-            </View>
-          );
-        })}
 
-        {filtered.length === 0 && (
-          <View style={{ alignItems: 'center', padding: 40 }}>
-            <Users size={36} color={C.textMuted} strokeWidth={1.5} />
-            <Text style={{ fontSize: 13, color: C.textMuted, marginTop: 8 }}>
-              No vendor applications in this filter.
-            </Text>
-          </View>
-        )}
-      </ScrollView>
+                {/* Action Buttons */}
+                {isPending && (
+                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                    <AppButton
+                      variant="primary"
+                      size="small"
+                      title="Approve as Vendor"
+                      loading={isProcessing}
+                      loadingText="Approving..."
+                      onPress={() => handleApprove(req.id, req.farmName)}
+                      icon={<Check size={14} color="#fff" strokeWidth={2.5} />}
+                      style={{ flex: 1, backgroundColor: C.success }}
+                    />
+                    <AppButton
+                      variant="outline"
+                      size="small"
+                      title="Reject"
+                      disabled={isProcessing}
+                      onPress={() => handleReject(req.id)}
+                      icon={<X size={14} color={C.danger} strokeWidth={2.5} />}
+                      style={{ flex: 0.6, borderColor: C.danger }}
+                      textStyle={{ color: C.danger }}
+                    />
+                  </View>
+                )}
+
+                {isApproved && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <CheckCircle2 size={13} color={C.success} strokeWidth={2.5} />
+                    <Text style={{ fontSize: 11, color: C.success, fontWeight: '700' }}>
+                      Customer verified. Role updated to vendor in SQLite Prisma DB.
+                    </Text>
+                  </View>
+                )}
+              </View>
+            );
+          })}
+
+          {filtered.length === 0 && (
+            <EmptyState
+              icon={<Users size={36} color={C.textMuted} strokeWidth={1.5} />}
+              title="No vendor applications"
+              description="No partner applications found in this filter."
+            />
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 };
@@ -330,49 +356,57 @@ const DashboardTab: React.FC = () => {
   const [topProducts, setTopProducts] = useState<Product[]>([]);
   const [recentOrders, setRecentOrders] = useState<AdminOrder[]>([]);
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetch(API_ENDPOINTS.dashboardStats)
-      .then(res => res.json())
-      .then(json => {
-        if (json.success && json.data) setStats(json.data);
-      })
-      .catch(() => {});
-
-    fetch(API_ENDPOINTS.products)
-      .then(res => res.json())
-      .then(json => {
-        if (json.success && Array.isArray(json.data)) {
-          setTopProducts([...json.data].sort((a: any, b: any) => (b.stock || 0) - (a.stock || 0)).slice(0, 4));
-        }
-      })
-      .catch(() => {});
-
-    fetch(API_ENDPOINTS.orders)
-      .then(res => res.json())
-      .then(json => {
-        if (json.success && Array.isArray(json.data)) {
-          setRecentOrders(json.data.slice(0, 5).map((o: any) => ({
-            id: o.id,
-            customerId: o.userId || 'cu-1',
-            customerName: o.customerName || 'Customer',
-            items: o.items && o.items.length > 0 ? o.items.map((i: any) => `${i.product?.name || 'Organic item'} ×${i.quantity}`).join(', ') : 'Certified produce',
-            total: o.totalAmount,
-            status: o.deliveryStatus === 'DELIVERED' ? 'Delivered' : (o.deliveryStatus === 'PROCESSING' ? 'Processing' : 'Pending'),
-            date: o.createdAt ? o.createdAt.substring(0, 10) : 'Today',
-            paymentMethod: o.paymentMethod || 'UPI'
-          })));
-        }
-      })
-      .catch(() => {});
-
-    fetch(API_ENDPOINTS.userLogs)
-      .then(res => res.json())
-      .then(json => {
-        if (json.success && Array.isArray(json.data)) setRecentLogs(json.data.slice(0, 5));
-      })
-      .catch(() => {});
+    setIsLoading(true);
+    Promise.allSettled([
+      fetch(API_ENDPOINTS.dashboardStats)
+        .then(res => res.json())
+        .then(json => {
+          if (json.success && json.data) setStats(json.data);
+        }),
+      fetch(API_ENDPOINTS.products)
+        .then(res => res.json())
+        .then(json => {
+          if (json.success && Array.isArray(json.data)) {
+            setTopProducts([...json.data].sort((a: any, b: any) => (b.stock || 0) - (a.stock || 0)).slice(0, 4));
+          }
+        }),
+      fetch(API_ENDPOINTS.orders)
+        .then(res => res.json())
+        .then(json => {
+          if (json.success && Array.isArray(json.data)) {
+            setRecentOrders(json.data.slice(0, 5).map((o: any) => ({
+              id: o.id,
+              customerId: o.userId || 'cu-1',
+              customerName: o.customerName || 'Customer',
+              items: o.items && o.items.length > 0 ? o.items.map((i: any) => `${i.product?.name || 'Organic item'} ×${i.quantity}`).join(', ') : 'Certified produce',
+              total: o.totalAmount,
+              status: o.deliveryStatus === 'DELIVERED' ? 'Delivered' : (o.deliveryStatus === 'PROCESSING' ? 'Processing' : 'Pending'),
+              date: o.createdAt ? o.createdAt.substring(0, 10) : 'Today',
+              paymentMethod: o.paymentMethod || 'UPI'
+            })));
+          }
+        }),
+      fetch(API_ENDPOINTS.userLogs)
+        .then(res => res.json())
+        .then(json => {
+          if (json.success && Array.isArray(json.data)) setRecentLogs(json.data.slice(0, 5));
+        })
+    ]).finally(() => {
+      setIsLoading(false);
+    });
   }, []);
+
+  if (isLoading) {
+    return (
+      <PageLoader
+        message="Loading Admin Intelligence..."
+        subMessage="Aggregating metrics, live orders, revenue, and inventory analytics"
+      />
+    );
+  }
 
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
@@ -592,8 +626,11 @@ const ProductsTab: React.FC = () => {
     setModal('edit');
   };
 
+  const [isSaving, setIsSaving] = useState(false);
+
   const handleSave = async () => {
     if (!form.name || !form.price) { Alert.alert('Error', 'Name and price are required.'); return; }
+    setIsSaving(true);
     if (editId) {
       try {
         await fetch(`${API_ENDPOINTS.products}/${editId}`, {
@@ -626,6 +663,7 @@ const ProductsTab: React.FC = () => {
         });
       } catch (e) {}
     }
+    setIsSaving(false);
     setModal(null);
     loadProducts();
   };
@@ -860,9 +898,9 @@ const ProductsTab: React.FC = () => {
                 placeholderTextColor={C.textMuted}
               />
 
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
-                <TouchableOpacity style={[s.modalBtn, s.modalBtnGhost]} onPress={() => setModal(null)}><Text style={{ color: C.textSec, fontWeight: '600' }}>Cancel</Text></TouchableOpacity>
-                <TouchableOpacity style={[s.modalBtn, s.modalBtnPrimary]} onPress={handleSave}><Text style={{ color: '#fff', fontWeight: '700' }}>Save</Text></TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+                <AppButton variant="outline" title="Cancel" onPress={() => setModal(null)} style={{ flex: 1 }} />
+                <AppButton variant="primary" title="Save Product" loading={isSaving} loadingText="Saving..." onPress={handleSave} style={{ flex: 1.5 }} />
               </View>
             </ScrollView>
           </View>
@@ -872,26 +910,45 @@ const ProductsTab: React.FC = () => {
   );
 };
 
-// ── 3. CATEGORIES ─────────────────────────────────────────
+// ── 3. CATEGORIES CMS ─────────────────────────────────────
+const CATEGORY_ACCENT_COLORS = [
+  '#07843D', '#059669', '#15803D', '#D97706', '#EA580C',
+  '#DC2626', '#E11D48', '#7C3AED', '#2563EB', '#0284C7'
+];
+
+const POPULAR_CATEGORY_EMOJIS = ['🥛', '🥦', '🍎', '🌾', '🫒', '🍯', '🥚', '🥕', '🫘', '🥬', '🍓', '🍇'];
+
 const CategoriesTab: React.FC = () => {
-  const [items, setItems] = useState<AdminCategory[]>([]);
+  const [items, setItems] = useState<any[]>([]);
   const [modal, setModal] = useState<'add' | 'edit' | null>(null);
-  const [form, setForm] = useState({ name: '', productCount: '' });
+  const [form, setForm] = useState({
+    name: '',
+    emoji: '🌱',
+    description: '',
+    imageUrl: '',
+    color: '#07843D',
+    displayOrder: '1',
+    isActive: true,
+  });
   const [editId, setEditId] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const loadCategories = async () => {
     try {
-      const res = await fetch(API_ENDPOINTS.categories);
+      const res = await fetch(`${API_ENDPOINTS.categories}?all=true`);
       const data = await res.json();
-      if (Array.isArray(data)) {
-        setItems(data.map((c: any) => ({
-          id: String(c.id),
-          name: c.name || 'Category',
-          emoji: '',
-          productCount: c._count?.products || c.productCount || 0,
-          color: c.color || '#22c55e'
-        })));
-      }
+      const list = data.success && Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
+      setItems(list.map((c: any) => ({
+        id: String(c.id),
+        name: c.name || 'Category',
+        emoji: c.emoji || '🌱',
+        description: c.description || '',
+        productCount: c._count?.products || c.productCount || 0,
+        color: c.color || '#07843D',
+        imageUrl: c.imageUrl,
+        displayOrder: c.displayOrder || 1,
+        isActive: c.isActive !== undefined ? c.isActive : true
+      })));
     } catch (e) {
       console.warn('Failed to fetch categories:', e);
     }
@@ -901,34 +958,111 @@ const CategoriesTab: React.FC = () => {
     loadCategories();
   }, []);
 
-  const openAdd = () => { setForm({ name: '', productCount: '' }); setEditId(null); setModal('add'); };
-  const openEdit = (c: AdminCategory) => { setForm({ name: c.name, productCount: String(c.productCount) }); setEditId(c.id); setModal('edit'); };
+  const handlePickCategoryImage = async () => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Permission Required', 'Please grant photo gallery permission to select category photo.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+        base64: true,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setIsUploading(true);
+        const dataUri = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+        const uploadedUrl = await uploadImageFile(dataUri, `cat-${Date.now()}.jpg`);
+        setForm(prev => ({ ...prev, imageUrl: uploadedUrl }));
+      }
+    } catch (err) {
+      console.warn('Category image pick error:', err);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const openAdd = () => {
+    setForm({
+      name: '',
+      emoji: '🌱',
+      description: '',
+      imageUrl: '',
+      color: '#07843D',
+      displayOrder: String(items.length + 1),
+      isActive: true,
+    });
+    setEditId(null);
+    setModal('add');
+  };
+
+  const openEdit = (c: any) => {
+    setForm({
+      name: c.name || '',
+      emoji: c.emoji || '🌱',
+      description: c.description || '',
+      imageUrl: c.imageUrl || '',
+      color: c.color || '#07843D',
+      displayOrder: String(c.displayOrder || 1),
+      isActive: c.isActive !== undefined ? c.isActive : true,
+    });
+    setEditId(c.id);
+    setModal('edit');
+  };
+
+  const handleToggleActive = async (cat: any) => {
+    try {
+      await fetch(`${API_ENDPOINTS.categories}/${cat.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !cat.isActive })
+      });
+      loadCategories();
+    } catch (e) {
+      console.warn('Failed to toggle category active status:', e);
+    }
+  };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { Alert.alert('Error', 'Category name is required.'); return; }
-    if (editId) {
-      try {
+    if (!form.name.trim()) {
+      Alert.alert('Error', 'Category name is required.');
+      return;
+    }
+    const payload = {
+      name: form.name.trim(),
+      emoji: form.emoji.trim() || '🌱',
+      description: form.description.trim(),
+      imageUrl: form.imageUrl.trim() || null,
+      displayOrder: parseInt(form.displayOrder, 10) || 1,
+      isActive: form.isActive !== undefined ? form.isActive : true,
+    };
+    try {
+      if (editId) {
         await fetch(`${API_ENDPOINTS.categories}/${editId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: form.name })
+          body: JSON.stringify(payload)
         });
-      } catch (e) {}
-    } else {
-      try {
+      } else {
         await fetch(API_ENDPOINTS.categories, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: form.name })
+          body: JSON.stringify(payload)
         });
-      } catch (e) {}
+      }
+      setModal(null);
+      loadCategories();
+    } catch (e) {
+      Alert.alert('Error', 'Failed to save category.');
     }
-    setModal(null);
-    loadCategories();
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert('Delete Category', 'Are you sure?', [
+    Alert.alert('Delete Category', 'Are you sure you want to delete this category?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: async () => {
         try {
@@ -941,17 +1075,46 @@ const CategoriesTab: React.FC = () => {
 
   return (
     <View style={{ flex: 1 }}>
-      <SectionHeader title={`Categories (${items.length})`} action={{ label: '+ Add', onPress: openAdd }} />
+      <SectionHeader title={`Categories Management (${items.length})`} action={{ label: '+ Add Category', onPress: openAdd }} />
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={s.gridWrap}>
           {items.map(cat => (
-            <View key={cat.id} style={[s.gridCard, { borderTopColor: cat.color, borderTopWidth: 3 }]}>
-              <View style={[s.catIconBadge, { backgroundColor: (cat.color || C.primary) + '20' }]}>
-                <Tags size={22} color={cat.color || C.primary} strokeWidth={2.2} />
+            <View key={cat.id} style={[s.gridCard, { borderTopColor: cat.color || '#07843D', borderTopWidth: 3.5, position: 'relative' }]}>
+              {/* Header: Order & Active Status Toggle */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <View style={[s.chip, { backgroundColor: '#F1F5F9', borderColor: '#E2E8F0', paddingHorizontal: 6 }]}>
+                  <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#475569' }}>#{cat.displayOrder || 1}</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => handleToggleActive(cat)}
+                  style={[s.chip, { backgroundColor: cat.isActive ? '#DCFCE7' : '#FEE2E2', borderColor: cat.isActive ? '#A7F3D0' : '#FECACA' }]}
+                >
+                  <Text style={{ fontSize: 9.5, fontWeight: '800', color: cat.isActive ? C.success : C.danger }}>
+                    {cat.isActive ? 'ACTIVE' : 'INACTIVE'}
+                  </Text>
+                </TouchableOpacity>
               </View>
-              <Text style={s.gridCardName} numberOfLines={2}>{cat.name}</Text>
-              <Chip label={`${cat.productCount} products`} color={C.success} small />
-              <View style={s.gridCardActions}>
+
+              {/* Icon badge / thumbnail */}
+              <View style={[s.catIconBadge, { backgroundColor: (cat.color || C.primary) + '15', overflow: 'hidden' }]}>
+                {cat.imageUrl ? (
+                  <Image source={{ uri: cat.imageUrl }} style={{ width: 48, height: 48, borderRadius: 10 }} resizeMode="cover" />
+                ) : (
+                  <Text style={{ fontSize: 26 }}>{cat.emoji || '🌱'}</Text>
+                )}
+              </View>
+
+              <Text style={s.gridCardName} numberOfLines={1}>{cat.name}</Text>
+              {cat.description ? (
+                <Text style={{ fontSize: 11, color: C.textSec, textAlign: 'center', marginTop: 2, marginBottom: 4 }} numberOfLines={2}>
+                  {cat.description}
+                </Text>
+              ) : null}
+
+              <Chip label={`${cat.productCount} products`} color={cat.productCount > 0 ? C.success : C.textMuted} small />
+
+              {/* Action buttons */}
+              <View style={[s.gridCardActions, { marginTop: 8 }]}>
                 <TouchableOpacity style={[s.iconBtn, { flexDirection: 'row', alignItems: 'center', gap: 4 }]} onPress={() => openEdit(cat)}>
                   <Pencil size={11} color={C.textSec} />
                   <Text style={{ fontSize: 11, color: C.textSec, fontWeight: '600' }}>Edit</Text>
@@ -963,25 +1126,180 @@ const CategoriesTab: React.FC = () => {
             </View>
           ))}
         </View>
-        <View style={{ height: 20 }} />
+        <View style={{ height: 30 }} />
       </ScrollView>
 
+      {/* Add / Edit Category Modal */}
       <Modal visible={!!modal} transparent animationType="slide" onRequestClose={() => setModal(null)}>
         <TouchableOpacity style={s.modalBackdrop} activeOpacity={1} onPress={() => setModal(null)}>
           <View style={s.modalSheet} onStartShouldSetResponder={() => true}>
             <View style={s.modalHandle} />
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
               {modal === 'add' ? <Plus size={18} color={C.primary} strokeWidth={2.5} /> : <Pencil size={18} color={C.primary} strokeWidth={2.5} />}
               <Text style={[s.modalTitle, { marginBottom: 0 }]}>{modal === 'add' ? 'Add Category' : 'Edit Category'}</Text>
             </View>
-            <Text style={s.formLabel}>Name *</Text>
-            <TextInput style={s.formInput} value={form.name} onChangeText={v => setForm({ ...form, name: v })} placeholder="e.g. Fresh Vegetables" placeholderTextColor={C.textMuted} />
-            <Text style={s.formLabel}>Product Count</Text>
-            <TextInput style={s.formInput} value={form.productCount} onChangeText={v => setForm({ ...form, productCount: v })} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMuted} />
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
-              <TouchableOpacity style={[s.modalBtn, s.modalBtnGhost]} onPress={() => setModal(null)}><Text style={{ color: C.textSec, fontWeight: '600' }}>Cancel</Text></TouchableOpacity>
-              <TouchableOpacity style={[s.modalBtn, s.modalBtnPrimary]} onPress={handleSave}><Text style={{ color: '#fff', fontWeight: '700' }}>Save</Text></TouchableOpacity>
-            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 460 }}>
+              {/* LIVE CUSTOMER APP PREVIEW */}
+              <View style={{ marginBottom: 14 }}>
+                <Text style={s.formLabel}>Customer App Live Icon Preview</Text>
+                <View style={{
+                  padding: 12,
+                  backgroundColor: '#F8FAF8',
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: '#E2EBE6',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <View style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: 18,
+                    backgroundColor: '#FFFFFF',
+                    borderWidth: 2,
+                    borderColor: form.color || '#07843D',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 3,
+                    elevation: 2,
+                  }}>
+                    {form.imageUrl ? (
+                      <Image source={{ uri: form.imageUrl }} style={{ width: 48, height: 48, borderRadius: 12 }} resizeMode="cover" />
+                    ) : (
+                      <Text style={{ fontSize: 28 }}>{form.emoji || '🌱'}</Text>
+                    )}
+                  </View>
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: '#18352B', marginTop: 6 }}>
+                    {form.name || 'Category Name'}
+                  </Text>
+                  {form.description ? (
+                    <Text style={{ fontSize: 10, color: '#718078', marginTop: 2, textAlign: 'center' }}>
+                      {form.description}
+                    </Text>
+                  ) : null}
+                </View>
+              </View>
+
+              <Text style={s.formLabel}>Category Name *</Text>
+              <TextInput style={s.formInput} value={form.name} onChangeText={v => setForm({ ...form, name: v })} placeholder="e.g. Dairy & Pure Ghee" placeholderTextColor={C.textMuted} />
+
+              {/* QUICK EMOJI SELECTOR */}
+              <Text style={s.formLabel}>Category Emoji Icon</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }} contentContainerStyle={{ gap: 8, paddingVertical: 2 }}>
+                {POPULAR_CATEGORY_EMOJIS.map(em => (
+                  <TouchableOpacity
+                    key={em}
+                    onPress={() => setForm({ ...form, emoji: em })}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      backgroundColor: form.emoji === em ? '#DCFCE7' : '#F8FAFC',
+                      borderWidth: form.emoji === em ? 2 : 1,
+                      borderColor: form.emoji === em ? '#15803D' : '#E2E8F0',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ fontSize: 18 }}>{em}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <TextInput style={[s.formInput, { marginBottom: 10 }]} value={form.emoji} onChangeText={v => setForm({ ...form, emoji: v })} placeholder="Custom emoji (e.g. 🥛)" placeholderTextColor={C.textMuted} />
+
+              <Text style={s.formLabel}>Tagline / Description</Text>
+              <TextInput style={s.formInput} value={form.description} onChangeText={v => setForm({ ...form, description: v })} placeholder="e.g. Fresh A2 milk, cultured curd and butter" placeholderTextColor={C.textMuted} />
+
+              {/* ACCENT COLOR SELECTOR */}
+              <Text style={s.formLabel}>Category Accent Color</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }} contentContainerStyle={{ gap: 8, paddingVertical: 2 }}>
+                {CATEGORY_ACCENT_COLORS.map(col => {
+                  const isSelected = (form.color || '').toUpperCase() === col.toUpperCase();
+                  return (
+                    <TouchableOpacity
+                      key={col}
+                      onPress={() => setForm({ ...form, color: col })}
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 14,
+                        backgroundColor: col,
+                        borderWidth: isSelected ? 3 : 1,
+                        borderColor: isSelected ? '#1E293B' : '#E2E8F0',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {isSelected && <Check size={14} color="#fff" strokeWidth={3} />}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              {/* DISPLAY ORDER & ACTIVE TOGGLE ROW */}
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.formLabel, { fontSize: 11 }]}>Display Order</Text>
+                  <TextInput style={s.formInput} value={form.displayOrder} onChangeText={v => setForm({ ...form, displayOrder: v })} keyboardType="numeric" placeholder="1" placeholderTextColor={C.textMuted} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.formLabel, { fontSize: 11 }]}>Status</Text>
+                  <TouchableOpacity
+                    onPress={() => setForm({ ...form, isActive: !form.isActive })}
+                    style={{
+                      height: 42,
+                      borderRadius: 10,
+                      backgroundColor: form.isActive ? '#DCFCE7' : '#FEE2E2',
+                      borderWidth: 1,
+                      borderColor: form.isActive ? '#A7F3D0' : '#FECACA',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexDirection: 'row',
+                      gap: 6,
+                    }}
+                  >
+                    <CheckCircle2 size={14} color={form.isActive ? '#15803D' : '#DC2626'} />
+                    <Text style={{ fontSize: 12, fontWeight: '800', color: form.isActive ? '#15803D' : '#DC2626' }}>
+                      {form.isActive ? 'Active on App' : 'Hidden from App'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Category Image Upload */}
+              <Text style={s.formLabel}>Category Image (Cloudinary Asset)</Text>
+              <TouchableOpacity
+                style={[s.modalBtn, { backgroundColor: '#07843D', height: 38, flexDirection: 'row', gap: 6, marginBottom: 10 }]}
+                onPress={handlePickCategoryImage}
+                disabled={isUploading}
+              >
+                <Upload size={14} color="#fff" />
+                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>
+                  {isUploading ? 'Uploading to Cloudinary...' : 'Upload Category Photo'}
+                </Text>
+              </TouchableOpacity>
+              {form.imageUrl ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10, backgroundColor: '#F8FAFC', padding: 8, borderRadius: 10 }}>
+                  <Image source={{ uri: form.imageUrl }} style={{ width: 50, height: 50, borderRadius: 10 }} resizeMode="cover" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 11, color: C.textSec, fontWeight: '600' }} numberOfLines={1}>Photo uploaded</Text>
+                    <TouchableOpacity onPress={() => setForm({ ...form, imageUrl: '' })}>
+                      <Text style={{ fontSize: 11, color: C.danger, fontWeight: '700', marginTop: 2 }}>Remove photo</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : null}
+
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 14, marginBottom: 20 }}>
+                <AppButton variant="outline" title="Cancel" onPress={() => setModal(null)} style={{ flex: 1 }} />
+                <AppButton variant="primary" title="Save Category" onPress={handleSave} style={{ flex: 1.5 }} />
+              </View>
+            </ScrollView>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -989,7 +1307,472 @@ const CategoriesTab: React.FC = () => {
   );
 };
 
-// ── 4. BRANDS ─────────────────────────────────────────────
+// ── 9. PROMOTIONAL BANNERS CMS ─────────────────────────────
+// ── 9. PROMOTIONAL BANNERS CMS ─────────────────────────────
+const TOP_GRADIENT_SWATCHES = [
+  { name: 'Forest', color: '#02381A' },
+  { name: 'Emerald', color: '#064E3B' },
+  { name: 'Teal', color: '#042F2E' },
+  { name: 'Navy', color: '#0F172A' },
+  { name: 'Ruby', color: '#4A041E' },
+  { name: 'Terracotta', color: '#6A250E' },
+  { name: 'Amber', color: '#78350F' },
+  { name: 'Purple', color: '#35065A' },
+  { name: 'Charcoal', color: '#18251D' },
+  { name: 'Pure Green', color: '#07843D' },
+];
+
+const BOTTOM_GRADIENT_SWATCHES = [
+  { name: 'Emerald', color: '#15803D' },
+  { name: 'Leaf', color: '#22C55E' },
+  { name: 'Teal', color: '#14B8A6' },
+  { name: 'Ocean', color: '#0284C7' },
+  { name: 'Sunset', color: '#EA580C' },
+  { name: 'Amber', color: '#F59E0B' },
+  { name: 'Gold', color: '#EAB308' },
+  { name: 'Rose', color: '#E11D48' },
+  { name: 'Violet', color: '#9333EA' },
+  { name: 'Lime', color: '#84CC16' },
+];
+
+const BannersTab: React.FC = () => {
+  const [banners, setBanners] = useState<any[]>([]);
+  const [modal, setModal] = useState<'add' | 'edit' | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    title: '',
+    subtitle: '',
+    imageUrl: '',
+    topColor: '#6A250E',
+    bottomColor: '#EA580C',
+    backgroundColor: '#6A250E|#EA580C',
+    textColor: '#FFFFFF',
+    buttonColor: '#FDE047',
+    buttonTextColor: '#78350F',
+    buttonText: 'Shop Now →',
+    targetType: 'ALL_PRODUCTS',
+    targetId: '',
+    displayOrder: '1',
+    isActive: true,
+  });
+
+  const loadBanners = async () => {
+    try {
+      const res = await fetch(API_ENDPOINTS.allBanners);
+      const data = await res.json();
+      const list = data.success && Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
+      setBanners(list);
+    } catch (e) {
+      console.warn('Failed to load banners:', e);
+    }
+  };
+
+  useEffect(() => {
+    loadBanners();
+  }, []);
+
+  const handlePickBannerImage = async () => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Permission Required', 'Please grant photo gallery permission to choose banner photo.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.85,
+        base64: true,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setIsUploading(true);
+        const dataUri = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+        const uploadedUrl = await uploadImageFile(dataUri, `banner-${Date.now()}.jpg`);
+        setForm(prev => ({ ...prev, imageUrl: uploadedUrl }));
+      }
+    } catch (err) {
+      console.warn('Banner image pick error:', err);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const openAdd = () => {
+    setForm({
+      title: `Banner ${banners.length + 1}`,
+      subtitle: '',
+      imageUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=600',
+      topColor: '#02381A',
+      bottomColor: '#15803D',
+      backgroundColor: '#02381A|#15803D',
+      textColor: '#FFFFFF',
+      buttonColor: '#FDE047',
+      buttonTextColor: '#78350F',
+      buttonText: 'Shop Now →',
+      targetType: 'ALL_PRODUCTS',
+      targetId: '',
+      displayOrder: String(banners.length + 1),
+      isActive: true,
+    });
+    setEditId(null);
+    setModal('add');
+  };
+
+  const openEdit = (b: any) => {
+    const bGrad = getGradientTheme(b.backgroundColor || '#07843D');
+    setForm({
+      title: b.title || `Banner #${b.displayOrder || 1}`,
+      subtitle: '',
+      imageUrl: b.imageUrl || '',
+      topColor: bGrad.dark,
+      bottomColor: bGrad.light,
+      backgroundColor: `${bGrad.dark}|${bGrad.light}`,
+      textColor: b.textColor || '#FFFFFF',
+      buttonColor: '#FDE047',
+      buttonTextColor: '#78350F',
+      buttonText: 'Shop Now →',
+      targetType: 'ALL_PRODUCTS',
+      targetId: '',
+      displayOrder: String(b.displayOrder || 1),
+      isActive: b.isActive !== undefined ? b.isActive : true,
+    });
+    setEditId(b.id);
+    setModal('edit');
+  };
+
+  const handleSave = async () => {
+    if (!form.imageUrl?.trim()) {
+      Alert.alert('Validation Error', 'Please upload or provide a banner image.');
+      return;
+    }
+    const finalBg = form.topColor && form.bottomColor ? `${form.topColor.trim()}|${form.bottomColor.trim()}` : (form.backgroundColor || '#02381A|#15803D');
+    const autoTitle = form.title?.trim() || `Banner #${form.displayOrder || banners.length + 1}`;
+    const payload = {
+      title: autoTitle,
+      subtitle: '',
+      imageUrl: form.imageUrl.trim(),
+      backgroundColor: finalBg,
+      textColor: form.textColor || '#FFFFFF',
+      buttonColor: '#FDE047',
+      buttonTextColor: '#78350F',
+      buttonText: 'Shop Now →',
+      targetType: 'ALL_PRODUCTS',
+      targetId: '',
+      displayOrder: parseInt(form.displayOrder, 10) || 1,
+      isActive: form.isActive !== undefined ? form.isActive : true,
+    };
+
+    try {
+      if (editId) {
+        await fetch(API_ENDPOINTS.updateBanner(editId), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        await fetch(API_ENDPOINTS.createBanner, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
+      setModal(null);
+      loadBanners();
+    } catch (e) {
+      Alert.alert('Error', 'Failed to save banner to database.');
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    Alert.alert('Delete Banner', 'Are you sure you want to remove this promotional banner?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await fetch(API_ENDPOINTS.deleteBanner(id), { method: 'DELETE' });
+            loadBanners();
+          } catch (e) {}
+        },
+      },
+    ]);
+  };
+
+  const handleToggleActive = async (banner: any) => {
+    try {
+      await fetch(API_ENDPOINTS.updateBanner(banner.id), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !banner.isActive }),
+      });
+      loadBanners();
+    } catch (e) {}
+  };
+
+  return (
+    <View style={{ flex: 1 }}>
+      <SectionHeader title={`Promotional Banners (${banners.length})`} action={{ label: '+ Add Banner', onPress: openAdd }} />
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {banners.map(b => {
+          const bGrad = getGradientTheme(b.backgroundColor || '#07843D');
+          return (
+            <View key={b.id} style={[s.card, { marginBottom: 12, borderLeftWidth: 4, borderLeftColor: bGrad.mid }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                <View style={{ flex: 1, marginRight: 10 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Sparkles size={16} color={C.primary} strokeWidth={2.2} />
+                    <Text style={{ fontSize: 16, fontWeight: '800', color: C.primary }}>Banner #{b.displayOrder || 1}</Text>
+                    <View style={{ flexDirection: 'row', gap: 3, marginLeft: 6 }}>
+                      <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: bGrad.dark, borderWidth: 1, borderColor: '#CBD5E1' }} />
+                      <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: bGrad.light, borderWidth: 1, borderColor: '#CBD5E1' }} />
+                    </View>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  onPress={() => handleToggleActive(b)}
+                  style={[s.chip, { backgroundColor: b.isActive ? '#DCFCE7' : '#FEE2E2', borderColor: b.isActive ? '#A7F3D0' : '#FECACA' }]}
+                >
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: b.isActive ? C.success : C.danger }}>
+                    {b.isActive ? 'ACTIVE' : 'INACTIVE'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Banner preview card with Dark-to-Light SVG Gradient & Uploaded Image Only */}
+              <View style={{
+                height: 100,
+                borderRadius: 14,
+                overflow: 'hidden',
+                padding: 6,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 10,
+                position: 'relative',
+              }}>
+                <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                  <Svg width="100%" height="100%">
+                    <Defs>
+                      <SvgLinearGradient id={`cardGrad_${b.id}`} x1="0" y1="0" x2="1" y2="1">
+                        <Stop offset="0%" stopColor={bGrad.dark} stopOpacity="1" />
+                        <Stop offset="50%" stopColor={bGrad.mid} stopOpacity="1" />
+                        <Stop offset="100%" stopColor={bGrad.light} stopOpacity="1" />
+                      </SvgLinearGradient>
+                    </Defs>
+                    <Rect width="100%" height="100%" fill={`url(#cardGrad_${b.id})`} />
+                  </Svg>
+                </View>
+
+                {b.imageUrl ? (
+                  <Image source={{ uri: b.imageUrl }} style={{ width: '100%', height: '100%', borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.45)' }} resizeMode="cover" />
+                ) : (
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.7)' }}>No image uploaded</Text>
+                )}
+              </View>
+
+              {/* Actions */}
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
+                <TouchableOpacity style={[s.iconBtn, { flexDirection: 'row', alignItems: 'center', gap: 4 }]} onPress={() => openEdit(b)}>
+                  <Pencil size={12} color={C.textSec} />
+                  <Text style={{ fontSize: 11, color: C.textSec, fontWeight: '600' }}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[s.iconBtn, { backgroundColor: '#FEF2F2' }]} onPress={() => handleDelete(b.id)}>
+                  <Trash2 size={12} color={C.danger} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          );
+        })}
+
+        {banners.length === 0 && (
+          <EmptyState
+            icon={<Sparkles size={36} color={C.textMuted} strokeWidth={1.5} />}
+            title="No promotional banners in database"
+            description="Create your first festival banner with vibrant gradients and button styling."
+            actionLabel="+ Add New Banner"
+            onAction={openAdd}
+          />
+        )}
+      </ScrollView>
+
+      {/* Add / Edit Banner Modal */}
+      <Modal visible={!!modal} transparent animationType="slide" onRequestClose={() => setModal(null)}>
+        <TouchableOpacity style={s.modalBackdrop} activeOpacity={1} onPress={() => setModal(null)}>
+          <View style={s.modalSheet} onStartShouldSetResponder={() => true}>
+            <View style={s.modalHandle} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <Sparkles size={18} color={C.primary} strokeWidth={2.5} />
+              <Text style={[s.modalTitle, { marginBottom: 0 }]}>{modal === 'add' ? 'Add Promotional Banner' : 'Edit Banner'}</Text>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 440 }}>
+              {/* LIVE GRADIENT BANNER PREVIEW */}
+              <View style={{ marginBottom: 14 }}>
+                <Text style={s.formLabel}>Live Dark-to-Light Gradient Preview</Text>
+                <View style={{
+                  height: 110,
+                  borderRadius: 14,
+                  overflow: 'hidden',
+                  padding: 7,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  position: 'relative',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 4,
+                  elevation: 3,
+                }}>
+                  <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                    <Svg width="100%" height="100%">
+                      <Defs>
+                        <SvgLinearGradient id="adminPreviewGrad" x1="0" y1="0" x2="1" y2="1">
+                          <Stop offset="0%" stopColor={form.topColor || '#02381A'} stopOpacity="1" />
+                          <Stop offset="100%" stopColor={form.bottomColor || '#15803D'} stopOpacity="1" />
+                        </SvgLinearGradient>
+                      </Defs>
+                      <Rect width="100%" height="100%" fill="url(#adminPreviewGrad)" />
+                    </Svg>
+                  </View>
+                  {form.imageUrl ? (
+                    <Image source={{ uri: form.imageUrl }} style={{ width: '100%', height: '100%', borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.45)' }} resizeMode="cover" />
+                  ) : (
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.8)' }}>
+                      Upload banner image below to preview
+                    </Text>
+                  )}
+                </View>
+              </View>
+
+              {/* 1. SELECT TOP COLOR (DARK GRADIENT) */}
+              <Text style={s.formLabel}>1. Select Top Color (Dark Gradient)</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }} contentContainerStyle={{ gap: 8, paddingVertical: 2 }}>
+                {TOP_GRADIENT_SWATCHES.map(swatch => {
+                  const isSelected = (form.topColor || '').toUpperCase() === swatch.color.toUpperCase();
+                  return (
+                    <TouchableOpacity
+                      key={swatch.color}
+                      onPress={() => setForm({
+                        ...form,
+                        topColor: swatch.color,
+                        backgroundColor: `${swatch.color}|${form.bottomColor || '#15803D'}`
+                      })}
+                      style={{
+                        paddingHorizontal: 8,
+                        paddingVertical: 5,
+                        borderRadius: 9,
+                        backgroundColor: isSelected ? '#F0FDF4' : '#F8FAFC',
+                        borderWidth: isSelected ? 2 : 1,
+                        borderColor: isSelected ? '#15803D' : '#E2E8F0',
+                        alignItems: 'center',
+                        flexDirection: 'row',
+                        gap: 6,
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: swatch.color, borderWidth: 1, borderColor: '#CBD5E1' }} />
+                      <Text style={{ fontSize: 11, fontWeight: isSelected ? '800' : '600', color: isSelected ? '#15803D' : '#475569' }}>
+                        {swatch.name}
+                      </Text>
+                      {isSelected && <Check size={11} color="#15803D" strokeWidth={3} />}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 8, paddingHorizontal: 8, marginBottom: 12 }}>
+                <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: form.topColor || '#02381A', marginRight: 8, borderWidth: 1, borderColor: '#CBD5E1' }} />
+                <TextInput
+                  style={{ flex: 1, height: 36, fontSize: 12, fontWeight: '700', color: '#1E293B' }}
+                  value={form.topColor}
+                  onChangeText={v => setForm({ ...form, topColor: v, backgroundColor: `${v}|${form.bottomColor || '#15803D'}` })}
+                  placeholder="#02381A"
+                  autoCapitalize="characters"
+                />
+              </View>
+
+              {/* 2. SELECT BOTTOM COLOR (LIGHT GRADIENT) */}
+              <Text style={s.formLabel}>2. Select Bottom Color (Light Gradient)</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }} contentContainerStyle={{ gap: 8, paddingVertical: 2 }}>
+                {BOTTOM_GRADIENT_SWATCHES.map(swatch => {
+                  const isSelected = (form.bottomColor || '').toUpperCase() === swatch.color.toUpperCase();
+                  return (
+                    <TouchableOpacity
+                      key={swatch.color}
+                      onPress={() => setForm({
+                        ...form,
+                        bottomColor: swatch.color,
+                        backgroundColor: `${form.topColor || '#02381A'}|${swatch.color}`
+                      })}
+                      style={{
+                        paddingHorizontal: 8,
+                        paddingVertical: 5,
+                        borderRadius: 9,
+                        backgroundColor: isSelected ? '#F0FDF4' : '#F8FAFC',
+                        borderWidth: isSelected ? 2 : 1,
+                        borderColor: isSelected ? '#15803D' : '#E2E8F0',
+                        alignItems: 'center',
+                        flexDirection: 'row',
+                        gap: 6,
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: swatch.color, borderWidth: 1, borderColor: '#CBD5E1' }} />
+                      <Text style={{ fontSize: 11, fontWeight: isSelected ? '800' : '600', color: isSelected ? '#15803D' : '#475569' }}>
+                        {swatch.name}
+                      </Text>
+                      {isSelected && <Check size={11} color="#15803D" strokeWidth={3} />}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 8, paddingHorizontal: 8, marginBottom: 12 }}>
+                <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: form.bottomColor || '#15803D', marginRight: 8, borderWidth: 1, borderColor: '#CBD5E1' }} />
+                <TextInput
+                  style={{ flex: 1, height: 36, fontSize: 12, fontWeight: '700', color: '#1E293B' }}
+                  value={form.bottomColor}
+                  onChangeText={v => setForm({ ...form, bottomColor: v, backgroundColor: `${form.topColor || '#02381A'}|${v}` })}
+                  placeholder="#15803D"
+                  autoCapitalize="characters"
+                />
+              </View>
+
+              <Text style={s.formLabel}>Display Order</Text>
+              <TextInput style={s.formInput} value={form.displayOrder} onChangeText={v => setForm({ ...form, displayOrder: v })} keyboardType="numeric" placeholder="1" placeholderTextColor={C.textMuted} />
+
+              {/* Cloudinary Image Picker */}
+              <Text style={s.formLabel}>Banner Image (Cloudinary Asset)</Text>
+              <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center', marginBottom: 10 }}>
+                <TouchableOpacity
+                  style={[s.modalBtn, { backgroundColor: '#07843D', height: 36, flexDirection: 'row', gap: 6, paddingHorizontal: 12 }]}
+                  onPress={handlePickBannerImage}
+                  disabled={isUploading}
+                >
+                  <Upload size={14} color="#fff" />
+                  <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>
+                    {isUploading ? 'Uploading to Cloudinary...' : 'Upload Image'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {form.imageUrl ? (
+                <Image source={{ uri: form.imageUrl }} style={{ width: '100%', height: 90, borderRadius: 10, marginBottom: 10 }} resizeMode="cover" />
+              ) : null}
+
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 12, marginBottom: 20 }}>
+                <AppButton variant="outline" title="Cancel" onPress={() => setModal(null)} style={{ flex: 1 }} />
+                <AppButton variant="primary" title="Save to Database" onPress={handleSave} style={{ flex: 1.5 }} />
+              </View>
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </View>
+  );
+};
+
 const BrandsTab: React.FC = () => {
   const [items, setItems] = useState<AdminBrand[]>([]);
   const [modal, setModal] = useState<'add' | 'edit' | null>(null);
@@ -1117,7 +1900,6 @@ const BrandsTab: React.FC = () => {
   );
 };
 
-// ── 5. CUSTOMERS ──────────────────────────────────────────
 const CustomersTab: React.FC = () => {
   const [customers, setCustomers] = useState<AdminCustomer[]>([]);
   const [allOrders, setAllOrders] = useState<AdminOrder[]>([]);
@@ -1541,6 +2323,7 @@ export const AdminPortalScreens: React.FC<AdminPortalScreensProps> = ({
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':      return <DashboardTab />;
+      case 'banners':        return <BannersTab />;
       case 'vendorRequests': return <VendorRequestsTab />;
       case 'products':       return <ProductsTab />;
       case 'categories':     return <CategoriesTab />;
@@ -1553,8 +2336,8 @@ export const AdminPortalScreens: React.FC<AdminPortalScreensProps> = ({
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
-      {/* Page Content */}
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={['left', 'right', 'bottom']}>
+      {/* Page Content (Navigation via Sidebar Drawer) */}
       <View style={s.contentArea}>
         {renderContent()}
       </View>
@@ -1565,13 +2348,13 @@ export const AdminPortalScreens: React.FC<AdminPortalScreensProps> = ({
 // ── Styles ────────────────────────────────────────────────
 const s = StyleSheet.create({
   // Layout
-  tabBar: { backgroundColor: C.primary, paddingTop: 4 },
-  tabBarInner: { flexDirection: 'row', paddingHorizontal: 8, paddingBottom: 0 },
-  tabItem: { alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, position: 'relative', gap: 2 },
-  tabItemActive: { },
-  tabLabel: { fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: '500' },
-  tabLabelActive: { color: '#fff', fontWeight: '700' },
-  tabIndicator: { position: 'absolute', bottom: 0, left: 8, right: 8, height: 3, backgroundColor: C.accent, borderRadius: 2 },
+  tabBar: { backgroundColor: '#07843D', paddingTop: 6, paddingBottom: 2, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.08)' },
+  tabBarInner: { flexDirection: 'row', paddingHorizontal: 8, paddingBottom: 0, gap: 4, alignItems: 'center' },
+  tabItem: { alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, position: 'relative', gap: 4, borderRadius: 8 },
+  tabItemActive: { backgroundColor: 'rgba(255,255,255,0.12)' },
+  tabLabel: { fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '600' },
+  tabLabelActive: { color: '#FFFFFF', fontWeight: '800' },
+  tabIndicator: { position: 'absolute', bottom: 0, left: 10, right: 10, height: 3, backgroundColor: '#FDE047', borderRadius: 2 },
   contentArea: { flex: 1, backgroundColor: C.bg, padding: 12 },
 
   // Section Header
