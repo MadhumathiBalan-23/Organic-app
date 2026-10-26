@@ -89,6 +89,10 @@ export class ProductService {
         subscriptionAllowed: rest.subscriptionAllowed !== undefined ? Boolean(rest.subscriptionAllowed) : true,
         oneTimeAllowed: rest.oneTimeAllowed !== undefined ? Boolean(rest.oneTimeAllowed) : true,
         organicCertified: rest.organicCertified !== undefined ? Boolean(rest.organicCertified) : true,
+        originalPrice: rest.originalPrice ? parseFloat(rest.originalPrice) : undefined,
+        discountBadge: rest.discountBadge || undefined,
+        vendorId: rest.vendorId || undefined,
+        cloudinaryPublicId: rest.cloudinaryPublicId || undefined,
         emoji: rest.emoji || '🌱'
       },
       include: { category: true }

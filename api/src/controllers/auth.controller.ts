@@ -11,19 +11,25 @@ export class AuthController {
         success: true,
         message: `OTP sent successfully to +91 ${result.phoneNumber}`,
         phoneNumber: result.phoneNumber,
-        otp: result.otp, // included for seamless development & verification
+        otp: result.otp, // demo fallback code
+        expiresInSeconds: result.expiresInSeconds,
         role: result.role
       });
     } catch (error: any) {
-      const status = error.message.includes('valid 10-digit') ? 400 : 500;
-      return res.status(status).json({ success: false, message: error.message });
+      const status = error.status || (error.message.includes('valid 10-digit') ? 400 : 500);
+      return res.status(status).json({
+        success: false,
+        message: error.message,
+        waitSeconds: error.waitSeconds,
+        lockoutSeconds: error.lockoutSeconds
+      });
     }
   }
 
   public static async verifyOtp(req: Request, res: Response) {
     try {
-      const { phoneNumber, otp } = req.body;
-      const result = await AuthService.verifyOtp(phoneNumber, otp);
+      const { phoneNumber, otp, deviceInfo } = req.body;
+      const result = await AuthService.verifyOtp(phoneNumber, otp, deviceInfo);
 
       return res.json({
         success: true,
@@ -32,8 +38,36 @@ export class AuthController {
           : 'Mobile number verified successfully! Welcome to Mathira Organic Farming.',
         token: result.token,
         role: result.role,
+        deviceId: result.deviceId,
+        trustedUntil: result.trustedUntil,
         user: result.user
       });
+    } catch (error: any) {
+      const status = error.status || 400;
+      return res.status(status).json({
+        success: false,
+        message: error.message,
+        remainingAttempts: error.remainingAttempts,
+        lockoutSeconds: error.lockoutSeconds
+      });
+    }
+  }
+
+  public static async verifyTrustedDevice(req: Request, res: Response) {
+    try {
+      const { phoneNumber, deviceId } = req.body;
+      const result = await AuthService.verifyTrustedDevice(phoneNumber, deviceId);
+      return res.json(result);
+    } catch (error: any) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  public static async revokeTrustedDevice(req: Request, res: Response) {
+    try {
+      const { phoneNumber, deviceId } = req.body;
+      const result = await AuthService.revokeTrustedDevice(phoneNumber, deviceId);
+      return res.json(result);
     } catch (error: any) {
       return res.status(400).json({ success: false, message: error.message });
     }

@@ -12,6 +12,8 @@ import dashboardRoutes from './dashboard.routes';
 import authRoutes from './auth.routes';
 import vendorRoutes from './vendor.routes';
 import uploadRoutes from './upload.routes';
+import locationRoutes from './location.routes';
+import bannerRoutes from './banner.routes';
 
 const router = Router();
 
@@ -29,5 +31,7 @@ router.use(dashboardRoutes);
 router.use(authRoutes);
 router.use(vendorRoutes);
 router.use(uploadRoutes);
+router.use(locationRoutes);
+router.use(bannerRoutes);
 
 export default router;

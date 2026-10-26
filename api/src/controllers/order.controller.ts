@@ -29,6 +29,22 @@ export class OrderController {
     }
   }
 
+  public static async verifyDeliveryOtp(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { otp } = req.body;
+      const order = await OrderService.verifyDeliveryOtp(id, otp);
+      return res.json({
+        success: true,
+        message: 'Delivery verified successfully with customer OTP! Order marked as DELIVERED.',
+        data: order
+      });
+    } catch (error: any) {
+      const status = error.status || 400;
+      return res.status(status).json({ success: false, message: error.message });
+    }
+  }
+
   public static async delete(req: Request, res: Response) {
     try {
       await OrderService.deleteOrder(req.params.id);

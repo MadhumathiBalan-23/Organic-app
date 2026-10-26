@@ -55,6 +55,20 @@ export class CloudinaryService {
       throw error;
     }
   }
+
+  /**
+   * Delete an image from Cloudinary by public ID
+   */
+  public static async deleteImage(publicId: string): Promise<boolean> {
+    try {
+      const res = await cloudinary.uploader.destroy(publicId);
+      console.log(`[Cloudinary]: Asset ${publicId} deletion result -> ${res.result}`);
+      return res.result === 'ok';
+    } catch (e: any) {
+      console.warn('[Cloudinary Delete Error]:', e.message || e);
+      return false;
+    }
+  }
 }
 
 export default CloudinaryService;

@@ -3,14 +3,77 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 const initialCategories = [
-  { name: 'Dairy & Pure Ghee', emoji: '🥛', description: 'Fresh A2 milk, cultured curd, churned ghee, and butter' },
-  { name: 'Fresh Vegetables', emoji: '🥦', description: 'Chemical-free, farm-picked fresh daily vegetables' },
-  { name: 'Fresh Fruits', emoji: '🍎', description: 'Naturally ripened, pesticide-free seasonal fruits' },
-  { name: 'Groceries & Grains', emoji: '🌾', description: 'Heritage grains, brown rice, pulses, and unrefined flours' },
-  { name: 'Organic Oils', emoji: '🫒', description: 'Wood-churned cold pressed unrefined oils' },
-  { name: 'Dry Fruits & Snacks', emoji: '🍯', description: 'Raw forest honey, organic nuts, and roasted seeds' },
-  { name: 'Honey & Preserves', emoji: '🍯', description: 'Raw honey, jams, pickles, chutneys' },
-  { name: 'Eggs & Poultry', emoji: '🥚', description: 'Free-range eggs, country chicken' },
+  { name: 'Dairy & Pure Ghee', emoji: '🥛', description: 'Fresh A2 milk, cultured curd, churned ghee, and butter', imageUrl: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=300', displayOrder: 1, isActive: true },
+  { name: 'Fresh Vegetables', emoji: '🥦', description: 'Chemical-free, farm-picked fresh daily vegetables', imageUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&q=80&w=300', displayOrder: 2, isActive: true },
+  { name: 'Fresh Fruits', emoji: '🍎', description: 'Naturally ripened, pesticide-free seasonal fruits', imageUrl: 'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?auto=format&fit=crop&q=80&w=300', displayOrder: 3, isActive: true },
+  { name: 'Groceries & Grains', emoji: '🌾', description: 'Heritage grains, brown rice, pulses, and unrefined flours', imageUrl: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=80&w=300', displayOrder: 4, isActive: true },
+  { name: 'Organic Oils', emoji: '🫒', description: 'Wood-churned cold pressed unrefined oils', imageUrl: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&q=80&w=300', displayOrder: 5, isActive: true },
+  { name: 'Dry Fruits & Snacks', emoji: '🍯', description: 'Raw forest honey, organic nuts, and roasted seeds', imageUrl: 'https://images.unsplash.com/photo-1508061253366-f7da158b6d46?auto=format&fit=crop&q=80&w=300', displayOrder: 6, isActive: true },
+  { name: 'Honey & Preserves', emoji: '🍯', description: 'Raw honey, jams, pickles, chutneys', imageUrl: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&q=80&w=300', displayOrder: 7, isActive: true },
+  { name: 'Eggs & Poultry', emoji: '🥚', description: 'Free-range eggs, country chicken', imageUrl: 'https://images.unsplash.com/photo-1506976785307-8732e854ad03?auto=format&fit=crop&q=80&w=300', displayOrder: 8, isActive: true },
+];
+
+const initialBanners = [
+  {
+    id: 'banner-1',
+    title: 'Grand Festive Harvest 🪔',
+    subtitle: 'Pure A2 Bilona Ghee, organic jaggery & sweets made with 100% farm purity.',
+    imageUrl: 'https://images.unsplash.com/photo-1596797038530-2c107229654b?auto=format&fit=crop&q=80&w=600',
+    backgroundColor: '#C2410C', // Festive Terracotta / Warm Saffron
+    textColor: '#FFFFFF',
+    buttonColor: '#FDE047',
+    buttonTextColor: '#78350F',
+    buttonText: 'Celebrate Now ✨',
+    targetType: 'CATEGORY',
+    targetId: 'Dairy & Pure Ghee',
+    displayOrder: 1,
+    isActive: true,
+  },
+  {
+    id: 'banner-2',
+    title: 'Daily Morning A2 Desi Milk 🥛',
+    subtitle: 'Chilled glass bottles delivered straight from grass-fed cows by 6:30 AM.',
+    imageUrl: 'https://images.unsplash.com/photo-1528750997573-59b89d56f4f7?auto=format&fit=crop&q=80&w=600',
+    backgroundColor: '#0F766E', // Morning Deep Pure Teal
+    textColor: '#FFFFFF',
+    buttonColor: '#FEF08A',
+    buttonTextColor: '#134E4A',
+    buttonText: 'Subscribe Daily 🥛',
+    targetType: 'SCREEN',
+    targetId: 'MY_SUBSCRIPTIONS',
+    displayOrder: 2,
+    isActive: true,
+  },
+  {
+    id: 'banner-3',
+    title: 'Farm Fresh Organic Harvest 🌿',
+    subtitle: 'Zero chemicals, 100% certified pesticide-free from local accredited farms.',
+    imageUrl: 'https://images.unsplash.com/photo-1610348725531-843dff563e2c?auto=format&fit=crop&q=80&w=600',
+    backgroundColor: '#07843D', // Deep Emerald Organic Green
+    textColor: '#FFFFFF',
+    buttonColor: '#F2C500',
+    buttonTextColor: '#18352B',
+    buttonText: 'Shop Harvest →',
+    targetType: 'SCREEN',
+    targetId: 'ALL_PRODUCTS',
+    displayOrder: 3,
+    isActive: true,
+  },
+  {
+    id: 'banner-4',
+    title: 'Royal Festive Hampers 🎁',
+    subtitle: 'Premium organic almonds, cashews, forest honey & festive gift baskets.',
+    imageUrl: 'https://images.unsplash.com/photo-1508061253366-f7da158b6d46?auto=format&fit=crop&q=80&w=600',
+    backgroundColor: '#831843', // Royal Festive Ruby / Magenta
+    textColor: '#FFFFFF',
+    buttonColor: '#FBBF24',
+    buttonTextColor: '#4C0519',
+    buttonText: 'Gift Health 🎁',
+    targetType: 'CATEGORY',
+    targetId: 'Dry Fruits & Snacks',
+    displayOrder: 4,
+    isActive: true,
+  },
 ];
 
 const initialBrands = [
@@ -723,7 +786,17 @@ export async function main() {
   }
   console.log(`✓ Seeded ${initialAIAlerts.length} AI Alerts into Prisma.`);
 
-  console.log('✅ [Prisma SQLite]: Entire database seeded and fully stored in SQLite dev.db!');
+  // 10. Promotional Banners
+  for (const b of initialBanners) {
+    await prisma.banner.upsert({
+      where: { id: b.id },
+      update: b,
+      create: b,
+    });
+  }
+  console.log(`✓ Seeded ${initialBanners.length} Promotional Banners into Prisma.`);
+
+  console.log('✅ [Prisma PostgreSQL]: Entire database seeded and fully stored in agriflow_db!');
 }
 
 main()

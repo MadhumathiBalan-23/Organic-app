@@ -8,12 +8,38 @@ datasource db {
 }
 
 model Category {
-  id          String    @id @default(uuid())
-  name        String    @unique
-  emoji       String    @default("🌱")
-  description String?
-  products    Product[]
-  createdAt   DateTime  @default(now())
+  id                 String    @id @default(uuid())
+  name               String    @unique
+  emoji              String    @default("🌱")
+  description        String?
+  imageUrl           String?
+  cloudinaryPublicId String?
+  displayOrder       Int       @default(0)
+  isActive           Boolean   @default(true)
+  products           Product[]
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt @default(now())
+}
+
+model Banner {
+  id                 String    @id @default(uuid())
+  title              String
+  subtitle           String?
+  imageUrl           String
+  cloudinaryPublicId String?
+  backgroundColor    String    @default("#EBF6EE")
+  textColor          String    @default("#003B25")
+  buttonColor        String    @default("#F2C500")
+  buttonTextColor    String    @default("#18352B")
+  buttonText         String    @default("Shop Now →")
+  targetType         String    @default("SCREEN") // SCREEN, CATEGORY, PRODUCT, SUBSCRIPTION
+  targetId           String    @default("ALL_PRODUCTS")
+  displayOrder       Int       @default(0)
+  isActive           Boolean   @default(true)
+  startAt            DateTime?
+  endAt              DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 }
 
 model Product {
@@ -23,6 +49,8 @@ model Product {
   category            Category?      @relation(fields: [categoryName], references: [name])
   brand               String         @default("NatureFarm")
   price               Float
+  originalPrice       Float?
+  discountBadge       String?
   unit                String         @default("Kg")
   rating              Float          @default(4.8)
   stock               Int            @default(100)
@@ -32,10 +60,13 @@ model Product {
   description         String
   benefits            String         @default("[]") // JSON string of benefits
   imageUrl            String
+  cloudinaryPublicId  String?
+  vendorId            String?
   subscriptionAllowed Boolean        @default(true)
   oneTimeAllowed      Boolean        @default(true)
   organicCertified    Boolean        @default(true)
   emoji               String         @default("🌱")
+  isActive            Boolean        @default(true)
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
   subscriptions       Subscription[]

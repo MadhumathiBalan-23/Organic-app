@@ -4,7 +4,8 @@ import { CategoryService } from '../services/category.service';
 export class CategoryController {
   public static async getAll(req: Request, res: Response) {
     try {
-      const categories = await CategoryService.getAllCategories();
+      const includeAll = req.query.all === 'true' || req.query.admin === 'true';
+      const categories = await CategoryService.getAllCategories(includeAll);
       return res.json({ success: true, count: categories.length, data: categories });
     } catch (error: any) {
       return res.status(500).json({ success: false, error: error.message });
