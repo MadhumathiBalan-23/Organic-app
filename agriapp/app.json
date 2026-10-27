@@ -8,21 +8,15 @@
     "assetBundlePatterns": [
       "**/*"
     ],
-    "icon": "./asset/logo.jpeg",
-    "splash": {
-      "image": "./asset/logo.jpeg",
-      "resizeMode": "contain",
-      "backgroundColor": "#FDFBF7"
-    },
+    "icon": "./asset/logo.png",
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "package": "com.mathira.organicfarming",
       "backgroundColor": "#FDFBF7",
-      "usesCleartextTraffic": true,
       "adaptiveIcon": {
-        "foregroundImage": "./asset/logo.jpeg",
+        "foregroundImage": "./asset/logo.png",
         "backgroundColor": "#FDFBF7"
       },
       "permissions": [

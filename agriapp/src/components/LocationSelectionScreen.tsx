@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   TextInput,
   ScrollView,
@@ -254,7 +253,7 @@ export const LocationSelectionScreen: React.FC<LocationSelectionScreenProps> = (
   const isContinueEnabled = !!selectedArea && !isLocating;
 
   return (
-    <View style={styles.rootContainer}>
+    <View className="flex-1 bg-white relative overflow-hidden">
       {/* Decorative Botanical Leaf Backgrounds */}
       <TopLeftLeaves size={170} />
       <TopRightLeaves size={140} />
@@ -264,7 +263,8 @@ export const LocationSelectionScreen: React.FC<LocationSelectionScreenProps> = (
       {isChangingAddress && onCancel && (
         <TouchableOpacity
           onPress={onCancel}
-          style={[styles.closeBtn, { top: Math.max(insets.top + 6, 16) }]}
+          style={{ top: Math.max(insets.top + 6, 16) }}
+          className="absolute right-4 z-20 w-8 h-8 rounded-full bg-slate-100 items-center justify-center"
           activeOpacity={0.7}
         >
           <X size={18} color="#475569" />
@@ -272,37 +272,35 @@ export const LocationSelectionScreen: React.FC<LocationSelectionScreenProps> = (
       )}
 
       <ScrollView
-        contentContainerStyle={[
-          styles.scrollContent,
-          {
-            paddingTop: Math.max(insets.top + 16, 32),
-            paddingBottom: Math.max(insets.bottom + 24, 40),
-          },
-        ]}
+        contentContainerStyle={{
+          paddingTop: Math.max(insets.top + 16, 32),
+          paddingBottom: Math.max(insets.bottom + 24, 40),
+        }}
+        contentContainerClassName="px-5 items-stretch z-10"
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         {/* Top Centered Hero Pin Illustration */}
-        <View style={styles.heroPinWrapper}>
-          <View style={styles.pinOuterGlowRing}>
-            <View style={styles.pinInnerCircle}>
+        <View className="items-center justify-center mt-1.5 mb-3">
+          <View className="w-[106px] h-[106px] rounded-full bg-emerald-50 border border-emerald-500/20 items-center justify-center">
+            <View className="w-[72px] h-[72px] rounded-full bg-white shadow-md items-center justify-center">
               <MapPin size={34} color="#059669" fill="#059669" strokeWidth={1.5} />
             </View>
           </View>
         </View>
 
         {/* Heading & Subtitle */}
-        <View style={styles.headerTextGroup}>
-          <Text style={styles.mainTitle}>Choose Your Location</Text>
-          <Text style={styles.subtitle}>
+        <View className="items-center mb-5">
+          <Text className="text-2xl font-extrabold text-slate-900 text-center tracking-tight">Choose Your Location</Text>
+          <Text className="text-xs text-slate-500 text-center mt-1 leading-5 max-w-xs">
             Find fresh organic products and nearby vendors in your area.
           </Text>
         </View>
 
         {/* Segmented Switch Tabs (Current GPS vs Enter Manually) */}
-        <View style={styles.segmentedContainer}>
+        <View className="flex-row bg-slate-100 p-1 rounded-xl mb-4">
           <TouchableOpacity
-            style={[styles.tabButton, mode === 'GPS' && styles.tabButtonActive]}
+            className={`flex-1 flex-row items-center justify-center py-2.5 rounded-lg gap-2 ${mode === 'GPS' ? 'bg-white shadow-sm' : ''}`}
             onPress={handleSwitchToGps}
             activeOpacity={0.85}
           >
@@ -312,17 +310,14 @@ export const LocationSelectionScreen: React.FC<LocationSelectionScreenProps> = (
               strokeWidth={2.4}
             />
             <Text
-              style={[
-                styles.tabButtonText,
-                mode === 'GPS' && styles.tabButtonTextActive,
-              ]}
+              className={`text-xs font-semibold ${mode === 'GPS' ? 'text-emerald-700 font-bold' : 'text-slate-600'}`}
             >
               Current GPS
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.tabButton, mode === 'MANUAL' && styles.tabButtonActive]}
+            className={`flex-1 flex-row items-center justify-center py-2.5 rounded-lg gap-2 ${mode === 'MANUAL' ? 'bg-white shadow-sm' : ''}`}
             onPress={handleSwitchToManual}
             activeOpacity={0.85}
           >
@@ -332,10 +327,7 @@ export const LocationSelectionScreen: React.FC<LocationSelectionScreenProps> = (
               strokeWidth={2.2}
             />
             <Text
-              style={[
-                styles.tabButtonText,
-                mode === 'MANUAL' && styles.tabButtonTextActive,
-              ]}
+              className={`text-xs font-semibold ${mode === 'MANUAL' ? 'text-emerald-700 font-bold' : 'text-slate-600'}`}
             >
               Enter Manually
             </Text>
@@ -344,29 +336,29 @@ export const LocationSelectionScreen: React.FC<LocationSelectionScreenProps> = (
 
         {/* Error Alert Banner */}
         {errorMessage && (
-          <View style={styles.errorAlertCard}>
-            <View style={styles.errorRow}>
+          <View className="bg-red-50 border border-red-200 rounded-xl p-3 mb-3.5">
+            <View className="flex-row items-start gap-2.5">
               <AlertCircle size={16} color="#DC2626" style={{ marginTop: 2 }} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.errorAlertText}>{errorMessage}</Text>
+              <View className="flex-1">
+                <Text className="text-xs font-semibold text-red-700 leading-4">{errorMessage}</Text>
                 {settingsRequired && (
-                  <View style={styles.errorActionsRow}>
+                  <View className="flex-row items-center gap-2 mt-2">
                     <TouchableOpacity
-                      style={styles.openSettingsBtn}
+                      className="flex-row items-center bg-red-600 px-2.5 py-1.5 rounded-lg gap-1"
                       onPress={handleOpenSettings}
                       activeOpacity={0.8}
                     >
-                      <Settings size={12} color="#FFFFFF" />
-                      <Text style={styles.openSettingsBtnText}>Open Phone Settings</Text>
+                      <Settings size={14} color="#FFFFFF" />
+                      <Text className="text-white text-xs font-bold">Open Phone Settings</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={styles.retryGpsBtn}
+                      className="flex-row items-center bg-white border border-emerald-700 px-2.5 py-1.5 rounded-lg gap-1"
                       onPress={handleUseCurrentLocation}
                       activeOpacity={0.8}
                     >
-                      <RotateCcw size={12} color="#047857" />
-                      <Text style={styles.retryGpsBtnText}>Retry GPS</Text>
+                      <RotateCcw size={14} color="#047857" />
+                      <Text className="text-emerald-700 text-xs font-bold">Retry GPS</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -377,20 +369,20 @@ export const LocationSelectionScreen: React.FC<LocationSelectionScreenProps> = (
 
         {/* ─── FLOW A: CURRENT GPS ─── */}
         {mode === 'GPS' && (
-          <View style={styles.stateContainer}>
+          <View className="mb-5">
             {/* State 1: Initial Screen (No address shown, user hasn't clicked yet) */}
             {!selectedArea && !isLocating && (
               <TouchableOpacity
-                style={styles.initialGpsPromptCard}
+                className="flex-row items-center bg-emerald-50/70 border border-emerald-200 rounded-2xl p-4 gap-3.5"
                 onPress={handleUseCurrentLocation}
                 activeOpacity={0.85}
               >
-                <View style={styles.initialGpsPromptIconBadge}>
+                <View className="w-12 h-12 rounded-xl bg-white border border-emerald-200 items-center justify-center shadow-sm">
                   <Navigation size={22} color="#059669" strokeWidth={2.4} />
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.initialGpsPromptTitle}>Use Precise GPS Location</Text>
-                  <Text style={styles.initialGpsPromptSub}>
+                <View className="flex-1">
+                  <Text className="text-sm font-bold text-slate-900">Use Precise GPS Location</Text>
+                  <Text className="text-xs text-slate-500 mt-0.5 leading-4">
                     Tap to auto-detect your area and find nearby organic vendors
                   </Text>
                 </View>
@@ -399,8 +391,8 @@ export const LocationSelectionScreen: React.FC<LocationSelectionScreenProps> = (
 
             {/* State 2: GPS Detecting */}
             {isLocating && (
-              <View style={styles.detectingContainer}>
-                <View style={styles.detectingBadge}>
+              <View className="bg-slate-50 border border-slate-200 rounded-2xl p-6 items-center">
+                <View className="w-16 h-16 rounded-full bg-emerald-50 items-center justify-center relative mb-3">
                   <Navigation
                     size={28}
                     color="#059669"
@@ -410,11 +402,11 @@ export const LocationSelectionScreen: React.FC<LocationSelectionScreenProps> = (
                   <ActivityIndicator
                     size="large"
                     color="#059669"
-                    style={StyleSheet.absoluteFill}
+                    className="absolute inset-0"
                   />
                 </View>
-                <Text style={styles.detectingTitle}>Detecting your location...</Text>
-                <Text style={styles.detectingSubtitle}>
+                <Text className="text-sm font-bold text-slate-900 text-center">Detecting your location...</Text>
+                <Text className="text-xs text-slate-500 text-center mt-1">
                   Please allow location access for better service.
                 </Text>
               </View>
@@ -423,16 +415,16 @@ export const LocationSelectionScreen: React.FC<LocationSelectionScreenProps> = (
             {/* State 3: GPS Address (Address shown after detection) */}
             {selectedArea && !isLocating && (
               <TouchableOpacity
-                style={styles.currentAreaCard}
+                className="flex-row items-center bg-emerald-50 border-2 border-emerald-600 rounded-2xl p-3.5 gap-3"
                 onPress={handleUseCurrentLocation}
                 activeOpacity={0.9}
               >
-                <View style={styles.currentAreaIconBadge}>
+                <View className="w-11 h-11 rounded-xl bg-white border border-emerald-200 items-center justify-center shadow-sm">
                   <MapPin size={22} color="#059669" fill="#059669" strokeWidth={1.5} />
                 </View>
-                <View style={styles.currentAreaContent}>
-                  <Text style={styles.currentAreaLabel}>YOUR CURRENT AREA</Text>
-                  <Text style={styles.currentAreaName} numberOfLines={2}>
+                <View className="flex-1">
+                  <Text className="text-2xs font-extrabold text-emerald-800 uppercase tracking-wider">YOUR CURRENT AREA</Text>
+                  <Text className="text-sm font-bold text-slate-900 mt-0.5 leading-5" numberOfLines={2}>
                     {selectedArea.areaLabel}
                   </Text>
                 </View>
@@ -443,13 +435,13 @@ export const LocationSelectionScreen: React.FC<LocationSelectionScreenProps> = (
 
         {/* ─── FLOW B: MANUAL ENTRY ─── */}
         {mode === 'MANUAL' && (
-          <View style={styles.stateContainer}>
+          <View className="mb-5">
             {/* State 4: Search input box */}
-            <View style={styles.searchInputWrapper}>
+            <View className="flex-row items-center bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 mb-2">
               <Search size={18} color="#94A3B8" style={{ marginRight: 8 }} />
               <TextInput
                 ref={searchInputRef}
-                style={styles.searchTextInput}
+                className="flex-1 text-sm font-semibold text-slate-900 py-1"
                 placeholder="Search area, city or pincode"
                 placeholderTextColor="#94A3B8"
                 value={searchQuery}
@@ -469,35 +461,32 @@ export const LocationSelectionScreen: React.FC<LocationSelectionScreenProps> = (
 
             {/* State 5: Autocomplete Suggestions Dropdown List */}
             {showSuggestions && suggestions.length > 0 && (
-              <View style={styles.suggestionsContainer}>
+              <View className="bg-white border border-slate-200 rounded-xl overflow-hidden mb-3 shadow-sm">
                 {suggestions.map((item, index) => {
                   const isFirst = index === 0;
                   return (
                     <TouchableOpacity
                       key={item.id || `${item.title}_${index}`}
-                      style={[styles.suggestionItem, isFirst && styles.suggestionItemActive]}
+                      className={`flex-row items-center p-3 border-b border-slate-100 gap-3 ${isFirst ? 'bg-emerald-50/60' : ''}`}
                       onPress={() => handleSelectSuggestion(item)}
                       activeOpacity={0.8}
                     >
-                      <View style={styles.suggestionIconBox}>
+                      <View className="w-8 h-8 rounded-lg bg-slate-100 items-center justify-center">
                         <MapPin
                           size={18}
                           color={isFirst ? '#059669' : '#64748B'}
                           strokeWidth={2}
                         />
                       </View>
-                      <View style={styles.suggestionTextCol}>
+                      <View className="flex-1">
                         <Text
-                          style={[
-                            styles.suggestionTitle,
-                            isFirst && styles.suggestionTitleActive,
-                          ]}
+                          className={`text-sm ${isFirst ? 'text-emerald-800 font-bold' : 'text-slate-900 font-semibold'}`}
                           numberOfLines={1}
                         >
                           {item.title}
                         </Text>
                         {!!item.subtitle && (
-                          <Text style={styles.suggestionSubtitle} numberOfLines={1}>
+                          <Text className="text-xs text-slate-400 mt-0.5" numberOfLines={1}>
                             {item.subtitle}
                           </Text>
                         )}
@@ -510,13 +499,13 @@ export const LocationSelectionScreen: React.FC<LocationSelectionScreenProps> = (
 
             {/* State 6: Manual Address (Address card shown after selection) */}
             {selectedArea && !showSuggestions && (
-              <View style={styles.selectedAreaCard}>
-                <View style={styles.currentAreaIconBadge}>
+              <View className="flex-row items-center bg-emerald-50 border-2 border-emerald-600 rounded-2xl p-3.5 gap-3 mt-1">
+                <View className="w-11 h-11 rounded-xl bg-white border border-emerald-200 items-center justify-center shadow-sm">
                   <MapPin size={22} color="#059669" fill="#059669" strokeWidth={1.5} />
                 </View>
-                <View style={styles.currentAreaContent}>
-                  <Text style={styles.currentAreaLabel}>SELECTED AREA</Text>
-                  <Text style={styles.currentAreaName} numberOfLines={2}>
+                <View className="flex-1">
+                  <Text className="text-2xs font-extrabold text-emerald-800 uppercase tracking-wider">SELECTED AREA</Text>
+                  <Text className="text-sm font-bold text-slate-900 mt-0.5 leading-5" numberOfLines={2}>
                     {selectedArea.areaLabel}
                   </Text>
                 </View>
@@ -525,21 +514,15 @@ export const LocationSelectionScreen: React.FC<LocationSelectionScreenProps> = (
           </View>
         )}
 
-        {/* Continue Button (Disabled in State 1, 2, 4; Active solid green in State 3, 6) */}
+        {/* Continue Button */}
         <TouchableOpacity
-          style={[
-            styles.continueButton,
-            !isContinueEnabled && styles.continueButtonDisabled,
-          ]}
+          className={`flex-row items-center justify-center py-3.5 px-6 rounded-2xl gap-2 shadow-md ${isContinueEnabled ? 'bg-emerald-700' : 'bg-slate-200 shadow-none'}`}
           onPress={handleContinue}
           disabled={!isContinueEnabled}
           activeOpacity={0.88}
         >
           <Text
-            style={[
-              styles.continueButtonText,
-              !isContinueEnabled && styles.continueButtonTextDisabled,
-            ]}
+            className={`text-base ${isContinueEnabled ? 'text-white font-bold' : 'text-slate-400 font-semibold'}`}
           >
             Continue
           </Text>
@@ -553,374 +536,3 @@ export const LocationSelectionScreen: React.FC<LocationSelectionScreenProps> = (
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  rootContainer: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  closeBtn: {
-    position: 'absolute',
-    right: 18,
-    zIndex: 20,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#F1F5F9',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    alignItems: 'stretch',
-    zIndex: 10,
-  },
-  heroPinWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 6,
-    marginBottom: 12,
-  },
-  pinOuterGlowRing: {
-    width: 106,
-    height: 106,
-    borderRadius: 53,
-    backgroundColor: '#E8F8EE',
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pinInnerCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.16,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  headerTextGroup: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  mainTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#0F172A',
-    textAlign: 'center',
-    letterSpacing: -0.3,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#64748B',
-    textAlign: 'center',
-    marginTop: 6,
-    lineHeight: 20,
-    paddingHorizontal: 16,
-  },
-  segmentedContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#EDF7EE',
-    borderRadius: 24,
-    height: 48,
-    padding: 4,
-    marginBottom: 16,
-  },
-  tabButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 20,
-    gap: 6,
-    backgroundColor: 'transparent',
-  },
-  tabButtonActive: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#10B981',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  tabButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#64748B',
-  },
-  tabButtonTextActive: {
-    color: '#047857',
-    fontWeight: '700',
-  },
-  stateContainer: {
-    minHeight: 110,
-    justifyContent: 'center',
-  },
-  initialGpsPromptCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F7FCF8',
-    borderWidth: 1.5,
-    borderColor: '#DCFCE7',
-    borderRadius: 16,
-    padding: 16,
-    gap: 12,
-  },
-  initialGpsPromptIconBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#DCFCE7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  initialGpsPromptTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#047857',
-  },
-  initialGpsPromptSub: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 2,
-    lineHeight: 16,
-  },
-  detectingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-  },
-  detectingBadge: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#E8F8EE',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  detectingTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
-    textAlign: 'center',
-  },
-  detectingSubtitle: {
-    fontSize: 13,
-    color: '#64748B',
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  currentAreaCard: {
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1.5,
-    borderColor: '#34D399',
-    borderRadius: 16,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  selectedAreaCard: {
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1.5,
-    borderColor: '#34D399',
-    borderRadius: 16,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 14,
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  currentAreaIconBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#DCFCE7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  currentAreaContent: {
-    flex: 1,
-  },
-  currentAreaLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#059669',
-    letterSpacing: 0.6,
-  },
-  currentAreaName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#0F172A',
-    lineHeight: 21,
-    marginTop: 2,
-  },
-  searchInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.2,
-    borderColor: '#CBD5E1',
-    borderRadius: 12,
-    height: 48,
-    paddingHorizontal: 12,
-  },
-  searchTextInput: {
-    flex: 1,
-    fontSize: 14,
-    color: '#0F172A',
-    paddingVertical: 0,
-  },
-  suggestionsContainer: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 14,
-    marginTop: 8,
-    overflow: 'hidden',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  suggestionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-    gap: 10,
-  },
-  suggestionItemActive: {
-    backgroundColor: '#ECFDF5',
-  },
-  suggestionIconBox: {
-    width: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  suggestionTextCol: {
-    flex: 1,
-  },
-  suggestionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#0F172A',
-  },
-  suggestionTitleActive: {
-    color: '#047857',
-    fontWeight: '700',
-  },
-  suggestionSubtitle: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 2,
-  },
-  errorAlertCard: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FECACA',
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 14,
-  },
-  errorRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-  },
-  errorAlertText: {
-    fontSize: 12,
-    color: '#DC2626',
-    lineHeight: 17,
-    fontWeight: '500',
-  },
-  errorActionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 10,
-  },
-  openSettingsBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#DC2626',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-  },
-  openSettingsBtnText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  retryGpsBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#DCFCE7',
-    borderWidth: 1,
-    borderColor: '#86EFAC',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-  },
-  retryGpsBtnText: {
-    color: '#047857',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  continueButton: {
-    backgroundColor: '#047857',
-    height: 52,
-    borderRadius: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 22,
-    shadowColor: '#047857',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  continueButtonDisabled: {
-    backgroundColor: '#E2E8F0',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  continueButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  continueButtonTextDisabled: {
-    color: '#94A3B8',
-  },
-});
-
-export default LocationSelectionScreen;

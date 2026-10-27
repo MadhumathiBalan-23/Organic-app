@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { View, Dimensions } from 'react-native';
 import Svg, { Path, G, Defs, LinearGradient, Stop, Circle } from 'react-native-svg';
 
 /**
@@ -8,7 +8,7 @@ import Svg, { Path, G, Defs, LinearGradient, Stop, Circle } from 'react-native-s
  */
 export const TopLeftLeaves: React.FC<{ size?: number }> = ({ size = 180 }) => {
   return (
-    <View style={styles.topLeftContainer} pointerEvents="none">
+    <View className="absolute top-0 left-0 z-10" pointerEvents="none">
       <Svg width={size} height={size} viewBox="0 0 180 180" fill="none">
         <Defs>
           <LinearGradient id="leafGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -102,7 +102,7 @@ export const TopLeftLeaves: React.FC<{ size?: number }> = ({ size = 180 }) => {
  */
 export const TopRightLeaves: React.FC<{ size?: number }> = ({ size = 150 }) => {
   return (
-    <View style={styles.topRightContainer} pointerEvents="none">
+    <View className="absolute top-0 right-0 z-10" pointerEvents="none">
       <Svg width={size} height={size} viewBox="0 0 150 150" fill="none">
         <Defs>
           <LinearGradient id="trGrad1" x1="100%" y1="0%" x2="0%" y2="100%">
@@ -149,7 +149,7 @@ export const BottomLandscape: React.FC<{ width?: number; height?: number }> = ({
   height = 140,
 }) => {
   return (
-    <View style={styles.bottomContainer} pointerEvents="none">
+    <View className="absolute bottom-0 left-0 right-0 z-10" pointerEvents="none">
       <Svg width={width} height={height} viewBox={`0 0 ${width} 140`} fill="none" preserveAspectRatio="none">
         <Defs>
           {/* Back Wave Gradient */}
@@ -247,24 +247,3 @@ export const BottomLandscape: React.FC<{ width?: number; height?: number }> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  topLeftContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    zIndex: 1,
-  },
-  topRightContainer: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    zIndex: 1,
-  },
-  bottomContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    zIndex: 1,
-  },
-});

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  StyleSheet, Text, View, TextInput, 
+  Text, View, TextInput, 
   TouchableOpacity, StatusBar, Alert, Modal, Image, ActivityIndicator, LogBox,
   ScrollView, useWindowDimensions
 } from 'react-native';
@@ -26,9 +26,10 @@ import { MobileFrameWrapper } from './src/components/MobileFrameWrapper';
 import { AppHeader } from './src/components/AppHeader';
 import { AppFooter } from './src/components/AppFooter';
 import { UserRole } from './src/components/RoleHeader';
-import { CustomerScreens } from './src/screens/CustomerScreens';
-import { AIScreens } from './src/screens/AIScreens';
-import { VendorAndAdminScreens } from './src/screens/VendorAndAdminScreens';
+import { CustomerScreens } from './src/screens/customer';
+import { AdminPortalScreens } from './src/screens/admin';
+import { VendorScreens } from './src/screens/vendor';
+import { AIScreens } from './src/screens/thirdparty';
 import { SidebarDrawer } from './src/components/SidebarDrawer';
 import { API_ENDPOINTS } from './src/services/api';
 import { LocationSelectionScreen, SelectedLocation } from './src/components/LocationSelectionScreen';
@@ -155,8 +156,12 @@ export default function App() {
     try {
       const res = await fetch(API_ENDPOINTS.vendorStatus(cleanPhone));
       const data = await res.json();
-      if (data.success && data.status) {
-        setVendorStatus(data.status);
+      if (data.success) {
+        if (data.isApproved || data.status === 'APPROVED') {
+          setVendorStatus('APPROVED');
+        } else {
+          setVendorStatus(data.status || 'NONE');
+        }
       }
     } catch {
       // offline fallback
@@ -285,9 +290,23 @@ export default function App() {
           setAdminTab('dashboard');
         } else {
           setIsAdminUser(false);
+          let isApproved = data.user.role === 'vendor';
+          try {
+            const vRes = await fetch(API_ENDPOINTS.vendorStatus(cleanPhone));
+            const vData = await vRes.json();
+            if (vData.success && (vData.isApproved || vData.status === 'APPROVED')) {
+              isApproved = true;
+              setVendorStatus('APPROVED');
+            } else {
+              setVendorStatus(vData.status || 'NONE');
+            }
+          } catch {
+            setVendorStatus(isApproved ? 'APPROVED' : 'NONE');
+          }
+
+          // Both vendor and customer always land on Customer Home (Landing Page) first
           setRole('customer');
           setCustomerScreen('HOME');
-          checkVendorStatus(cleanPhone);
         }
         setAuthStep('PHONE');
         setOtp('');
@@ -322,9 +341,23 @@ export default function App() {
       } else {
         setIsAdminUser(false);
         setCustomerToken('demo_customer_token_' + Date.now());
+        let isApproved = false;
+        try {
+          const vRes = await fetch(API_ENDPOINTS.vendorStatus(cleanPhone));
+          const vData = await vRes.json();
+          if (vData.success && (vData.isApproved || vData.status === 'APPROVED')) {
+            isApproved = true;
+            setVendorStatus('APPROVED');
+          } else {
+            setVendorStatus(vData.status || 'NONE');
+          }
+        } catch {
+          setVendorStatus('NONE');
+        }
+
+        // Both vendor and customer always land on Customer Home (Landing Page) first
         setRole('customer');
         setCustomerScreen('HOME');
-        checkVendorStatus(cleanPhone);
       }
       setAuthStep('PHONE');
       setOtp('');
@@ -448,7 +481,7 @@ export default function App() {
   if (!selectedLocation || isChangingLocation) {
     return (
       <MobileFrameWrapper>
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+        <SafeAreaView className="flex-1 bg-white">
           <StatusBar barStyle="dark-content" />
           <LocationSelectionScreen
             isChangingAddress={isChangingLocation}
@@ -472,7 +505,7 @@ export default function App() {
 
     return (
       <MobileFrameWrapper>
-        <SafeAreaView style={styles.authContainer}>
+        <SafeAreaView className="flex-1 bg-white relative overflow-hidden">
           <StatusBar barStyle="dark-content" />
 
           {/* Decorative Corner and Bottom Botanical Leaves */}
@@ -481,62 +514,66 @@ export default function App() {
           <BottomLandscape width={windowWidth} height={130} />
 
           <ScrollView
-            contentContainerStyle={styles.authScrollContent}
+            contentContainerClassName="px-5 pt-9 pb-10 z-10 items-stretch"
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
             {/* Centered Brand Logo with Green Circle Ring */}
-            <View style={styles.brandingHeader}>
-              <View style={styles.logoCircleWrapper}>
+            <View className="items-center mb-4">
+              <View 
+                style={{ width: 92, height: 92, overflow: 'hidden' }}
+                className="w-[92px] h-[92px] rounded-full border-2 border-emerald-600 bg-white items-center justify-center shadow-md overflow-hidden"
+              >
                 <Image 
-                  source={require('./asset/logo.jpeg')}
-                  style={styles.logoCircleImg}
+                  source={require('./asset/logo.png')}
+                  style={{ width: 80, height: 80 }}
+                  className="w-20 h-20 rounded-full"
                   resizeMode="contain"
                 />
               </View>
-              <Text style={styles.appBrandTitle}>Mathira Organic Farming</Text>
-              <Text style={styles.appBrandSubtitle}>
+              <Text className="text-2xl font-black text-slate-900 text-center mt-3 tracking-tight">Mathira Organic Farming</Text>
+              <Text className="text-xs text-slate-500 text-center mt-0.5 font-medium">
                 Fresh organic products, delivered to your door.
               </Text>
             </View>
 
             {/* Delivery Address Card with Change action */}
-            <View style={styles.deliveryAddressCard}>
-              <MapPin size={22} color="#059669" fill="#059669" />
-              <View style={styles.deliveryAddressTextCol}>
-                <Text style={styles.deliveryAddressLabel}>Delivering to</Text>
-                <Text style={styles.deliveryAddressVal} numberOfLines={1}>
+            <View className="flex-row items-center bg-emerald-50 border border-emerald-200 rounded-2xl p-3 mb-5 gap-2.5">
+              <MapPin size={22} color="#059669" />
+              <View className="flex-1">
+                <Text className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">Delivering to</Text>
+                <Text className="text-xs font-semibold text-slate-800 mt-0.5" numberOfLines={1}>
                   {selectedLocation?.address || 'Sanitorium, Perundurai, Tamil Nadu'}
                 </Text>
               </View>
               <TouchableOpacity
-                style={styles.changeAddressBtn}
+                className="bg-emerald-600 px-3 py-1.5 rounded-lg"
                 onPress={() => setIsChangingLocation(true)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.changeAddressBtnText}>Change</Text>
+                <Text className="text-white text-xs font-bold">Change</Text>
               </TouchableOpacity>
             </View>
 
             {/* Lockout Banner */}
             {lockoutCountdown > 0 && (
-              <View style={styles.lockoutBox}>
-                <Text style={styles.lockoutTitle}>🔒 Verification Temporarily Locked</Text>
-                <Text style={styles.lockoutTimer}>Try again in {formattedTimer}</Text>
-                <Text style={styles.lockoutSub}>Maximum 3 incorrect verification attempts reached.</Text>
+              <View className="bg-red-50 border border-red-300 rounded-xl p-3 mb-3.5 items-center">
+                <Text className="text-xs font-bold text-red-800">🔒 Verification Temporarily Locked</Text>
+                <Text className="text-2xl font-black text-red-600 tracking-widest my-1">Try again in {formattedTimer}</Text>
+                <Text className="text-[11px] text-red-700 text-center">Maximum 3 incorrect verification attempts reached.</Text>
               </View>
             )}
 
             {authStep === 'PHONE' ? (
-              <View style={styles.loginFormSection}>
-                <Text style={styles.inputSectionTitle}>Enter Mobile Number</Text>
+              <View className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm mb-4">
+                <Text className="text-sm font-bold text-slate-800 mb-2.5">Enter Mobile Number</Text>
 
-                <View style={styles.phoneInputContainer}>
-                  <Text style={styles.flagEmoji}>🇮🇳</Text>
-                  <Text style={styles.countryCodeText}>+91</Text>
-                  <View style={styles.phoneInputDivider} />
+                <View className="flex-row items-center border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50">
+                  <Text className="text-lg">🇮🇳</Text>
+                  <Text className="text-base font-bold text-slate-900 ml-2">+91</Text>
+                  <View className="w-[1px] h-6 bg-slate-200 mx-3.5" />
                   <TextInput 
-                    style={styles.phoneInput} 
+                    className="flex-1 text-[15px] text-slate-900 font-semibold py-0" 
                     placeholder="10-digit mobile number" 
                     placeholderTextColor="#94A3B8"
                     keyboardType="phone-pad" 
@@ -556,32 +593,39 @@ export default function App() {
                   title={lockoutCountdown > 0 ? `Locked (${formattedTimer})` : 'Get OTP'}
                   loading={isSendingOtp}
                   loadingText="Sending OTP..."
-                  disabled={phone.length !== 10 || lockoutCountdown > 0}
-                  onPress={() => handleSendOtp()}
-                  size="large"
-                  rightIcon={<ArrowRight size={20} color="#FFFFFF" strokeWidth={2.5} />}
-                  style={{ marginTop: 14 }}
+                  disabled={lockoutCountdown > 0}
+                  onPress={() => {
+                    if (phone.length !== 10) {
+                      setAuthError('Please enter a valid 10-digit mobile number');
+                      return;
+                    }
+                    handleSendOtp();
+                  }}
+                  size="xlarge"
+                  rightIcon={<ArrowRight size={24} color="#FFFFFF" strokeWidth={3} />}
+                  className="mt-4 min-h-[64px] bg-emerald-700 shadow-lg shadow-emerald-700/40 rounded-2xl active:bg-emerald-800"
+                  textClassName="text-lg font-black tracking-wider text-white"
                 />
               </View>
             ) : (
-              <View style={styles.otpFormSection}>
+              <View className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm mb-4">
                 <TouchableOpacity 
-                  style={styles.otpBackBtn} 
+                  className="flex-row items-center gap-1 mb-3 self-start" 
                   onPress={() => { setAuthStep('PHONE'); setAuthError(null); }}
                   activeOpacity={0.7}
                 >
                   <ArrowLeft size={16} color="#047857" strokeWidth={2.5} />
-                  <Text style={styles.otpBackBtnText}>Edit Number</Text>
+                  <Text className="text-xs font-bold text-emerald-700">Edit Number</Text>
                 </TouchableOpacity>
 
-                <Text style={styles.otpScreenTitle}>Verify Mobile Number</Text>
-                <Text style={styles.otpScreenSubtitle}>
-                  Enter the 4-digit code sent to <Text style={styles.otpPhoneHighlight}>+91 {phone}</Text>
+                <Text className="text-lg font-bold text-slate-900">Verify Mobile Number</Text>
+                <Text className="text-xs text-slate-500 mt-1 mb-4">
+                  Enter the 4-digit code sent to <Text className="font-bold text-slate-800">+91 {phone}</Text>
                 </Text>
 
-                <View style={styles.otpInputWrapper}>
+                <View className="items-center mb-4">
                   <TextInput 
-                    style={styles.otpInput} 
+                    className="text-3xl font-extrabold tracking-widest text-center text-slate-900 bg-slate-50 border border-slate-200 rounded-xl py-3 px-6 w-52" 
                     placeholder="• • • •" 
                     placeholderTextColor="#CBD5E1"
                     keyboardType="number-pad" 
@@ -606,26 +650,60 @@ export default function App() {
                   title={lockoutCountdown > 0 ? `Locked (${formattedTimer})` : 'Verify & Continue'}
                   loading={isVerifying}
                   loadingText="Verifying Code..."
-                  disabled={otp.length !== 4 || lockoutCountdown > 0}
-                  onPress={() => handleVerifyOtp()}
-                  size="large"
-                  rightIcon={<ArrowRight size={20} color="#FFFFFF" strokeWidth={2.5} />}
-                  style={{ marginTop: 14 }}
+                  disabled={lockoutCountdown > 0}
+                  onPress={() => {
+                    if (otp.length !== 4) {
+                      setAuthError('Please enter the 4-digit verification code');
+                      return;
+                    }
+                    handleVerifyOtp();
+                  }}
+                  size="xlarge"
+                  rightIcon={<ArrowRight size={24} color="#FFFFFF" strokeWidth={3} />}
+                  className="mt-4 min-h-[64px] bg-emerald-700 shadow-lg shadow-emerald-700/40 rounded-2xl active:bg-emerald-800"
+                  textClassName="text-lg font-black tracking-wider text-white"
                 />
 
-                <View style={styles.resendRow}>
-                  <Text style={styles.resendPrompt}>Didn't receive code? </Text>
+                <View className="flex-row justify-center items-center mt-4">
+                  <Text className="text-xs text-slate-500">Didn't receive code? </Text>
                   <TouchableOpacity 
                     onPress={() => handleSendOtp(phone)}
                     disabled={resendCooldown > 0 || lockoutCountdown > 0}
                   >
-                    <Text style={[styles.resendLink, (resendCooldown > 0 || lockoutCountdown > 0) && { color: '#94A3B8' }]}>
+                    <Text className={`text-xs font-bold ${resendCooldown > 0 || lockoutCountdown > 0 ? 'text-slate-400' : 'text-emerald-700'}`}>
                       {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend OTP'}
                     </Text>
                   </TouchableOpacity>
                 </View>
               </View>
             )}
+
+            {/* Trust & Freshness Guarantee Badges */}
+            <View className="mt-3 mb-6">
+              <View className="flex-row items-center justify-around py-3 px-2 bg-emerald-50/70 border border-emerald-100 rounded-2xl shadow-xs">
+                <View className="items-center px-1">
+                  <Text className="text-lg">🌿</Text>
+                  <Text className="text-[11px] font-black text-slate-800 mt-0.5">100% Organic</Text>
+                  <Text className="text-[9px] font-semibold text-emerald-800">Certified Pure</Text>
+                </View>
+                <View className="w-[1px] h-7 bg-emerald-200" />
+                <View className="items-center px-1">
+                  <Text className="text-lg">🚜</Text>
+                  <Text className="text-[11px] font-black text-slate-800 mt-0.5">Direct Farm</Text>
+                  <Text className="text-[9px] font-semibold text-emerald-800">Fair to Farmers</Text>
+                </View>
+                <View className="w-[1px] h-7 bg-emerald-200" />
+                <View className="items-center px-1">
+                  <Text className="text-lg">⚡</Text>
+                  <Text className="text-[11px] font-black text-slate-800 mt-0.5">Morning Fresh</Text>
+                  <Text className="text-[9px] font-semibold text-emerald-800">Daily Harvest</Text>
+                </View>
+              </View>
+
+              <Text className="text-[11px] text-slate-400 text-center mt-3 font-medium">
+                🔒 Safe & Secure Login • No Password Required
+              </Text>
+            </View>
           </ScrollView>
         </SafeAreaView>
 
@@ -637,7 +715,7 @@ export default function App() {
   // --- 2. LOGGED-IN PORTAL DASHBOARDS ---
   return (
     <MobileFrameWrapper>
-      <View style={{ flex: 1, backgroundColor: '#FCFBF9' }}>
+      <View className="flex-1 bg-[#FCFBF9]">
         {/* Separate Header Component */}
         <AppHeader
           role={role}
@@ -696,16 +774,22 @@ export default function App() {
           )
         )}
 
-        {(role === 'vendor' || role === 'admin') && (
-          <VendorAndAdminScreens
-            role={role}
+        {role === 'vendor' && (
+          <VendorScreens
             triggerRefresh={triggerRefresh}
-            activeTab={role === 'admin' ? adminTab : vendorTab}
-            onSelectTab={(t) => role === 'admin' ? setAdminTab(t) : setVendorTab(t)}
+            activeTab={vendorTab}
+            onSelectTab={setVendorTab}
             onSwitchToCustomer={handleSwitchToCustomer}
             showAddModal={showVendorAddProduct}
             setShowAddModal={setShowVendorAddProduct}
             userPhone={phone}
+          />
+        )}
+
+        {role === 'admin' && (
+          <AdminPortalScreens
+            activeTab={adminTab}
+            onSelectTab={setAdminTab}
           />
         )}
 
@@ -727,9 +811,9 @@ export default function App() {
           cropsCount={cropsCount}
         />
 
-        {/* Sidebar Drawer Toggle Menu */}
+        {/* Sidebar Drawer Toggle Menu (Customer and Admin only, no sidebar in Vendor portal) */}
         <SidebarDrawer
-          visible={showMenu}
+          visible={showMenu && role !== 'vendor'}
           onClose={() => setShowMenu(false)}
           role={role}
           activeScreen={getActiveScreenKey()}
@@ -741,9 +825,9 @@ export default function App() {
 
         {/* Minute Looking Loading Toggle (Subtle, sleek floating toggle pill) */}
         {isSwitchingToVendor && (
-          <View style={styles.minuteLoadingToggle}>
+          <View className="absolute top-3.5 self-center flex-row items-center bg-[#0D2B1D] py-1.5 px-4 rounded-full gap-2 z-50 border border-green-400/40 shadow-lg">
             <LoadingSpinner size="small" color="#4ADE80" />
-            <Text style={styles.minuteLoadingToggleText}>Switching to Farmer Portal...</Text>
+            <Text className="text-green-50 text-xs font-bold tracking-wide">Switching to Vendor Panel...</Text>
           </View>
         )}
 
@@ -752,460 +836,3 @@ export default function App() {
     </MobileFrameWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  welcomeContainer: {
-    flex: 1,
-    backgroundColor: '#FDFBF7',
-  },
-  welcomeContent: {
-    flex: 1,
-    padding: 24,
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  appHeaderSection: {
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  welcomeLogoCircle: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
-    backgroundColor: '#DCFCE7',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-    borderWidth: 2,
-    borderColor: '#86EFAC',
-  },
-  welcomeAppTitle: {
-    fontSize: 30,
-    fontWeight: 'bold',
-    color: '#15803D',
-    marginBottom: 4,
-  },
-  welcomeAppSubtitle: {
-    fontSize: 14,
-    color: '#64748B',
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  welcomeGraphicsCard: {
-    width: '100%',
-    height: 170,
-    borderRadius: 16,
-    backgroundColor: '#F0FDF4',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: '#86EFAC',
-    padding: 16,
-  },
-  welcomeGraphicsTitle: {
-    fontSize: 14,
-    color: '#0F172A',
-    fontWeight: 'bold',
-    marginTop: 4,
-  },
-  welcomeGraphicsDesc: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 4,
-  },
-  welcomeButtonsContainer: {
-    width: '100%',
-    gap: 10,
-    marginBottom: 10,
-  },
-  welcomeActBtn: {
-    width: '100%',
-    paddingVertical: 14,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  welcomeActBtnText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    fontSize: 15,
-  },
-  authContainer: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  authScrollContent: {
-    paddingHorizontal: 22,
-    paddingTop: 36,
-    paddingBottom: 40,
-    zIndex: 10,
-    alignItems: 'stretch',
-  },
-  brandingHeader: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  logoCircleWrapper: {
-    width: 104,
-    height: 104,
-    borderRadius: 52,
-    borderWidth: 1.5,
-    borderColor: '#16A34A',
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#16A34A',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  logoCircleImg: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-  },
-  appBrandTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#0F172A',
-    textAlign: 'center',
-    marginTop: 14,
-    letterSpacing: -0.3,
-  },
-  appBrandSubtitle: {
-    fontSize: 13,
-    color: '#64748B',
-    textAlign: 'center',
-    marginTop: 4,
-    lineHeight: 18,
-  },
-  deliveryAddressCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F7FCF8',
-    borderWidth: 1.5,
-    borderColor: '#DCFCE7',
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    marginTop: 6,
-    marginBottom: 8,
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 1,
-  },
-  deliveryAddressTextCol: {
-    flex: 1,
-    marginHorizontal: 10,
-  },
-  deliveryAddressLabel: {
-    fontSize: 11,
-    color: '#64748B',
-    fontWeight: '500',
-  },
-  deliveryAddressVal: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginTop: 2,
-  },
-  changeAddressBtn: {
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 14,
-  },
-  changeAddressBtnText: {
-    color: '#047857',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  loginFormSection: {
-    width: '100%',
-    marginTop: 10,
-  },
-  inputSectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 10,
-  },
-  phoneInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#CBD5E1',
-    borderRadius: 14,
-    height: 54,
-    paddingHorizontal: 14,
-  },
-  flagEmoji: {
-    fontSize: 18,
-  },
-  countryCodeText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginLeft: 8,
-  },
-  phoneInputDivider: {
-    width: 1,
-    height: 26,
-    backgroundColor: '#E2E8F0',
-    marginHorizontal: 14,
-  },
-  phoneInput: {
-    flex: 1,
-    fontSize: 15,
-    color: '#0F172A',
-    fontWeight: '600',
-    paddingVertical: 0,
-  },
-  primaryButton: {
-    width: '100%',
-    height: 52,
-    backgroundColor: '#047857',
-    borderRadius: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 20,
-    shadowColor: '#047857',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  buttonDisabled: {
-    backgroundColor: '#94A3B8',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  errorAlertCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FECACA',
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 10,
-    marginTop: 12,
-  },
-  errorAlertText: {
-    fontSize: 12,
-    color: '#DC2626',
-    fontWeight: '500',
-    flex: 1,
-  },
-
-  otpFormSection: {
-    width: '100%',
-    marginTop: 10,
-  },
-  otpBackBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
-    paddingVertical: 6,
-    marginBottom: 8,
-  },
-  otpBackBtnText: {
-    fontSize: 13,
-    color: '#047857',
-    fontWeight: '700',
-  },
-  otpScreenTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  otpScreenSubtitle: {
-    fontSize: 13,
-    color: '#64748B',
-    marginTop: 4,
-    marginBottom: 16,
-  },
-  otpPhoneHighlight: {
-    color: '#047857',
-    fontWeight: '700',
-  },
-  otpInputWrapper: {
-    width: '100%',
-    marginBottom: 10,
-  },
-  otpInput: {
-    width: '100%',
-    height: 54,
-    borderWidth: 1.5,
-    borderColor: '#059669',
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    textAlign: 'center',
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#0F172A',
-    letterSpacing: 16,
-  },
-  resendRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  resendPrompt: {
-    fontSize: 13,
-    color: '#64748B',
-  },
-  resendLink: {
-    fontSize: 13,
-    color: '#047857',
-    fontWeight: '700',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    width: '80%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 10,
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#0F172A',
-    marginBottom: 14,
-    textAlign: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-    paddingBottom: 8,
-  },
-  modalOption: {
-    paddingVertical: 12,
-    width: '100%',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  modalOptionText: {
-    fontSize: 14,
-    color: '#0F172A',
-    fontWeight: '600',
-    paddingHorizontal: 8,
-  },
-  modalDivider: {
-    height: 1,
-    backgroundColor: '#E2E8F0',
-    marginVertical: 8,
-  },
-  locPreviewBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    marginBottom: 14,
-    width: '100%',
-    gap: 8,
-  },
-  locPreviewEmoji: {
-    fontSize: 18,
-  },
-  locPreviewTitle: {
-    fontSize: 12,
-    color: '#166534',
-  },
-  locPreviewSub: {
-    fontSize: 11,
-    color: '#475569',
-    marginTop: 1,
-  },
-  locChangeBtnText: {
-    fontSize: 11,
-    color: '#15803D',
-    fontWeight: '800',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    backgroundColor: '#DCFCE7',
-    borderRadius: 6,
-  },
-  lockoutBox: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1.5,
-    borderColor: '#F87171',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 14,
-    width: '100%',
-    alignItems: 'center',
-  },
-  lockoutTitle: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#991B1B',
-  },
-  lockoutTimer: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#DC2626',
-    letterSpacing: 2,
-    marginVertical: 4,
-  },
-  lockoutSub: {
-    fontSize: 11,
-    color: '#B91C1C',
-    textAlign: 'center',
-  },
-  minuteLoadingToggle: {
-    position: 'absolute',
-    top: 14,
-    alignSelf: 'center',
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0D2B1D',
-    paddingVertical: 7,
-    paddingHorizontal: 16,
-    borderRadius: 24,
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
-    elevation: 10,
-    zIndex: 99999,
-    borderWidth: 1,
-    borderColor: 'rgba(74, 222, 128, 0.4)',
-  },
-  minuteLoadingToggleText: {
-    color: '#F0FDF4',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-});

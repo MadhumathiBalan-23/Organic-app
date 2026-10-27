@@ -2,7 +2,6 @@ import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
   Animated,
@@ -48,7 +47,7 @@ export const UI_COLORS = {
   border: '#E2E8F0',
 };
 
-// ── 1. LOADING SPINNER (With Organic Glow & Leaf Pulsing) ─
+// ── 1. LOADING SPINNER ─
 export interface LoadingSpinnerProps {
   size?: 'small' | 'large';
   color?: string;
@@ -56,6 +55,7 @@ export interface LoadingSpinnerProps {
   subMessage?: string;
   showLeafIcon?: boolean;
   style?: StyleProp<ViewStyle>;
+  className?: string;
 }
 
 export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
@@ -65,6 +65,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   subMessage,
   showLeafIcon = false,
   style,
+  className = '',
 }) => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -90,27 +91,31 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   }, [pulseAnim]);
 
   return (
-    <View style={[styles.spinnerCenter, style]}>
+    <View style={style} className={`items-center justify-center p-4 ${className}`}>
       {showLeafIcon ? (
-        <Animated.View style={[styles.leafGlowCircle, { transform: [{ scale: pulseAnim }] }]}>
+        <Animated.View
+          style={{ transform: [{ scale: pulseAnim }] }}
+          className="w-11 h-11 rounded-full bg-emerald-50 border border-emerald-200 items-center justify-center mb-2"
+        >
           <Sprout size={size === 'large' ? 26 : 18} color={color} strokeWidth={2.3} />
         </Animated.View>
       ) : null}
 
-      <ActivityIndicator size={size} color={color} style={styles.indicatorOffset} />
+      <ActivityIndicator size={size} color={color} className="my-1.5" />
 
-      {message ? <Text style={styles.spinnerMessage}>{message}</Text> : null}
-      {subMessage ? <Text style={styles.spinnerSubMessage}>{subMessage}</Text> : null}
+      {message ? <Text className="text-xs font-bold text-slate-900 mt-1.5 text-center">{message}</Text> : null}
+      {subMessage ? <Text className="text-xs text-slate-400 mt-0.5 text-center">{subMessage}</Text> : null}
     </View>
   );
 };
 
-// ── 2. PAGE LOADER (Full Screen / Container State) ────────
+// ── 2. PAGE LOADER ────────
 export interface PageLoaderProps {
   message?: string;
   subMessage?: string;
   minHeight?: number;
   transparent?: boolean;
+  className?: string;
 }
 
 export const PageLoader: React.FC<PageLoaderProps> = ({
@@ -118,27 +123,31 @@ export const PageLoader: React.FC<PageLoaderProps> = ({
   subMessage = 'Fetching the latest updates directly from Mathira farm...',
   minHeight = 260,
   transparent = false,
+  className = '',
 }) => {
   return (
-    <View style={[styles.pageLoaderContainer, { minHeight }, transparent && styles.transparentBg]}>
-      <View style={styles.pageLoaderCard}>
-        <View style={styles.pageLoaderIconBubble}>
+    <View
+      style={{ minHeight }}
+      className={`flex-1 items-center justify-center p-6 ${transparent ? 'bg-transparent' : 'bg-slate-50'} ${className}`}
+    >
+      <View className="bg-white px-7 py-6 rounded-2xl items-center border border-slate-200 shadow-sm max-w-xs w-full">
+        <View className="w-14 h-14 rounded-full bg-emerald-50 border-2 border-emerald-200 items-center justify-center relative">
           <Sprout size={28} color={UI_COLORS.primary} strokeWidth={2.4} />
-          <View style={styles.sparkleDot}>
+          <View className="absolute -top-1 -right-1 bg-amber-100 rounded-full p-1 border border-amber-200">
             <Sparkles size={12} color="#F59E0B" fill="#F59E0B" />
           </View>
         </View>
 
-        <ActivityIndicator size="small" color={UI_COLORS.primary} style={{ marginTop: 12, marginBottom: 8 }} />
+        <ActivityIndicator size="small" color={UI_COLORS.primary} className="mt-3 mb-2" />
 
-        <Text style={styles.pageLoaderTitle}>{message}</Text>
-        <Text style={styles.pageLoaderSub}>{subMessage}</Text>
+        <Text className="text-[15px] font-extrabold text-slate-900 text-center tracking-tight">{message}</Text>
+        <Text className="text-xs text-slate-500 text-center mt-1 leading-4">{subMessage}</Text>
       </View>
     </View>
   );
 };
 
-// ── 3. ERROR STATE & CARD (With Retry Action) ─────────────
+// ── 3. ERROR STATE & CARD ─────────────
 export interface ErrorStateProps {
   title?: string;
   message?: string;
@@ -148,6 +157,7 @@ export interface ErrorStateProps {
   type?: 'error' | 'network' | 'warning';
   compact?: boolean;
   style?: StyleProp<ViewStyle>;
+  className?: string;
 }
 
 export const ErrorState: React.FC<ErrorStateProps> = ({
@@ -159,27 +169,29 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
   type = 'error',
   compact = false,
   style,
+  className = '',
 }) => {
   const isNetwork = type === 'network';
   const isWarning = type === 'warning';
 
   const iconColor = isWarning ? UI_COLORS.warning : isNetwork ? '#3B82F6' : UI_COLORS.error;
-  const bgColor = isWarning ? UI_COLORS.warningBg : isNetwork ? '#EFF6FF' : UI_COLORS.errorBg;
-  const borderColor = isWarning ? UI_COLORS.warningBorder : isNetwork ? '#BFDBFE' : UI_COLORS.errorBorder;
+  const bgColor = isWarning ? 'bg-amber-50' : isNetwork ? 'bg-blue-50' : 'bg-red-50';
+  const borderColor = isWarning ? 'border-amber-200' : isNetwork ? 'border-blue-200' : 'border-red-200';
+  const textColor = isWarning ? 'text-amber-800' : isNetwork ? 'text-blue-800' : 'text-red-700';
 
   const IconComponent = isNetwork ? WifiOff : isWarning ? AlertTriangle : AlertCircle;
 
   if (compact) {
     return (
-      <View style={[styles.compactErrorCard, { backgroundColor: bgColor, borderColor }, style]}>
+      <View style={style} className={`flex-row items-center rounded-xl border p-3 gap-2.5 my-2 ${bgColor} ${borderColor} ${className}`}>
         <IconComponent size={18} color={iconColor} strokeWidth={2.2} />
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.compactErrorTitle, { color: iconColor }]}>{title}</Text>
-          {message ? <Text style={styles.compactErrorMsg}>{message}</Text> : null}
+        <View className="flex-1">
+          <Text className={`text-xs font-bold ${textColor}`}>{title}</Text>
+          {message ? <Text className="text-xs text-slate-500 mt-0.5">{message}</Text> : null}
         </View>
         {onRetry ? (
           <TouchableOpacity
-            style={[styles.compactRetryBtn, { borderColor: iconColor }]}
+            className="flex-row items-center gap-1 border border-slate-300 py-1 px-2.5 rounded-lg bg-white"
             onPress={onRetry}
             disabled={isRetrying}
             activeOpacity={0.7}
@@ -189,7 +201,7 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
             ) : (
               <RefreshCw size={13} color={iconColor} strokeWidth={2.5} />
             )}
-            <Text style={[styles.compactRetryText, { color: iconColor }]}>
+            <Text className={`text-xs font-bold ${textColor}`}>
               {isRetrying ? 'Retrying...' : 'Retry'}
             </Text>
           </TouchableOpacity>
@@ -199,28 +211,31 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
   }
 
   return (
-    <View style={[styles.fullErrorContainer, style]}>
-      <View style={[styles.errorCardBox, { backgroundColor: bgColor, borderColor }]}>
-        <View style={[styles.errorIconCircle, { backgroundColor: iconColor + '18' }]}>
+    <View style={style} className={`p-5 items-center justify-center w-full ${className}`}>
+      <View className={`w-full max-w-sm rounded-2xl border p-5 items-center shadow-sm ${bgColor} ${borderColor}`}>
+        <View className="w-14 h-14 rounded-full items-center justify-center mb-3 bg-white/70">
           <IconComponent size={30} color={iconColor} strokeWidth={2.2} />
         </View>
 
-        <Text style={[styles.errorTitleText, { color: iconColor }]}>{title}</Text>
-        <Text style={styles.errorMessageText}>{message}</Text>
+        <Text className={`text-base font-extrabold text-center mb-1.5 ${textColor}`}>{title}</Text>
+        <Text className="text-xs text-slate-600 text-center leading-5 mb-4 px-2">{message}</Text>
 
         {onRetry ? (
           <TouchableOpacity
-            style={[styles.primaryRetryButton, { backgroundColor: iconColor }]}
+            style={{ backgroundColor: iconColor }}
+            className="flex-row items-center justify-center py-2.5 px-5 rounded-xl shadow-sm"
             onPress={onRetry}
             disabled={isRetrying}
             activeOpacity={0.85}
           >
             {isRetrying ? (
-              <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 6 }} />
+              <ActivityIndicator size="small" color="#FFFFFF" className="mr-1.5" />
             ) : (
-              <RefreshCw size={15} color="#FFFFFF" strokeWidth={2.5} style={{ marginRight: 6 }} />
+              <View className="mr-1.5">
+                <RefreshCw size={15} color="#FFFFFF" strokeWidth={2.5} />
+              </View>
             )}
-            <Text style={styles.primaryRetryButtonText}>
+            <Text className="text-white text-xs font-bold">
               {isRetrying ? 'Retrying...' : retryLabel}
             </Text>
           </TouchableOpacity>
@@ -230,12 +245,13 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
   );
 };
 
-// ── 4. INLINE ERROR BANNER (For inputs, modals & forms) ──
+// ── 4. INLINE ERROR BANNER ──
 export interface InlineErrorProps {
   message?: string | null;
   type?: 'error' | 'warning' | 'success';
   onDismiss?: () => void;
   style?: StyleProp<ViewStyle>;
+  className?: string;
 }
 
 export const InlineError: React.FC<InlineErrorProps> = ({
@@ -243,6 +259,7 @@ export const InlineError: React.FC<InlineErrorProps> = ({
   type = 'error',
   onDismiss,
   style,
+  className = '',
 }) => {
   if (!message) return null;
 
@@ -250,14 +267,15 @@ export const InlineError: React.FC<InlineErrorProps> = ({
   const isSuccess = type === 'success';
 
   const color = isSuccess ? UI_COLORS.success : isWarning ? UI_COLORS.warning : UI_COLORS.error;
-  const bg = isSuccess ? UI_COLORS.successBg : isWarning ? UI_COLORS.warningBg : UI_COLORS.errorBg;
-  const border = isSuccess ? UI_COLORS.successBorder : isWarning ? UI_COLORS.warningBorder : UI_COLORS.errorBorder;
+  const bg = isSuccess ? 'bg-emerald-50' : isWarning ? 'bg-amber-50' : 'bg-red-50';
+  const border = isSuccess ? 'border-emerald-200' : isWarning ? 'border-amber-200' : 'border-red-200';
+  const textColor = isSuccess ? 'text-emerald-700' : isWarning ? 'text-amber-800' : 'text-red-700';
   const Icon = isSuccess ? CheckCircle2 : isWarning ? AlertTriangle : AlertCircle;
 
   return (
-    <View style={[styles.inlineErrorRow, { backgroundColor: bg, borderColor: border }, style]}>
+    <View style={style} className={`flex-row items-center gap-2 py-2 px-3 rounded-xl border my-1.5 w-full ${bg} ${border} ${className}`}>
       <Icon size={15} color={color} strokeWidth={2.3} />
-      <Text style={[styles.inlineErrorText, { color }]}>{message}</Text>
+      <Text className={`flex-1 text-xs font-semibold ${textColor}`}>{message}</Text>
       {onDismiss ? (
         <TouchableOpacity onPress={onDismiss} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <XCircle size={15} color={color} strokeWidth={2} />
@@ -267,7 +285,7 @@ export const InlineError: React.FC<InlineErrorProps> = ({
   );
 };
 
-// ── 5. APP BUTTON / LOADING BUTTON (Universal Action Button) ─
+// ── 5. APP BUTTON ─
 export interface AppButtonProps {
   title: string;
   onPress: () => void;
@@ -275,12 +293,14 @@ export interface AppButtonProps {
   loadingText?: string;
   disabled?: boolean;
   variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'warning' | 'ghost';
-  size?: 'small' | 'medium' | 'large';
+  size?: 'small' | 'medium' | 'large' | 'xlarge';
   icon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   fullWidth?: boolean;
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
+  className?: string;
+  textClassName?: string;
 }
 
 export const AppButton: React.FC<AppButtonProps> = ({
@@ -296,6 +316,8 @@ export const AppButton: React.FC<AppButtonProps> = ({
   fullWidth = true,
   style,
   textStyle,
+  className = '',
+  textClassName = '',
 }) => {
   const isDisabled = disabled || loading;
 
@@ -303,38 +325,38 @@ export const AppButton: React.FC<AppButtonProps> = ({
     switch (variant) {
       case 'secondary':
         return {
-          btn: styles.btnSecondary,
-          text: styles.btnSecondaryText,
+          btn: 'bg-emerald-50 border border-emerald-200',
+          text: 'text-emerald-900 font-extrabold',
           loaderColor: UI_COLORS.primary,
         };
       case 'outline':
         return {
-          btn: styles.btnOutline,
-          text: styles.btnOutlineText,
+          btn: 'bg-transparent border border-emerald-600',
+          text: 'text-emerald-700 font-bold',
           loaderColor: UI_COLORS.primary,
         };
       case 'danger':
         return {
-          btn: styles.btnDanger,
-          text: styles.btnDangerText,
+          btn: 'bg-red-600 shadow-sm',
+          text: 'text-white font-bold',
           loaderColor: '#FFFFFF',
         };
       case 'warning':
         return {
-          btn: styles.btnWarning,
-          text: styles.btnWarningText,
+          btn: 'bg-amber-600 shadow-sm',
+          text: 'text-white font-bold',
           loaderColor: '#FFFFFF',
         };
       case 'ghost':
         return {
-          btn: styles.btnGhost,
-          text: styles.btnGhostText,
+          btn: 'bg-transparent',
+          text: 'text-emerald-700 font-bold',
           loaderColor: UI_COLORS.primary,
         };
       default: // primary
         return {
-          btn: styles.btnPrimary,
-          text: styles.btnPrimaryText,
+          btn: 'bg-emerald-700 shadow-sm',
+          text: 'text-white font-bold',
           loaderColor: '#FFFFFF',
         };
     }
@@ -343,11 +365,13 @@ export const AppButton: React.FC<AppButtonProps> = ({
   const getSizeStyles = () => {
     switch (size) {
       case 'small':
-        return { btn: styles.btnSmall, text: styles.btnSmallText, iconSize: 14 };
+        return { btn: 'h-9 px-3 rounded-lg', text: 'text-xs' };
       case 'large':
-        return { btn: styles.btnLarge, text: styles.btnLargeText, iconSize: 20 };
+        return { btn: 'min-h-[58px] py-3.5 px-6 rounded-2xl', text: 'text-base font-extrabold' };
+      case 'xlarge':
+        return { btn: 'min-h-[64px] py-4 px-8 rounded-2xl', text: 'text-lg font-black tracking-wide' };
       default: // medium
-        return { btn: styles.btnMedium, text: styles.btnMediumText, iconSize: 16 };
+        return { btn: 'h-11 px-4 rounded-xl', text: 'text-sm' };
     }
   };
 
@@ -356,39 +380,33 @@ export const AppButton: React.FC<AppButtonProps> = ({
 
   return (
     <TouchableOpacity
-      style={[
-        styles.btnBase,
-        v.btn,
-        sz.btn,
-        fullWidth && styles.btnFullWidth,
-        isDisabled && styles.btnDisabled,
-        style,
-      ]}
+      style={style}
+      className={`items-center justify-center ${fullWidth ? 'w-full' : ''} ${v.btn} ${sz.btn} ${isDisabled ? 'opacity-55' : 'active:opacity-90'} ${className}`}
       onPress={onPress}
       disabled={isDisabled}
       activeOpacity={0.8}
     >
       {loading ? (
-        <View style={styles.btnRow}>
-          <ActivityIndicator size="small" color={v.loaderColor} style={styles.btnLoader} />
-          <Text style={[styles.btnTextBase, v.text, sz.text, textStyle]}>
+        <View className="flex-row items-center justify-center">
+          <ActivityIndicator size="small" color={v.loaderColor} className="mr-2" />
+          <Text style={textStyle} className={`font-bold tracking-wide ${v.text} ${sz.text} ${textClassName}`}>
             {loadingText || title}
           </Text>
         </View>
       ) : (
-        <View style={styles.btnRow}>
-          {icon ? <View style={styles.btnIconLeft}>{icon}</View> : null}
-          <Text style={[styles.btnTextBase, v.text, sz.text, textStyle]} numberOfLines={1}>
+        <View className="flex-row items-center justify-center">
+          {icon ? <View className="mr-2">{icon}</View> : null}
+          <Text style={textStyle} className={`font-bold tracking-wide ${v.text} ${sz.text} ${textClassName}`} numberOfLines={1}>
             {title}
           </Text>
-          {rightIcon ? <View style={styles.btnIconRight}>{rightIcon}</View> : null}
+          {rightIcon ? <View className="ml-2">{rightIcon}</View> : null}
         </View>
       )}
     </TouchableOpacity>
   );
 };
 
-// ── 6. EMPTY STATE (When no products/orders/banners) ───────
+// ── 6. EMPTY STATE ───────
 export interface EmptyStateProps {
   icon?: React.ReactNode;
   title: string;
@@ -396,6 +414,7 @@ export interface EmptyStateProps {
   actionLabel?: string;
   onAction?: () => void;
   style?: StyleProp<ViewStyle>;
+  className?: string;
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({
@@ -405,387 +424,20 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   actionLabel,
   onAction,
   style,
+  className = '',
 }) => {
   return (
-    <View style={[styles.emptyContainer, style]}>
-      <View style={styles.emptyIconBubble}>
+    <View style={style} className={`p-8 items-center justify-center ${className}`}>
+      <View className="w-16 h-16 rounded-full bg-emerald-50 items-center justify-center mb-3 border border-emerald-200">
         {icon || <Inbox size={32} color={UI_COLORS.primary} strokeWidth={2} />}
       </View>
-      <Text style={styles.emptyTitle}>{title}</Text>
-      {description ? <Text style={styles.emptyDescription}>{description}</Text> : null}
+      <Text className="text-base font-extrabold text-slate-900 text-center">{title}</Text>
+      {description ? <Text className="text-xs text-slate-400 text-center mt-1 leading-5 max-w-xs">{description}</Text> : null}
       {actionLabel && onAction ? (
-        <TouchableOpacity style={styles.emptyActionBtn} onPress={onAction} activeOpacity={0.8}>
-          <Text style={styles.emptyActionBtnText}>{actionLabel}</Text>
+        <TouchableOpacity className="mt-4 bg-emerald-700 py-2 px-4 rounded-xl" onPress={onAction} activeOpacity={0.8}>
+          <Text className="text-white font-bold text-xs">{actionLabel}</Text>
         </TouchableOpacity>
       ) : null}
     </View>
   );
 };
-
-// ── Styles ────────────────────────────────────────────────
-const styles = StyleSheet.create({
-  // Spinner
-  spinnerCenter: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-  },
-  indicatorOffset: {
-    marginVertical: 6,
-  },
-  leafGlowCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: UI_COLORS.primaryLight,
-    borderWidth: 1,
-    borderColor: UI_COLORS.primaryBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  spinnerMessage: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: UI_COLORS.textPrimary,
-    marginTop: 6,
-    textAlign: 'center',
-  },
-  spinnerSubMessage: {
-    fontSize: 11,
-    color: UI_COLORS.textMuted,
-    marginTop: 2,
-    textAlign: 'center',
-  },
-
-  // Page Loader
-  pageLoaderContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-    backgroundColor: UI_COLORS.surfaceSubtle,
-  },
-  transparentBg: {
-    backgroundColor: 'transparent',
-  },
-  pageLoaderCard: {
-    backgroundColor: UI_COLORS.surface,
-    paddingHorizontal: 28,
-    paddingVertical: 24,
-    borderRadius: 20,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: UI_COLORS.border,
-    shadowColor: '#07843D',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
-    maxWidth: 320,
-    width: '100%',
-  },
-  pageLoaderIconBubble: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: UI_COLORS.primaryLight,
-    borderWidth: 1.5,
-    borderColor: UI_COLORS.primaryBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  sparkleDot: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    backgroundColor: '#FEF3C7',
-    borderRadius: 10,
-    padding: 3,
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-  },
-  pageLoaderTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: UI_COLORS.textPrimary,
-    textAlign: 'center',
-    letterSpacing: -0.2,
-  },
-  pageLoaderSub: {
-    fontSize: 12,
-    color: UI_COLORS.textSecondary,
-    textAlign: 'center',
-    marginTop: 4,
-    lineHeight: 16,
-  },
-
-  // Error States
-  fullErrorContainer: {
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-  },
-  errorCardBox: {
-    width: '100%',
-    maxWidth: 360,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    padding: 22,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  errorIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  errorTitleText: {
-    fontSize: 16,
-    fontWeight: '800',
-    textAlign: 'center',
-    marginBottom: 6,
-  },
-  errorMessageText: {
-    fontSize: 12,
-    color: UI_COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 16,
-    paddingHorizontal: 8,
-  },
-  primaryRetryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  primaryRetryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-
-  // Compact Error Card
-  compactErrorCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 12,
-    gap: 10,
-    marginVertical: 8,
-  },
-  compactErrorTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  compactErrorMsg: {
-    fontSize: 11,
-    color: UI_COLORS.textSecondary,
-    marginTop: 1,
-  },
-  compactRetryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    borderWidth: 1,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-  },
-  compactRetryText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-
-  // Inline Error Banner
-  inlineErrorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    marginVertical: 6,
-    width: '100%',
-  },
-  inlineErrorText: {
-    flex: 1,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-
-  // Universal AppButton
-  btnBase: {
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnFullWidth: {
-    width: '100%',
-  },
-  btnDisabled: {
-    opacity: 0.55,
-  },
-  btnRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnTextBase: {
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
-  btnLoader: {
-    marginRight: 8,
-  },
-  btnIconLeft: {
-    marginRight: 8,
-  },
-  btnIconRight: {
-    marginLeft: 8,
-  },
-
-  // Variant Buttons
-  btnPrimary: {
-    backgroundColor: UI_COLORS.primary,
-    shadowColor: UI_COLORS.primary,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.24,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  btnPrimaryText: {
-    color: '#FFFFFF',
-  },
-  btnSecondary: {
-    backgroundColor: UI_COLORS.primaryLight,
-    borderWidth: 1,
-    borderColor: UI_COLORS.primaryBorder,
-  },
-  btnSecondaryText: {
-    color: UI_COLORS.primaryDark,
-    fontWeight: '800',
-  },
-  btnOutline: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: UI_COLORS.primary,
-  },
-  btnOutlineText: {
-    color: UI_COLORS.primary,
-  },
-  btnDanger: {
-    backgroundColor: UI_COLORS.error,
-    shadowColor: UI_COLORS.error,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  btnDangerText: {
-    color: '#FFFFFF',
-  },
-  btnWarning: {
-    backgroundColor: UI_COLORS.warning,
-  },
-  btnWarningText: {
-    color: '#FFFFFF',
-  },
-  btnGhost: {
-    backgroundColor: 'transparent',
-  },
-  btnGhostText: {
-    color: UI_COLORS.primary,
-  },
-
-  // Sizes
-  btnSmall: {
-    height: 36,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-  },
-  btnSmallText: {
-    fontSize: 12,
-  },
-  btnMedium: {
-    height: 48,
-    paddingHorizontal: 18,
-    borderRadius: 14,
-  },
-  btnMediumText: {
-    fontSize: 14,
-  },
-  btnLarge: {
-    height: 54,
-    paddingHorizontal: 24,
-    borderRadius: 16,
-  },
-  btnLargeText: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
-
-  // Empty State
-  emptyContainer: {
-    padding: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyIconBubble: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: UI_COLORS.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: UI_COLORS.primaryBorder,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: UI_COLORS.textPrimary,
-    textAlign: 'center',
-  },
-  emptyDescription: {
-    fontSize: 12,
-    color: UI_COLORS.textMuted,
-    textAlign: 'center',
-    marginTop: 4,
-    lineHeight: 18,
-    maxWidth: 260,
-  },
-  emptyActionBtn: {
-    marginTop: 16,
-    backgroundColor: UI_COLORS.primary,
-    paddingVertical: 9,
-    paddingHorizontal: 18,
-    borderRadius: 12,
-  },
-  emptyActionBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-});

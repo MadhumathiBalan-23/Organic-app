@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Home, ShoppingBag, LayoutGrid, Calendar, User } from 'lucide-react-native';
+import { Home, ShoppingBag, LayoutGrid, Calendar, User, Store } from 'lucide-react-native';
 
 interface BottomNavBarProps {
   currentScreen: string;
@@ -14,91 +14,86 @@ interface BottomNavBarProps {
 export const BottomNavBar: React.FC<BottomNavBarProps> = ({ 
   currentScreen, 
   onNavigate, 
+  onSwitchToVendor,
+  isSwitchingToVendor = false,
+  isApprovedVendor = false,
 }) => {
   const insets = useSafeAreaInsets();
   const bottomPadding = Math.max(insets.bottom, 6);
 
-  // Exactly five navigation items in this order:
+  // Standard customer tabs:
   // 1. Home, 2. Order Again, 3. Categories, 4. Plans, 5. Profile
+  // IF and ONLY IF this particular logged-in number is an approved vendor:
+  // Show the Vendor menu item directly in the bottom navigation bar!
+  // Any other number will NOT see this vendor menu.
   const navItems = [
-    { key: 'HOME', label: 'Home', Icon: Home },
-    { key: 'ORDER_HISTORY', label: 'Order Again', Icon: ShoppingBag },
-    { key: 'ALL_PRODUCTS', label: 'Categories', Icon: LayoutGrid },
-    { key: 'MY_SUBSCRIPTIONS', label: 'Plans', Icon: Calendar },
-    { key: 'PROFILE', label: 'Profile', Icon: User },
+    { key: 'HOME', label: 'Home', Icon: Home, isVendorAction: false },
+    { key: 'ORDER_HISTORY', label: 'Order Again', Icon: ShoppingBag, isVendorAction: false },
+    { key: 'ALL_PRODUCTS', label: 'Categories', Icon: LayoutGrid, isVendorAction: false },
+    { key: 'MY_SUBSCRIPTIONS', label: 'Plans', Icon: Calendar, isVendorAction: false },
+    ...(isApprovedVendor
+      ? [{ key: 'VENDOR', label: 'Vendor', Icon: Store, isVendorAction: true }]
+      : []),
+    { key: 'PROFILE', label: 'Profile', Icon: User, isVendorAction: false },
   ];
 
   return (
-    <View style={[styles.navBarContainer, { paddingBottom: bottomPadding, height: 58 + bottomPadding }]}>
+    <View 
+      className="flex-row bg-white border-t border-[#DFE9E1] justify-around items-center px-1 pt-1.5 shadow-md"
+      style={{ paddingBottom: bottomPadding, height: 58 + bottomPadding }}
+    >
       {navItems.map((item) => {
         const isActive = currentScreen === item.key;
         return (
           <TouchableOpacity
             key={item.key}
-            style={styles.navItem}
-            onPress={() => onNavigate(item.key)}
+            className="flex-1 items-center justify-center py-0.5 relative"
+            onPress={() => {
+              if (item.isVendorAction) {
+                if (onSwitchToVendor) onSwitchToVendor();
+              } else {
+                onNavigate(item.key);
+              }
+            }}
             activeOpacity={0.7}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive }}
             accessibilityLabel={item.label}
           >
-            <item.Icon 
-              size={22} 
-              color={isActive ? '#07843D' : '#718078'} 
-              strokeWidth={isActive ? 2.4 : 1.8}
-            />
-            <Text style={[styles.navLabel, isActive && styles.activeNavLabel]}>
+            {item.isVendorAction && isSwitchingToVendor ? (
+              <ActivityIndicator size="small" color="#047857" style={{ height: 22, width: 22 }} />
+            ) : (
+              <item.Icon 
+                size={22} 
+                color={item.isVendorAction ? '#047857' : isActive ? '#07843D' : '#718078'} 
+                strokeWidth={item.isVendorAction || isActive ? 2.4 : 1.8}
+              />
+            )}
+            <Text 
+              className={`mt-0.5 tracking-tight ${
+                item.isVendorAction 
+                  ? 'text-[#047857] font-bold' 
+                  : isActive 
+                  ? 'text-[#07843D] font-bold' 
+                  : 'text-[#718078] font-medium'
+              }`}
+              style={{ fontSize: isApprovedVendor ? 11 : 12, lineHeight: 15 }}
+              numberOfLines={1}
+            >
               {item.label}
             </Text>
-            {isActive && <View style={styles.activeDot} />}
+            {item.isVendorAction && (
+              <View className="w-1.5 h-1.5 rounded-full bg-[#047857] mt-0.5" />
+            )}
+            {!item.isVendorAction && isActive && (
+              <View className="w-1.5 h-1.5 rounded-full bg-[#07843D] mt-0.5" />
+            )}
           </TouchableOpacity>
         );
       })}
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  navBarContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#DFE9E1',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingTop: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 8,
-  },
-  navItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 2,
-    position: 'relative',
-  },
-  navLabel: {
-    fontSize: 11,
-    color: '#718078',
-    marginTop: 3,
-    fontWeight: '500',
-  },
-  activeNavLabel: {
-    color: '#07843D',
-    fontWeight: '700',
-  },
-  activeDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#07843D',
-    marginTop: 2,
-  },
-});
 
 export default BottomNavBar;

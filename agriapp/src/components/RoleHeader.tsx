@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Platform, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StatusBar, Platform, Image } from 'react-native';
 import { MapPin, User, Menu as MenuIcon, Store, Sprout, Settings, ChevronDown } from 'lucide-react-native';
 
 export type UserRole = 'customer' | 'admin' | 'vendor' | null;
@@ -64,42 +64,53 @@ export const RoleHeader: React.FC<RoleHeaderProps> = ({
   };
 
   return (
-    <View style={[styles.header, { backgroundColor: theme.sub, paddingTop: Platform.OS === 'web' ? 16 : STATUSBAR_HEIGHT + 12 }]}>
+    <View 
+      className="pb-3.5 px-4 flex-row items-center justify-between"
+      style={{ backgroundColor: theme.sub, paddingTop: Platform.OS === 'web' ? 16 : STATUSBAR_HEIGHT + 12 }}
+    >
       {/* Left Menu Hamburger Toggle + Logo + Brand */}
-      <View style={styles.logoRow}>
-        <TouchableOpacity style={styles.menuToggleBtn} onPress={onOpenMenu} activeOpacity={0.7}>
+      <View className="flex-1 flex-row items-center gap-2.5">
+        <TouchableOpacity 
+          className="w-9 h-9 rounded-xl bg-white/20 items-center justify-center"
+          onPress={onOpenMenu} 
+          activeOpacity={0.7}
+        >
           <MenuIcon size={20} color="#fff" strokeWidth={2.5} />
         </TouchableOpacity>
 
-        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <View className="flex-1 flex-row items-center gap-2.5">
           <Image
             source={require('../../asset/logo.jpeg')}
-            style={styles.logo}
+            className="w-10 h-10 rounded-xl bg-white"
             resizeMode="contain"
           />
-          <View style={{ flex: 1, paddingRight: 4 }}>
-            <Text style={styles.titleText} numberOfLines={1}>{getMainTitle()}</Text>
+          <View className="flex-1 pr-1">
+            <Text className="text-base font-extrabold text-white tracking-tight" numberOfLines={1}>
+              {getMainTitle()}
+            </Text>
 
             {role === 'customer' && onChangeLocation ? (
               <TouchableOpacity
-                style={styles.locationPill}
+                className="flex-row items-center bg-white/20 px-2 py-0.5 rounded-lg mt-0.5 self-start max-w-[92%]"
                 onPress={onChangeLocation}
                 activeOpacity={0.8}
               >
                 {renderSubIcon()}
-                <Text style={[styles.labelText, { color: '#FFFFFF' }]} numberOfLines={1}>
+                <Text className="text-xs font-bold text-white" numberOfLines={1}>
                   {getSubTitle()}
                 </Text>
                 <ChevronDown size={12} color="#FFFFFF" style={{ marginLeft: 2 }} />
               </TouchableOpacity>
             ) : (
-              <View style={styles.labelRow}>
+              <View className="flex-row items-center mt-0.5">
                 {renderSubIcon()}
-                <Text style={[styles.labelText, { color: theme.labelColor }]} numberOfLines={1}>
+                <Text className="text-xs font-bold" style={{ color: theme.labelColor }} numberOfLines={1}>
                   {getSubTitle()}
                 </Text>
                 {role === 'admin' && (
-                  <View style={styles.liveBadge}><Text style={styles.liveBadgeText}>LIVE</Text></View>
+                  <View className="bg-red-600 rounded-md px-1.5 py-0.5 ml-1.5">
+                    <Text className="text-white text-2xs font-bold">LIVE</Text>
+                  </View>
                 )}
               </View>
             )}
@@ -108,16 +119,24 @@ export const RoleHeader: React.FC<RoleHeaderProps> = ({
       </View>
 
       {/* Right actions */}
-      <View style={styles.rightBox}>
+      <View className="flex-row items-center gap-2 ml-1.5">
         {role === 'customer' && onOpenProfile && (
-          <TouchableOpacity style={styles.iconBtn} onPress={onOpenProfile} activeOpacity={0.7}>
+          <TouchableOpacity 
+            className="w-9 h-9 rounded-xl bg-white/20 items-center justify-center"
+            onPress={onOpenProfile} 
+            activeOpacity={0.7}
+          >
             <User size={18} color="#fff" strokeWidth={2.5} />
           </TouchableOpacity>
         )}
         {role === 'vendor' && onSwitchToCustomer && (
-          <TouchableOpacity style={styles.customerSwitchBtn} onPress={onSwitchToCustomer} activeOpacity={0.8}>
+          <TouchableOpacity 
+            className="flex-row items-center gap-1.5 bg-white/20 px-2.5 py-1.5 rounded-xl"
+            onPress={onSwitchToCustomer} 
+            activeOpacity={0.8}
+          >
             <Store size={15} color="#fff" strokeWidth={2.2} />
-            <Text style={styles.customerSwitchBtnText}>Store</Text>
+            <Text className="text-white text-xs font-bold">Store</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -125,98 +144,4 @@ export const RoleHeader: React.FC<RoleHeaderProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  header: {
-    paddingBottom: 14,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  logoRow: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  menuToggleBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logo: {
-    width: 42,
-    height: 42,
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
-  },
-  titleText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -0.2,
-  },
-  labelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  locationPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    marginTop: 3,
-    alignSelf: 'flex-start',
-    maxWidth: '92%',
-  },
-  labelText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  liveBadge: {
-    backgroundColor: '#DC2626',
-    borderRadius: 6,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    marginLeft: 6,
-  },
-  liveBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 8,
-    fontWeight: 'bold',
-  },
-  rightBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginLeft: 6,
-  },
-  iconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  customerSwitchBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 10,
-  },
-  customerSwitchBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-});
+export default RoleHeader;

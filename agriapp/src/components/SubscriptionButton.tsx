@@ -2,14 +2,12 @@ import React from 'react';
 import {
   TouchableOpacity,
   Text,
-  StyleSheet,
   ActivityIndicator,
   View,
   StyleProp,
   ViewStyle,
   TextStyle,
 } from 'react-native';
-import { Colors } from '../constants/theme';
 
 export interface SubscriptionButtonProps {
   title: string;
@@ -24,6 +22,8 @@ export interface SubscriptionButtonProps {
   badge?: string;
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
+  className?: string;
+  textClassName?: string;
 }
 
 export const SubscriptionButton: React.FC<SubscriptionButtonProps> = ({
@@ -39,80 +39,62 @@ export const SubscriptionButton: React.FC<SubscriptionButtonProps> = ({
   badge,
   style,
   textStyle,
+  className = '',
+  textClassName = '',
 }) => {
-  const getVariantStyles = (): { btn: ViewStyle; text: TextStyle; subText: TextStyle } => {
+  const getVariantStyles = () => {
     switch (variant) {
       case 'secondary':
         return {
-          btn: {
-            backgroundColor: '#DCFCE7',
-            borderColor: '#86EFAC',
-            borderWidth: 1,
-          },
-          text: { color: '#15803D' },
-          subText: { color: '#166534' },
+          btn: 'bg-emerald-100 border border-emerald-300',
+          text: 'text-emerald-700',
+          subText: 'text-emerald-800',
         };
       case 'outline':
         return {
-          btn: {
-            backgroundColor: '#FFFFFF',
-            borderColor: '#15803D',
-            borderWidth: 1.5,
-          },
-          text: { color: '#15803D' },
-          subText: { color: '#4B5563' },
+          btn: 'bg-white border-2 border-emerald-700',
+          text: 'text-emerald-700',
+          subText: 'text-slate-600',
         };
       case 'accent':
         return {
-          btn: {
-            backgroundColor: '#D97706',
-            borderColor: '#F59E0B',
-            borderWidth: 1,
-          },
-          text: { color: '#FFFFFF' },
-          subText: { color: '#FEF3C7' },
+          btn: 'bg-amber-600 border border-amber-500',
+          text: 'text-white',
+          subText: 'text-amber-100',
         };
       case 'danger':
         return {
-          btn: {
-            backgroundColor: '#FEE2E2',
-            borderColor: '#FCA5A5',
-            borderWidth: 1,
-          },
-          text: { color: '#DC2626' },
-          subText: { color: '#991B1B' },
+          btn: 'bg-red-100 border border-red-300',
+          text: 'text-red-600',
+          subText: 'text-red-800',
         };
       case 'primary':
       default:
         return {
-          btn: {
-            backgroundColor: '#15803D',
-            borderColor: '#166534',
-            borderWidth: 1,
-          },
-          text: { color: '#FFFFFF' },
-          subText: { color: '#DCFCE7' },
+          btn: 'bg-emerald-700 border border-emerald-800',
+          text: 'text-white',
+          subText: 'text-emerald-100',
         };
     }
   };
 
-  const getSizeStyles = (): { btn: ViewStyle; titleText: TextStyle } => {
+  const getSizeStyles = () => {
     switch (size) {
       case 'small':
         return {
-          btn: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10 },
-          titleText: { fontSize: 12, fontWeight: '700' },
+          btn: 'py-2 px-3 rounded-xl',
+          titleText: 'text-xs font-bold',
         };
       case 'large':
         return {
-          btn: { paddingVertical: 14, paddingHorizontal: 20, borderRadius: 16 },
-          titleText: { fontSize: 16, fontWeight: '800' },
+          btn: 'py-3.5 px-5 rounded-2xl',
+          titleText: 'text-base font-extrabold',
         };
       case 'medium':
       default:
         return {
-          btn: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 14 },
-          titleText: { fontSize: 14, fontWeight: '700' },
+          btn: 'py-3 px-4 rounded-xl',
+          titleText: 'text-sm font-bold',
         };
     }
   };
@@ -122,21 +104,15 @@ export const SubscriptionButton: React.FC<SubscriptionButtonProps> = ({
 
   return (
     <TouchableOpacity
-      style={[
-        styles.baseButton,
-        vStyles.btn,
-        sStyles.btn,
-        fullWidth && styles.fullWidth,
-        (disabled || loading) && styles.disabled,
-        style,
-      ]}
+      style={style}
+      className={`flex-row items-center justify-center relative shadow-sm ${fullWidth ? 'w-full' : ''} ${vStyles.btn} ${sStyles.btn} ${disabled || loading ? 'opacity-55' : 'active:opacity-90'} ${className}`}
       onPress={onPress}
       activeOpacity={0.82}
       disabled={disabled || loading}
     >
       {badge && (
-        <View style={styles.badgeContainer}>
-          <Text style={styles.badgeText}>{badge}</Text>
+        <View className="absolute -top-2 right-3 bg-amber-500 px-2 py-0.5 rounded-full shadow-sm">
+          <Text className="text-white text-2xs font-black tracking-wider uppercase">{badge}</Text>
         </View>
       )}
 
@@ -146,14 +122,14 @@ export const SubscriptionButton: React.FC<SubscriptionButtonProps> = ({
           color={variant === 'outline' || variant === 'secondary' ? '#15803D' : '#FFFFFF'}
         />
       ) : (
-        <View style={styles.contentRow}>
-          {icon && <View style={styles.iconWrapper}>{icon}</View>}
-          <View style={styles.textContainer}>
-            <Text style={[vStyles.text, sStyles.titleText, textStyle]}>
+        <View className="flex-row items-center justify-center gap-2">
+          {icon && <View className="items-center justify-center">{icon}</View>}
+          <View className="items-center justify-center">
+            <Text style={textStyle} className={`${vStyles.text} ${sStyles.titleText} ${textClassName}`}>
               {title}
             </Text>
             {subtitle ? (
-              <Text style={[styles.subtitleText, vStyles.subText]}>
+              <Text className={`text-2xs font-semibold mt-0.5 text-center ${vStyles.subText}`}>
                 {subtitle}
               </Text>
             ) : null}
@@ -163,65 +139,5 @@ export const SubscriptionButton: React.FC<SubscriptionButtonProps> = ({
     </TouchableOpacity>
   );
 };
-
-const styles = StyleSheet.create({
-  baseButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    elevation: 3,
-    position: 'relative',
-  },
-  fullWidth: {
-    width: '100%',
-  },
-  contentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  iconWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  textContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  subtitleText: {
-    fontSize: 10,
-    fontWeight: '600',
-    marginTop: 2,
-    textAlign: 'center',
-  },
-  disabled: {
-    opacity: 0.55,
-  },
-  badgeContainer: {
-    position: 'absolute',
-    top: -8,
-    right: 12,
-    backgroundColor: '#F59E0B',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 4,
-  },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-});
 
 export default SubscriptionButton;

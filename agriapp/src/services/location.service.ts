@@ -558,11 +558,21 @@ export const saveLocationToBackend = async (location: {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(location),
     });
-    const json = await res.json();
-    return !!json.success;
+    const text = await res.text();
+    const json = text ? JSON.parse(text) : null;
+    return !!(json && json.success);
   } catch (err) {
     console.warn('[LocationService] saveLocationToBackend failed:', err);
     return false;
   }
+};
+
+export const locationService = {
+  offlineResolveCoordinates,
+  formatApproximateArea,
+  getDeviceCurrentLocation,
+  resolveManualLocation,
+  fetchLocationSuggestions,
+  saveLocationToBackend,
 };
 

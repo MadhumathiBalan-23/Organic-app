@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, Modal, TouchableOpacity,
+  View, Text, Modal, TouchableOpacity,
   ScrollView, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -78,7 +78,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
 
     // Only approved vendors get the vendor switch drawer option
     if (isApprovedVendor) {
-      menus.push({ key: 'VENDOR_SWITCH', label: 'Switch to Vendor Console', badge: 'FARMER', icon: <Store size={16} /> });
+      menus.push({ key: 'VENDOR_SWITCH', label: 'Switch to Vendor Console', badge: 'VENDOR', icon: <Store size={16} /> });
     }
 
     menus.push(
@@ -98,61 +98,61 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
   const getRoleTitle = () => {
     switch (role) {
       case 'admin': return 'Super Admin';
-      case 'vendor': return 'Farmer Console';
+      case 'vendor': return 'Vendor Console';
       default: return 'Customer Portal';
     }
   };
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={sd.modalOverlay}>
-        {/* Left Side Drawer Container (Opens on left side) */}
-        <View style={sd.drawerContainer}>
-          <SafeAreaView style={{ flex: 1 }}>
+      <View className="flex-1 flex-row bg-slate-900/45">
+        {/* Left Side Drawer Container */}
+        <View className="w-[265px] h-full bg-white border-r border-slate-200 shadow-2xl">
+          <SafeAreaView className="flex-1">
             {/* Header Box */}
-            <View style={sd.headerBox}>
+            <View className="bg-[#0D2B1D] flex-row items-center gap-2.5 px-4 py-4 border-b border-emerald-500/25">
               <Image
                 source={require('../../asset/logo.jpeg')}
-                style={sd.logo}
+                className="w-9 h-9 rounded-full border border-emerald-500"
                 resizeMode="contain"
               />
-              <View style={{ flex: 1 }}>
-                <Text style={sd.appName} numberOfLines={1}>Mathira Organic</Text>
-                <Text style={sd.roleSub} numberOfLines={1}>{getRoleTitle()}</Text>
+              <View className="flex-1">
+                <Text className="text-white text-sm font-extrabold tracking-tight" numberOfLines={1}>Mathira Organic</Text>
+                <Text className="text-emerald-300 text-2xs font-bold mt-0.5" numberOfLines={1}>{getRoleTitle()}</Text>
               </View>
-              <TouchableOpacity style={sd.closeBtn} onPress={onClose} activeOpacity={0.7}>
+              <TouchableOpacity className="w-7 h-7 rounded-full bg-white/15 items-center justify-center" onPress={onClose} activeOpacity={0.7}>
                 <X size={15} color="#FFFFFF" strokeWidth={2.5} />
               </TouchableOpacity>
             </View>
 
             {/* Seamless Menu Item List */}
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={sd.menuList}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="py-3 px-2.5">
               {menuItems.map((item) => {
                 const isActive = activeScreen.toLowerCase() === item.key.toLowerCase();
                 return (
                   <TouchableOpacity
                     key={item.key}
-                    style={[sd.menuRow, isActive && sd.menuRowActive]}
+                    className={`flex-row items-center py-2.5 px-3 rounded-xl mb-1 ${isActive ? 'bg-emerald-50 border-l-4 border-emerald-700' : ''}`}
                     onPress={() => {
                       onSelectScreen(item.key);
                       onClose();
                     }}
                     activeOpacity={0.7}
                   >
-                    <View style={sd.iconBox}>
+                    <View className="mr-2.5 w-5 items-center">
                       {React.cloneElement(item.icon as React.ReactElement<any>, {
                         color: isActive ? '#15803D' : '#64748B',
                         size: 18,
                       })}
                     </View>
                     
-                    <Text style={[sd.menuLabel, isActive && sd.menuLabelActive]} numberOfLines={1}>
+                    <Text className={`flex-1 text-sm ${isActive ? 'text-emerald-700 font-extrabold' : 'text-slate-800 font-semibold'}`} numberOfLines={1}>
                       {item.label}
                     </Text>
 
                     {item.badge && (
-                      <View style={[sd.badge, isActive && sd.badgeActive]}>
-                        <Text style={[sd.badgeText, isActive && sd.badgeTextActive]}>{item.badge}</Text>
+                      <View className={`px-1.5 py-0.5 rounded-md mr-1.5 border ${isActive ? 'bg-emerald-100 border-emerald-300' : 'bg-slate-100 border-slate-200'}`}>
+                        <Text className={`text-2xs font-bold ${isActive ? 'text-emerald-700' : 'text-slate-500'}`}>{item.badge}</Text>
                       </View>
                     )}
                     <ChevronRight size={13} color={isActive ? '#15803D' : '#CBD5E1'} />
@@ -160,178 +160,35 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
                 );
               })}
 
-              <View style={sd.divider} />
+              <View className="h-[1px] bg-slate-100 my-2 mx-1.5" />
 
               {/* Sign Out Action */}
               <TouchableOpacity
-                style={[sd.menuRow, sd.logoutRow]}
+                className="mt-2 bg-red-50 border border-red-200 flex-row items-center py-2.5 px-3 rounded-xl"
                 onPress={() => {
                   onClose();
                   onLogout();
                 }}
                 activeOpacity={0.7}
               >
-                <View style={sd.iconBox}>
+                <View className="mr-2.5 w-5 items-center">
                   <LogOut size={16} color="#DC2626" />
                 </View>
-                <Text style={sd.logoutLabel}>Sign Out</Text>
+                <Text className="text-red-600 text-sm font-bold">Sign Out</Text>
               </TouchableOpacity>
             </ScrollView>
 
             {/* Minimalist App Version Footer */}
-            <View style={[sd.footerBox, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}>
+            <View className="py-3 items-center border-t border-slate-100 bg-slate-50 flex-row justify-center gap-1.5">
               <Sprout size={13} color="#16a34a" />
-              <Text style={sd.footerText}>Mathira Organic · 100% Certified</Text>
+              <Text className="text-slate-400 text-2xs font-semibold">Mathira Organic · 100% Certified</Text>
             </View>
           </SafeAreaView>
         </View>
 
-        {/* Backdrop Press to Close (Fills remaining right side) */}
-        <TouchableOpacity style={sd.backdrop} activeOpacity={1} onPress={onClose} />
+        {/* Backdrop Press to Close */}
+        <TouchableOpacity className="flex-1" activeOpacity={1} onPress={onClose} />
       </View>
     </Modal>
   );
 };
-
-const sd = StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
-  },
-  backdrop: {
-    flex: 1,
-  },
-  drawerContainer: {
-    width: 265, // Comfortable width for mobile and tablet
-    height: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRightWidth: 1,
-    borderRightColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 5, height: 0 },
-    shadowOpacity: 0.18,
-    shadowRadius: 14,
-    elevation: 16,
-  },
-  headerBox: {
-    backgroundColor: '#0D2B1D',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(34, 197, 94, 0.25)',
-  },
-  logo: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: '#22c55e',
-  },
-  appName: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
-    letterSpacing: -0.2,
-  },
-  roleSub: {
-    color: '#86EFAC',
-    fontSize: 10,
-    fontWeight: '700',
-    marginTop: 1,
-  },
-  closeBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  menuList: {
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-  },
-  menuRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 11,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    marginBottom: 4,
-  },
-  menuRowActive: {
-    backgroundColor: '#F0FDF4',
-    borderLeftWidth: 3.5,
-    borderLeftColor: '#15803D',
-  },
-  logoutRow: {
-    marginTop: 8,
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FECACA',
-  },
-  iconBox: {
-    marginRight: 10,
-    width: 22,
-    alignItems: 'center',
-  },
-  menuLabel: {
-    flex: 1,
-    color: '#1E293B',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  menuLabelActive: {
-    color: '#15803D',
-    fontWeight: '800',
-  },
-  logoutLabel: {
-    color: '#DC2626',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  badge: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    marginRight: 6,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  badgeActive: {
-    backgroundColor: '#DCFCE7',
-    borderColor: '#86EFAC',
-  },
-  badgeText: {
-    color: '#64748B',
-    fontSize: 9,
-    fontWeight: '700',
-  },
-  badgeTextActive: {
-    color: '#15803D',
-    fontWeight: '800',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#F1F5F9',
-    marginVertical: 8,
-    marginHorizontal: 6,
-  },
-  footerBox: {
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    backgroundColor: '#F8FAFC',
-  },
-  footerText: {
-    color: '#94A3B8',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-});
