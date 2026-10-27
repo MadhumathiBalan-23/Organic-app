@@ -7,7 +7,7 @@ export class HealthController {
       const productCount = await prisma.product.count();
       return res.json({
         status: 'UP',
-        database: 'Prisma (SQLite)',
+        database: 'Prisma (PostgreSQL)',
         productCount,
         message: 'AgriFlow AI Backend Service with Prisma ORM is running smoothly',
         timestamp: new Date().toISOString()

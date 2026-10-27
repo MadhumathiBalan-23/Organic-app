@@ -45,26 +45,10 @@ export class BannerService {
     });
   }
 
-  public static async createBanner(data: {
-    title: string;
-    subtitle?: string;
-    imageUrl: string;
-    cloudinaryPublicId?: string;
-    backgroundColor?: string;
-    textColor?: string;
-    buttonColor?: string;
-    buttonTextColor?: string;
-    buttonText?: string;
-    targetType?: string;
-    targetId?: string;
-    displayOrder?: number;
-    isActive?: boolean;
-    startAt?: string | Date;
-    endAt?: string | Date;
-  }) {
+  public static async createBanner(data: any) {
     return prisma.banner.create({
       data: {
-        title: data.title,
+        title: data.title || 'Promotional Banner',
         subtitle: data.subtitle || null,
         imageUrl: data.imageUrl,
         cloudinaryPublicId: data.cloudinaryPublicId || null,
@@ -75,8 +59,8 @@ export class BannerService {
         buttonText: data.buttonText || 'Shop Now →',
         targetType: data.targetType || 'SCREEN',
         targetId: data.targetId || 'ALL_PRODUCTS',
-        displayOrder: typeof data.displayOrder === 'number' ? data.displayOrder : 0,
-        isActive: data.isActive !== undefined ? data.isActive : true,
+        displayOrder: typeof data.displayOrder === 'number' ? data.displayOrder : (parseInt(data.displayOrder, 10) || 0),
+        isActive: data.isActive !== undefined ? Boolean(data.isActive) : true,
         startAt: data.startAt ? new Date(data.startAt) : null,
         endAt: data.endAt ? new Date(data.endAt) : null,
       },
@@ -84,7 +68,21 @@ export class BannerService {
   }
 
   public static async updateBanner(id: string, data: any) {
-    const payload: any = { ...data };
+    const allowed = [
+      'title', 'subtitle', 'imageUrl', 'cloudinaryPublicId',
+      'backgroundColor', 'textColor', 'buttonColor', 'buttonTextColor',
+      'buttonText', 'targetType', 'targetId', 'displayOrder', 'isActive',
+      'startAt', 'endAt'
+    ];
+    const payload: any = {};
+    for (const key of allowed) {
+      if (data[key] !== undefined) {
+        payload[key] = data[key];
+      }
+    }
+    if (payload.displayOrder !== undefined) {
+      payload.displayOrder = typeof payload.displayOrder === 'number' ? payload.displayOrder : (parseInt(payload.displayOrder, 10) || 0);
+    }
     if (payload.startAt !== undefined) {
       payload.startAt = payload.startAt ? new Date(payload.startAt) : null;
     }
