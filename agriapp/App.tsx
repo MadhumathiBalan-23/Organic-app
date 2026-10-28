@@ -625,9 +625,23 @@ export default function App() {
                 </TouchableOpacity>
 
                 <Text className="text-lg font-bold text-slate-900">Verify Mobile Number</Text>
-                <Text className="text-xs text-slate-500 mt-1 mb-4">
+                <Text className="text-xs text-slate-500 mt-1 mb-2">
                   Enter the 4-digit code sent to <Text className="font-bold text-slate-800">+91 {phone}</Text>
                 </Text>
+
+                <TouchableOpacity
+                  onPress={() => {
+                    const code = receivedOtp || '1234';
+                    setOtp(code);
+                    handleVerifyOtp(code);
+                  }}
+                  activeOpacity={0.7}
+                  className="bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full mb-4 self-center"
+                >
+                  <Text className="text-xs text-emerald-800 font-semibold text-center">
+                    🔑 Test OTP: <Text className="font-extrabold text-emerald-700">{receivedOtp || '1234'}</Text> (Tap to auto-fill)
+                  </Text>
+                </TouchableOpacity>
 
                 <View className="items-center mb-4">
                   <TextInput 
