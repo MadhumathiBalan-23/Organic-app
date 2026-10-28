@@ -15,7 +15,7 @@ export class DashboardService {
     const calculatedRevenue = orders.reduce((acc: number, o: any) => acc + (o.totalAmount || 0), 0);
 
     return {
-      totalRevenue: calculatedRevenue || 284500,
+      totalRevenue: calculatedRevenue || 0,
       totalOrders,
       totalCustomers: totalUsers,
       totalUsers,

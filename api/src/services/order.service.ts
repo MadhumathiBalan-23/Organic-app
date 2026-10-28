@@ -17,8 +17,8 @@ export class OrderService {
 
       return orders.map((o: any) => ({
         ...o,
-        deliveryOtp: o.deliveryOtp || '4821',
-        deliveryFee: o.deliveryFee || 25,
+        deliveryOtp: o.deliveryOtp || '',
+        deliveryFee: o.deliveryFee !== undefined ? o.deliveryFee : 0,
         items: o.items.map((i: any) => ({
           ...i,
           product: i.product ? {
@@ -39,31 +39,45 @@ export class OrderService {
     const generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
     const orderId = `ORD-${Date.now().toString().slice(-6)}`;
 
-    const deliveryFee = parseFloat(orderData.deliveryFee) || 25;
+    const customerPhone = String(orderData.customerPhone || orderData.phone || '').replace(/[^0-9]/g, '');
+    if (!customerPhone) {
+      throw new Error('Customer phone number is required to place an order.');
+    }
+
+    const deliveryAddress = orderData.deliveryAddress ? String(orderData.deliveryAddress).trim() : '';
+    if (!deliveryAddress) {
+      throw new Error('Delivery address is required to place an order.');
+    }
+
+    const customerName = orderData.customerName ? String(orderData.customerName).trim() : 'Customer';
+    const deliveryFee = parseFloat(orderData.deliveryFee) || 0;
     const totalAmount = parseFloat(orderData.totalAmount) || 0;
+    const distanceKm = parseFloat(orderData.distanceKm) || 0;
+    const deliverySlot = orderData.deliverySlot || 'Standard Delivery';
+    const vendorPhone = orderData.vendorPhone ? String(orderData.vendorPhone).replace(/[^0-9]/g, '') : '';
 
     const newOrderData = {
       id: orderId,
-      customerName: orderData.customerName || 'Ananya Sharma',
-      customerPhone: orderData.customerPhone || '9876543210',
-      deliveryAddress: orderData.deliveryAddress || 'Flat 402, Green Valley, Indiranagar, Bangalore',
+      customerName,
+      customerPhone,
+      deliveryAddress,
       totalAmount,
       deliveryFee,
-      distanceKm: parseFloat(orderData.distanceKm) || 2.4,
-      deliverySlot: orderData.deliverySlot || '06:00 AM - 07:30 AM',
+      distanceKm,
+      deliverySlot,
       deliveryOtp: generatedOtp,
       orderType: orderData.orderType || 'One-Time',
       paymentStatus: orderData.paymentStatus || 'SUCCESS',
       deliveryStatus: 'PENDING_CONFIRMATION',
       paymentMethod: orderData.paymentMethod || 'UPI',
-      vendorPhone: orderData.vendorPhone || '8888888888',
+      vendorPhone,
       createdAt: new Date().toISOString(),
       items: items && items.length > 0 ? items.map((it: any) => ({
         id: `item-${Date.now()}-${Math.random()}`,
         productId: it.productId,
         quantity: parseInt(it.quantity, 10) || 1,
         price: parseFloat(it.price) || 0,
-        product: it.product || { name: 'Farm Fresh Organic Item', price: parseFloat(it.price) || 0 }
+        product: it.product || { name: it.name || 'Organic Item', price: parseFloat(it.price) || 0 }
       })) : []
     };
 
@@ -126,9 +140,9 @@ export class OrderService {
   public static async verifyDeliveryOtp(orderId: string, otp: string) {
     const cleanOtp = String(otp || '').trim();
     const order = ordersCache.get(orderId);
+    const expectedOtp = order?.deliveryOtp;
 
-    // Accept demo OTP "1234" or the generated delivery OTP
-    const isValid = cleanOtp === '1234' || (order && order.deliveryOtp === cleanOtp);
+    const isValid = Boolean(expectedOtp && cleanOtp && expectedOtp === cleanOtp);
 
     if (!isValid) {
       const err: any = new Error('Invalid Delivery OTP. Please ask the customer for the 4-digit code shown on their order screen.');

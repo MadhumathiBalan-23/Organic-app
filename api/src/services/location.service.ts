@@ -5,69 +5,10 @@ export interface ReverseGeocodeResult {
   pincode: string;
 }
 
-// Major hub coordinates for distance calculations and offline fallback
-const REGIONAL_HUBS = [
-  { name: 'Bangalore Urban', state: 'Karnataka', lat: 12.9716, lng: 77.5946, radiusKm: 45 },
-  { name: 'Coimbatore', state: 'Tamil Nadu', lat: 11.0168, lng: 76.9558, radiusKm: 35 },
-  { name: 'Salem', state: 'Tamil Nadu', lat: 11.6643, lng: 78.1460, radiusKm: 30 },
-  { name: 'Erode', state: 'Tamil Nadu', lat: 11.3410, lng: 77.7172, radiusKm: 25 },
-  { name: 'Tirupur', state: 'Tamil Nadu', lat: 11.1085, lng: 77.3411, radiusKm: 25 },
-  { name: 'Chennai', state: 'Tamil Nadu', lat: 13.0827, lng: 80.2707, radiusKm: 40 },
-  { name: 'Madurai', state: 'Tamil Nadu', lat: 9.9252, lng: 78.1198, radiusKm: 30 },
-  { name: 'Trichy', state: 'Tamil Nadu', lat: 10.7905, lng: 78.7047, radiusKm: 25 },
-  { name: 'Mysore', state: 'Karnataka', lat: 12.2958, lng: 76.6394, radiusKm: 30 },
-  { name: 'Hyderabad', state: 'Telangana', lat: 17.3850, lng: 78.4867, radiusKm: 45 },
-  { name: 'Kochi', state: 'Kerala', lat: 9.9312, lng: 76.2673, radiusKm: 30 },
-  { name: 'Palakkad', state: 'Kerala', lat: 10.7867, lng: 76.6548, radiusKm: 25 },
-];
-
-function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
 export function offlineResolveCoordinates(lat: number, lng: number): ReverseGeocodeResult {
-  let closestHub: (typeof REGIONAL_HUBS)[0] | null = null;
-  let minDistance = Infinity;
-
-  for (const hub of REGIONAL_HUBS) {
-    const dist = calculateDistanceKm(lat, lng, hub.lat, hub.lng);
-    if (dist < minDistance) {
-      minDistance = dist;
-      closestHub = hub;
-    }
-  }
-
-  if (closestHub && minDistance <= closestHub.radiusKm) {
-    return {
-      areaLabel: `${closestHub.name}, ${closestHub.state}`,
-      city: closestHub.name,
-      state: closestHub.state,
-      pincode: '',
-    };
-  }
-
-  if (closestHub && minDistance <= 120) {
-    return {
-      areaLabel: `Near ${closestHub.name}, ${closestHub.state}`,
-      city: closestHub.name,
-      state: closestHub.state,
-      pincode: '',
-    };
-  }
-
   return {
-    areaLabel: `Region (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`,
-    city: 'Local Area',
+    areaLabel: `Location (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`,
+    city: '',
     state: '',
     pincode: '',
   };
@@ -246,41 +187,23 @@ export async function searchLocations(query: string): Promise<LocationSuggestion
     // network fallback below
   }
 
-  // 2. High-speed local landmark matching for offline/instant feedback
+  // 2. Check locally saved locations for instant matching
   const qLower = trimmed.toLowerCase();
-  const COMMON_LANDMARKS = [
-    { title: 'Perundurai', subtitle: 'Erode, Tamil Nadu', lat: 11.2765, lng: 77.5836, city: 'Perundurai', state: 'Tamil Nadu' },
-    { title: 'Perundurai Bus Stand', subtitle: 'Erode, Tamil Nadu', lat: 11.2736, lng: 77.5800, city: 'Perundurai', state: 'Tamil Nadu' },
-    { title: 'Perundurai Railway Station', subtitle: 'Erode, Tamil Nadu', lat: 11.2539, lng: 77.6288, city: 'Perundurai', state: 'Tamil Nadu' },
-    { title: 'Perundurai Municipal Office', subtitle: 'Erode, Tamil Nadu', lat: 11.2740, lng: 77.5815, city: 'Perundurai', state: 'Tamil Nadu' },
-    { title: 'Sanitorium', subtitle: 'Perundurai, Tamil Nadu', lat: 11.2710, lng: 77.5790, city: 'Perundurai', state: 'Tamil Nadu' },
-    { title: 'Erode Central', subtitle: 'Erode, Tamil Nadu', lat: 11.3410, lng: 77.7172, city: 'Erode', state: 'Tamil Nadu' },
-    { title: 'Salem Hub', subtitle: 'Salem, Tamil Nadu', lat: 11.6643, lng: 78.1460, city: 'Salem', state: 'Tamil Nadu' },
-    { title: 'Indiranagar', subtitle: 'Bengaluru, Karnataka', lat: 12.9784, lng: 77.6408, city: 'Bengaluru', state: 'Karnataka' },
-    { title: 'Koramangala', subtitle: 'Bengaluru, Karnataka', lat: 12.9352, lng: 77.6245, city: 'Bengaluru', state: 'Karnataka' },
-    { title: 'Whitefield', subtitle: 'Bengaluru, Karnataka', lat: 12.9698, lng: 77.7500, city: 'Bengaluru', state: 'Karnataka' },
-    { title: 'Coimbatore Town', subtitle: 'Coimbatore, Tamil Nadu', lat: 11.0168, lng: 76.9558, city: 'Coimbatore', state: 'Tamil Nadu' },
-    { title: 'Tirupur Textile Hub', subtitle: 'Tirupur, Tamil Nadu', lat: 11.1085, lng: 77.3411, city: 'Tirupur', state: 'Tamil Nadu' },
-    { title: 'Dharmapuri Central', subtitle: 'Dharmapuri, Tamil Nadu', lat: 12.1211, lng: 78.1582, city: 'Dharmapuri', state: 'Tamil Nadu' },
-  ];
-
-  const matched = COMMON_LANDMARKS.filter(
-    (m) => m.title.toLowerCase().includes(qLower) || m.subtitle.toLowerCase().includes(qLower)
-  );
-
-  for (const m of matched) {
-    if (!results.some((r) => r.title.toLowerCase() === m.title.toLowerCase())) {
-      results.push({
-        id: `local_${m.title}`,
-        title: m.title,
-        subtitle: m.subtitle,
-        fullAddress: `${m.title}, ${m.subtitle}`,
-        latitude: m.lat,
-        longitude: m.lng,
-        city: m.city,
-        state: m.state,
-        pincode: '',
-      });
+  for (const s of savedLocationsStore) {
+    if (s.address.toLowerCase().includes(qLower) || s.city.toLowerCase().includes(qLower)) {
+      if (!results.some((r) => r.fullAddress.toLowerCase() === s.address.toLowerCase())) {
+        results.push({
+          id: s.id,
+          title: s.city || s.address.split(',')[0],
+          subtitle: s.address,
+          fullAddress: s.address,
+          latitude: s.latitude,
+          longitude: s.longitude,
+          city: s.city,
+          state: '',
+          pincode: s.pincode,
+        });
+      }
     }
   }
 

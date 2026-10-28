@@ -49,13 +49,13 @@ export class VendorService {
     const request = await prisma.vendorRequest.create({
       data: {
         userId: userId || undefined,
-        userName: userName || user?.fullName || 'Farmer Partner',
+        userName: (userName ? String(userName).trim() : null) || user?.fullName || 'Farmer Partner',
         phoneNumber: cleanPhone,
         farmName: String(farmName).trim(),
         farmLocation: String(farmLocation).trim(),
-        cropCategories: String(cropCategories || 'Fresh Vegetables & Dairy').trim(),
-        experienceYears: String(experienceYears || '3').trim(),
-        certificateNo: String(certificateNo || 'NPOP-ORG-TN-4821').trim(),
+        cropCategories: cropCategories ? String(cropCategories).trim() : '',
+        experienceYears: experienceYears ? String(experienceYears).trim() : '',
+        certificateNo: certificateNo ? String(certificateNo).trim() : '',
         status: 'PENDING',
         note: note ? String(note).trim() : null
       }
@@ -66,7 +66,7 @@ export class VendorService {
       where: { phoneNumber: cleanPhone },
       update: { vendorStatus: 'PENDING' },
       create: {
-        fullName: userName || 'Farmer Partner',
+        fullName: (userName ? String(userName).trim() : null) || 'Farmer Partner',
         phoneNumber: cleanPhone,
         role: 'customer',
         vendorStatus: 'PENDING',
@@ -154,7 +154,7 @@ export class VendorService {
       where: { id },
       data: {
         status: 'REJECTED',
-        note: reason ? String(reason) : 'Incomplete farm documentation'
+        note: reason ? String(reason).trim() : 'Application rejected by administrator.'
       }
     });
 

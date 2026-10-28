@@ -50,8 +50,11 @@ export class VendorDeliveryController {
   public static async getNearbyVendors(req: Request, res: Response) {
     try {
       const { lat, lng } = req.query;
-      const latitude = Number(lat || 12.9716);
-      const longitude = Number(lng || 77.5946);
+      if (!lat || !lng || isNaN(Number(lat)) || isNaN(Number(lng))) {
+        return res.status(400).json({ success: false, message: 'Valid latitude and longitude query parameters are required.' });
+      }
+      const latitude = Number(lat);
+      const longitude = Number(lng);
       const vendors = await VendorDeliveryService.getEligibleVendors(latitude, longitude);
       return res.json({ success: true, data: vendors });
     } catch (error: any) {

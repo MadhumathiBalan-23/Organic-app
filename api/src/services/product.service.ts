@@ -46,9 +46,9 @@ export class ProductService {
 
   public static async createProduct(data: any) {
     const { benefits, category, categoryDetails, id, createdAt, updatedAt, ...rest } = data;
-    const catName = rest.categoryName || (typeof category === 'string' ? category : category?.name) || 'Fresh Vegetables';
+    const catName = rest.categoryName || (typeof category === 'string' ? category : category?.name) || 'General';
 
-    // Ensure category exists in SQLite or create it
+    // Ensure category exists or create it
     try {
       await prisma.category.upsert({
         where: { name: catName },
@@ -59,7 +59,16 @@ export class ProductService {
       // Ignored if already existing
     }
 
-    let finalImageUrl = rest.imageUrl || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80';
+    if (!rest.name || !String(rest.name).trim()) {
+      throw new Error('Product name is required.');
+    }
+
+    const price = parseFloat(rest.price);
+    if (isNaN(price) || price < 0) {
+      throw new Error('A valid product price is required.');
+    }
+
+    let finalImageUrl = rest.imageUrl || '';
 
     // Auto-optimize directly in Cloudinary if base64 image data is provided
     if (finalImageUrl && (finalImageUrl.startsWith('data:image/') || (!finalImageUrl.startsWith('http://') && !finalImageUrl.startsWith('https://')))) {
@@ -73,19 +82,19 @@ export class ProductService {
 
     const product = await prisma.product.create({
       data: {
-        name: rest.name || 'Organic Harvest',
+        name: String(rest.name).trim(),
         categoryName: catName,
-        brand: rest.brand || 'NatureFarm',
-        price: parseFloat(rest.price) || 50,
+        brand: rest.brand ? String(rest.brand).trim() : '',
+        price,
         unit: rest.unit || 'Kg',
-        stock: parseInt(rest.stock, 10) || 50,
-        minStock: parseInt(rest.minStock, 10) || 10,
-        rating: parseFloat(rest.rating) || 4.8,
+        stock: parseInt(rest.stock, 10) >= 0 ? parseInt(rest.stock, 10) : 0,
+        minStock: parseInt(rest.minStock, 10) >= 0 ? parseInt(rest.minStock, 10) : 0,
+        rating: parseFloat(rest.rating) || 5.0,
         availabilityStart: rest.availabilityStart || '06:00 AM',
         availabilityEnd: rest.availabilityEnd || '09:00 PM',
-        description: rest.description || `${rest.name || 'Organic product'} direct from certified organic farms.`,
+        description: rest.description ? String(rest.description).trim() : '',
         imageUrl: finalImageUrl,
-        benefits: Array.isArray(benefits) ? JSON.stringify(benefits) : (typeof benefits === 'string' ? benefits : '["100% Organic", "Farm Fresh"]'),
+        benefits: Array.isArray(benefits) ? JSON.stringify(benefits) : (typeof benefits === 'string' ? benefits : '[]'),
         subscriptionAllowed: rest.subscriptionAllowed !== undefined ? Boolean(rest.subscriptionAllowed) : true,
         oneTimeAllowed: rest.oneTimeAllowed !== undefined ? Boolean(rest.oneTimeAllowed) : true,
         organicCertified: rest.organicCertified !== undefined ? Boolean(rest.organicCertified) : true,

@@ -177,7 +177,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
 
   // Load user profile
   useEffect(() => {
-    const cleanPhone = (userPhone || '9876543210').replace(/[^0-9]/g, '');
+    const cleanPhone = (userPhone || '').replace(/[^0-9]/g, '');
     if (!cleanPhone) return;
     authService
       .getUserProfile(cleanPhone)
@@ -346,11 +346,16 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
     setIsSavingProfile(true);
     setSaveSuccessMsg(null);
     try {
-      const cleanPhone = (userPhone || '9876543210').replace(/[^0-9]/g, '');
+      const cleanPhone = (userPhone || '').replace(/[^0-9]/g, '');
+      if (!cleanPhone) {
+        Alert.alert('Error', 'Please log in with your phone number to save your profile.');
+        setIsSavingProfile(false);
+        return;
+      }
       const data = await authService.updateUserProfile(cleanPhone, {
-        fullName: editName.trim() || 'Ananya Sharma',
-        email: editEmail.trim() || 'ananya.sharma@mathira.org',
-        location: editLocation.trim() || selectedLocation?.address || 'Current Location',
+        fullName: editName.trim(),
+        email: editEmail.trim(),
+        location: editLocation.trim() || selectedLocation?.address || '',
       });
       if (data.success) {
         setProfileName(editName.trim());
@@ -423,9 +428,9 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
     setIsPlacingOrder(true);
     try {
       const data = await orderService.createOrder({
-        customerName: profileName || 'Ananya Sharma',
-        customerPhone: userPhone || '9876543210',
-        deliveryAddress: profileLocation || selectedLocation?.address || 'Current Location',
+        customerName: profileName.trim() || 'Customer',
+        customerPhone: userPhone || '',
+        deliveryAddress: profileLocation || selectedLocation?.address || '',
         totalAmount: cartTotal,
         paymentMethod: 'UPI',
         items: cart.map(item => ({
@@ -479,7 +484,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
         duration: activeSubscriptionData.duration,
         timeSlot: activeSubscriptionData.time,
         totalAmount: activeSubscriptionData.priceTotal,
-        userPhone: userPhone || '9876543210',
+        userPhone: userPhone || '',
       };
       const data = await orderService.createSubscription(payload);
       const newSub =

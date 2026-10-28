@@ -60,8 +60,7 @@ export class AuthService {
     }
 
     // 3. Generate 4-digit OTP
-    const isSpecialDemo = ['9876543210', '9999999999', '8888888888'].includes(cleanPhone);
-    const otp = isSpecialDemo ? '1234' : Math.floor(1000 + Math.random() * 9000).toString();
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
     const expiresAt = now + OTP_VALIDITY_MS;
 
     otpStore.set(cleanPhone, {
@@ -78,7 +77,7 @@ export class AuthService {
         where: { phoneNumber: cleanPhone },
         update: {},
         create: {
-          fullName: 'Organic Customer',
+          fullName: 'Customer',
           phoneNumber: cleanPhone,
           role: 'customer',
           passwordHash: 'OTP_VERIFIED'
@@ -118,10 +117,9 @@ export class AuthService {
       throw err;
     }
 
-    const isValidDemo = cleanOtp === '1234';
-    const isValidGenerated = record && record.otp === cleanOtp && record.expiresAt > now;
+    const isValidGenerated = Boolean(record && record.otp === cleanOtp && record.expiresAt > now);
 
-    if (!isValidDemo && !isValidGenerated) {
+    if (!isValidGenerated) {
       // Increment failed attempts
       const currentAttempts = (record ? record.failedAttempts : 0) + 1;
       const remaining = Math.max(0, MAX_OTP_ATTEMPTS - currentAttempts);
@@ -182,7 +180,7 @@ export class AuthService {
       user = await prisma.user.findUnique({ where: { phoneNumber: cleanPhone } });
     } catch {}
 
-    const isAdmin = cleanPhone === '9999999999' || user?.role === 'admin';
+    const isAdmin = user?.role === 'admin';
     const effectiveRole = isAdmin ? 'admin' : (user?.role === 'vendor' ? 'vendor' : 'customer');
 
     const authToken = jwt.sign(
@@ -204,11 +202,11 @@ export class AuthService {
       deviceId,
       trustedUntil,
       user: {
-        id: user?.id || (isAdmin ? 'admin-super' : 'usr-customer'),
+        id: user?.id || (isAdmin ? 'admin-user' : 'usr-customer'),
         phoneNumber: cleanPhone,
-        fullName: isAdmin ? 'Super Admin Jeena' : (user?.fullName || 'Organic Customer'),
+        fullName: user?.fullName || (isAdmin ? 'Admin' : 'Customer'),
         role: effectiveRole,
-        location: user?.location || 'Indiranagar, Bangalore'
+        location: user?.location || ''
       }
     };
   }
@@ -251,9 +249,8 @@ export class AuthService {
     } catch {}
 
     const isApproved = user?.role === 'vendor' || user?.vendorStatus === 'APPROVED' || approvedReq !== null;
-    const isDemoBypass = cleanPhone === '8888888888';
 
-    if (!isApproved && !isDemoBypass) {
+    if (!isApproved) {
       const error: any = new Error(
         `Vendor access denied for +91 ${cleanPhone}. Only mobile numbers approved by Admin have access to the Vendor Panel.`
       );
@@ -268,19 +265,19 @@ export class AuthService {
         where: { phoneNumber: cleanPhone },
         update: { role: 'vendor', vendorStatus: 'APPROVED' },
         create: {
-          fullName: user?.fullName || 'Organic Harvest Vendor',
+          fullName: user?.fullName || approvedReq?.userName || 'Vendor',
           phoneNumber: cleanPhone,
           role: 'vendor',
           vendorStatus: 'APPROVED',
           passwordHash: 'OTP_VERIFIED',
-          location: 'Salem Farm Hub, TN'
+          location: approvedReq?.farmLocation || user?.location || ''
         }
       });
     } catch {
       vendorUser = {
         id: 'usr-vendor-' + cleanPhone,
         phoneNumber: cleanPhone,
-        fullName: 'Organic Harvest Vendor',
+        fullName: user?.fullName || approvedReq?.userName || 'Vendor',
         role: 'vendor'
       };
     }

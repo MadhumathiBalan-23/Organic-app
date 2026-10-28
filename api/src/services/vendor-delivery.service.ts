@@ -18,49 +18,8 @@ export interface VendorDeliveryConfig {
   applyPerKmToFullDistance: boolean;
 }
 
-// In-memory registry with sensible default organic hubs (Salem, Bangalore, Chennai)
-const deliverySettingsStore = new Map<string, VendorDeliveryConfig>([
-  [
-    '8888888888',
-    {
-      vendorPhone: '8888888888',
-      vendorName: 'Mathira Organic Salem Farm',
-      shopAddress: 'Plot 45, Green Valley Organic Fields, Salem, Tamil Nadu',
-      latitude: 11.6643,
-      longitude: 78.1460,
-      deliveryRadiusKm: 25.0,
-      baseDeliveryCharge: 20.0,
-      perKmCharge: 6.0,
-      freeDistanceKm: 3.0,
-      minOrderAmount: 150.0,
-      maxDeliveryDistanceKm: 35.0,
-      operatingHoursStart: '06:00 AM',
-      operatingHoursEnd: '09:00 PM',
-      isAcceptingOrders: true,
-      applyPerKmToFullDistance: false,
-    },
-  ],
-  [
-    'default',
-    {
-      vendorPhone: '9876543210',
-      vendorName: 'Mathira Certified Farmers Hub',
-      shopAddress: '12 Organic Corridor, Indiranagar, Bangalore, Karnataka',
-      latitude: 12.9784,
-      longitude: 77.6408,
-      deliveryRadiusKm: 15.0,
-      baseDeliveryCharge: 15.0,
-      perKmCharge: 5.0,
-      freeDistanceKm: 2.0,
-      minOrderAmount: 100.0,
-      maxDeliveryDistanceKm: 20.0,
-      operatingHoursStart: '05:30 AM',
-      operatingHoursEnd: '09:30 PM',
-      isAcceptingOrders: true,
-      applyPerKmToFullDistance: false,
-    },
-  ],
-]);
+// Dynamic in-memory cache for vendor delivery configurations
+const deliverySettingsStore = new Map<string, VendorDeliveryConfig>();
 
 export function calculateHaversineDistance(
   lat1: number,
@@ -84,10 +43,50 @@ export function calculateHaversineDistance(
 export class VendorDeliveryService {
   public static async getSettings(vendorPhone?: string): Promise<VendorDeliveryConfig> {
     const cleanPhone = String(vendorPhone || '').replace(/[^0-9]/g, '');
-    if (deliverySettingsStore.has(cleanPhone)) {
+    if (cleanPhone && deliverySettingsStore.has(cleanPhone)) {
       return deliverySettingsStore.get(cleanPhone)!;
     }
-    return deliverySettingsStore.get('default')!;
+
+    // Attempt to lookup vendor details from database
+    let vendorName = '';
+    let shopAddress = '';
+    if (cleanPhone) {
+      try {
+        const vendorReq = await prisma.vendorRequest.findFirst({
+          where: { phoneNumber: cleanPhone },
+          orderBy: { createdAt: 'desc' }
+        });
+        const user = await prisma.user.findUnique({
+          where: { phoneNumber: cleanPhone }
+        });
+        vendorName = vendorReq?.farmName || user?.fullName || '';
+        shopAddress = vendorReq?.farmLocation || user?.location || '';
+      } catch {}
+    }
+
+    const defaultConfig: VendorDeliveryConfig = {
+      vendorPhone: cleanPhone,
+      vendorName: vendorName || (cleanPhone ? `Vendor ${cleanPhone}` : ''),
+      shopAddress: shopAddress || '',
+      latitude: 0,
+      longitude: 0,
+      deliveryRadiusKm: 15.0,
+      baseDeliveryCharge: 0.0,
+      perKmCharge: 5.0,
+      freeDistanceKm: 2.0,
+      minOrderAmount: 0.0,
+      maxDeliveryDistanceKm: 30.0,
+      operatingHoursStart: '06:00 AM',
+      operatingHoursEnd: '09:00 PM',
+      isAcceptingOrders: true,
+      applyPerKmToFullDistance: false,
+    };
+
+    if (cleanPhone) {
+      deliverySettingsStore.set(cleanPhone, defaultConfig);
+    }
+
+    return defaultConfig;
   }
 
   public static async saveSettings(config: Partial<VendorDeliveryConfig> & { vendorPhone: string }): Promise<VendorDeliveryConfig> {
@@ -158,6 +157,7 @@ export class VendorDeliveryService {
   public static async getEligibleVendors(customerLat: number, customerLng: number) {
     const results = [];
     for (const [, vendor] of deliverySettingsStore) {
+      if (!vendor.latitude || !vendor.longitude) continue;
       const distanceKm = calculateHaversineDistance(
         customerLat,
         customerLng,

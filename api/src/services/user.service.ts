@@ -18,10 +18,10 @@ export class UserService {
       user = await prisma.user.create({
         data: {
           phoneNumber: cleanPhone,
-          fullName: 'Ananya Sharma',
-          email: 'ananya.sharma@mathira.org',
+          fullName: '',
+          email: null,
           role: 'customer',
-          location: 'Flat 402, Green Valley Apts, Indiranagar, Bangalore - 560038',
+          location: '',
           status: 'Active',
           vendorStatus: 'NONE'
         },
@@ -29,19 +29,30 @@ export class UserService {
       });
     }
 
+    const calculatedTotalSpend = user.orders && user.orders.length > 0
+      ? user.orders.reduce((sum: number, o: any) => sum + (o.totalAmount || 0), 0)
+      : (user.totalSpend || 0);
+
+    const activeSubsCount = user.subscriptions
+      ? user.subscriptions.filter((s: any) => s.status === 'Active').length
+      : 0;
+
+    // 1 loyalty point per 100 spent
+    const loyaltyPoints = Math.floor(calculatedTotalSpend / 100);
+
     return {
       id: user.id,
-      fullName: user.fullName || 'Ananya Sharma',
+      fullName: user.fullName || '',
       phoneNumber: user.phoneNumber,
-      email: user.email || 'ananya.sharma@mathira.org',
-      location: user.location || 'Flat 402, Green Valley Apts, Indiranagar, Bangalore - 560038',
+      email: user.email || '',
+      location: user.location || '',
       role: user.role,
       status: user.status,
       vendorStatus: user.vendorStatus || 'NONE',
-      totalOrders: user.orders ? user.orders.length : user.totalOrders || 0,
-      activeSubscriptions: user.subscriptions ? user.subscriptions.length : 1,
-      totalSpend: user.totalSpend || 3450,
-      loyaltyPoints: 280
+      totalOrders: user.orders ? user.orders.length : (user.totalOrders || 0),
+      activeSubscriptions: activeSubsCount,
+      totalSpend: calculatedTotalSpend,
+      loyaltyPoints
     };
   }
 
@@ -52,15 +63,15 @@ export class UserService {
     return prisma.user.upsert({
       where: { phoneNumber: cleanPhone },
       update: {
-        fullName: fullName ? String(fullName).trim() : undefined,
-        email: email ? String(email).trim() : undefined,
-        location: location ? String(location).trim() : undefined
+        fullName: fullName !== undefined ? String(fullName).trim() : undefined,
+        email: email !== undefined ? (email ? String(email).trim() : null) : undefined,
+        location: location !== undefined ? String(location).trim() : undefined
       },
       create: {
         phoneNumber: cleanPhone,
-        fullName: fullName ? String(fullName).trim() : 'Ananya Sharma',
-        email: email ? String(email).trim() : 'ananya.sharma@mathira.org',
-        location: location ? String(location).trim() : 'Flat 402, Green Valley Apts, Indiranagar, Bangalore - 560038',
+        fullName: fullName ? String(fullName).trim() : '',
+        email: email ? String(email).trim() : null,
+        location: location ? String(location).trim() : '',
         role: 'customer',
         status: 'Active'
       }
