@@ -14,6 +14,7 @@
     },
     "android": {
       "package": "com.mathira.organicfarming",
+      "usesCleartextTraffic": true,
       "backgroundColor": "#FDFBF7",
       "adaptiveIcon": {
         "foregroundImage": "./asset/logo.png",

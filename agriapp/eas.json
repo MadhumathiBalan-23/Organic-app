@@ -13,12 +13,21 @@
         "buildType": "apk"
       },
       "env": {
+        "EXPO_PUBLIC_API_URL": "https://mathira.jeenora.com/api"
+      }
+    },
+    "preview-local": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
         "EXPO_PUBLIC_API_URL": "http://192.23.1.52:5050/api"
       }
     },
     "production": {
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://192.23.1.52:5050/api"
+        "EXPO_PUBLIC_API_URL": "https://mathira.jeenora.com/api"
       }
     }
   },
