@@ -80,7 +80,7 @@ export const RoleHeader: React.FC<RoleHeaderProps> = ({
 
         <View className="flex-1 flex-row items-center gap-2.5">
           <Image
-            source={require('../../asset/logo.jpeg')}
+            source={require('../../asset/logo.png')}
             className="w-10 h-10 rounded-xl bg-white"
             resizeMode="contain"
           />

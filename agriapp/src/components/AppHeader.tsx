@@ -144,7 +144,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         <View className="flex-row items-center justify-between gap-3">
           <View className="flex-1 flex-row items-center gap-2.5">
             <Image
-              source={require('../../asset/logo.jpeg')}
+              source={require('../../asset/logo.png')}
               className="w-9 h-9 rounded-xl bg-white"
               resizeMode="contain"
             />
@@ -188,7 +188,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
           <View className="flex-1 flex-row items-center gap-2.5">
             <Image
-              source={require('../../asset/logo.jpeg')}
+              source={require('../../asset/logo.png')}
               className="w-9 h-9 rounded-xl bg-white"
               resizeMode="contain"
             />

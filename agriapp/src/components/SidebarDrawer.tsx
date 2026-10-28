@@ -112,7 +112,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
             {/* Header Box */}
             <View className="bg-[#0D2B1D] flex-row items-center gap-2.5 px-4 py-4 border-b border-emerald-500/25">
               <Image
-                source={require('../../asset/logo.jpeg')}
+                source={require('../../asset/logo.png')}
                 className="w-9 h-9 rounded-full border border-emerald-500"
                 resizeMode="contain"
               />
