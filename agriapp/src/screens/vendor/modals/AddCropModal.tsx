@@ -35,6 +35,7 @@ interface AddCropModalProps {
   onClose: () => void;
   onSuccess: (crop: Product) => void;
   showToast: (msg: string) => void;
+  userPhone?: string;
 }
 
 export const AddCropModal: React.FC<AddCropModalProps> = ({
@@ -42,6 +43,7 @@ export const AddCropModal: React.FC<AddCropModalProps> = ({
   onClose,
   onSuccess,
   showToast,
+  userPhone,
 }) => {
   const [pName, setPName] = useState('');
   const [pCategory, setPCategory] = useState(Categories[0] || 'Vegetables');
@@ -199,6 +201,7 @@ export const AddCropModal: React.FC<AddCropModalProps> = ({
           description: newCrop.description,
           benefits: newCrop.benefits,
           imageUrl: newCrop.imageUrl,
+          vendorId: userPhone ? String(userPhone).replace(/[^0-9]/g, '') : undefined,
           organicCertified: true,
         }),
       });

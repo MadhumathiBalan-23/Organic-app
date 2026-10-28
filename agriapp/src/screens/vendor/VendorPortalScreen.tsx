@@ -106,20 +106,27 @@ export const VendorPortalScreen: React.FC<VendorScreensProps> = ({
         .catch(() => {});
     }
 
-    fetch(API_ENDPOINTS.products)
+    const prodUrl = cleanPhone ? API_ENDPOINTS.vendorProducts(cleanPhone) : API_ENDPOINTS.products;
+    fetch(prodUrl)
       .then((res) => res.json())
       .then((json) => {
-        if (
-          isMounted &&
-          json.success &&
-          Array.isArray(json.data) &&
-          json.data.length > 0
-        ) {
-          const sanitized = json.data.map((p: any) => ({
-            ...p,
-            category: getCategoryName(p.category || p.categoryName),
-          }));
-          setProductList(sanitized);
+        if (isMounted && json.success && Array.isArray(json.data)) {
+          if (json.data.length > 0) {
+            const sanitized = json.data.map((p: any) => ({
+              ...p,
+              category: getCategoryName(p.category || p.categoryName),
+            }));
+            setProductList(sanitized);
+          } else if (cleanPhone) {
+            fetch(API_ENDPOINTS.products)
+              .then((r) => r.json())
+              .then((genJson) => {
+                if (isMounted && genJson.success && Array.isArray(genJson.data)) {
+                  setProductList(genJson.data.map((p: any) => ({ ...p, category: getCategoryName(p.category || p.categoryName) })));
+                }
+              })
+              .catch(() => {});
+          }
         }
       })
       .catch(() => {});
@@ -399,6 +406,7 @@ export const VendorPortalScreen: React.FC<VendorScreensProps> = ({
       <AddCropModal
         visible={isAddModalOpen}
         onClose={() => setModalOpen(false)}
+        userPhone={userPhone}
         onSuccess={(newCrop) => {
           setProductList((prev) => [newCrop, ...prev]);
           triggerRefresh();

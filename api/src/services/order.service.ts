@@ -4,9 +4,16 @@ import { prisma } from '../config/db';
 const ordersCache = new Map<string, any>();
 
 export class OrderService {
-  public static async getAllOrders() {
+  public static async getAllOrders(phoneNumber?: string) {
+    const cleanPhone = phoneNumber ? String(phoneNumber).replace(/[^0-9]/g, '') : '';
+    const where: any = {};
+    if (cleanPhone) {
+      where.customerPhone = cleanPhone;
+    }
+
     try {
       const orders = await prisma.order.findMany({
+        where,
         include: {
           items: {
             include: { product: true }
@@ -28,7 +35,11 @@ export class OrderService {
         }))
       }));
     } catch {
-      return Array.from(ordersCache.values()).sort(
+      let cachedList = Array.from(ordersCache.values());
+      if (cleanPhone) {
+        cachedList = cachedList.filter(o => o.customerPhone === cleanPhone);
+      }
+      return cachedList.sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
     }
@@ -56,8 +67,18 @@ export class OrderService {
     const deliverySlot = orderData.deliverySlot || 'Standard Delivery';
     const vendorPhone = orderData.vendorPhone ? String(orderData.vendorPhone).replace(/[^0-9]/g, '') : '';
 
+    // Find user by phone to strictly link order to their account
+    let userId: string | undefined = undefined;
+    try {
+      const user = await prisma.user.findUnique({ where: { phoneNumber: customerPhone } });
+      if (user) {
+        userId = user.id;
+      }
+    } catch {}
+
     const newOrderData = {
       id: orderId,
+      userId,
       customerName,
       customerPhone,
       deliveryAddress,
@@ -86,6 +107,7 @@ export class OrderService {
     try {
       const created = await prisma.order.create({
         data: {
+          userId,
           customerName: newOrderData.customerName,
           customerPhone: newOrderData.customerPhone,
           deliveryAddress: newOrderData.deliveryAddress,
@@ -104,6 +126,20 @@ export class OrderService {
         },
         include: { items: { include: { product: true } } }
       });
+
+      // Update user spend and order count
+      if (userId) {
+        try {
+          await prisma.user.update({
+            where: { id: userId },
+            data: {
+              totalOrders: { increment: 1 },
+              totalSpend: { increment: totalAmount }
+            }
+          });
+        } catch {}
+      }
+
       return { ...created, deliveryOtp: generatedOtp, deliveryFee };
     } catch {
       return newOrderData;

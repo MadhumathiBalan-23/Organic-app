@@ -6,10 +6,11 @@ import { ProductService } from '../services/product.service';
 export class ProductController {
   public static async getAll(req: Request, res: Response) {
     try {
-      const { category, search } = req.query;
+      const { category, search, vendorId } = req.query;
       const formatted = await ProductService.getAllProducts(
         category ? String(category) : undefined,
-        search ? String(search) : undefined
+        search ? String(search) : undefined,
+        vendorId ? String(vendorId) : undefined
       );
 
       return res.json({

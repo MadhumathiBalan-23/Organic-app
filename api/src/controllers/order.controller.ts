@@ -4,7 +4,8 @@ import { OrderService } from '../services/order.service';
 export class OrderController {
   public static async getAll(req: Request, res: Response) {
     try {
-      const formatted = await OrderService.getAllOrders();
+      const phoneNumber = (req.query.phoneNumber || req.query.phone || (req as any).user?.phoneNumber) as string | undefined;
+      const formatted = await OrderService.getAllOrders(phoneNumber);
       return res.json({ success: true, count: formatted.length, data: formatted });
     } catch (error: any) {
       return res.status(500).json({ success: false, error: error.message });

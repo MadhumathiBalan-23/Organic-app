@@ -1,8 +1,15 @@
 import { prisma } from '../config/db';
 
 export class SubscriptionService {
-  public static async getAllSubscriptions() {
+  public static async getAllSubscriptions(phoneNumber?: string) {
+    const cleanPhone = phoneNumber ? String(phoneNumber).replace(/[^0-9]/g, '') : '';
+    const where: any = {};
+    if (cleanPhone) {
+      where.user = { phoneNumber: cleanPhone };
+    }
+
     const subs = await prisma.subscription.findMany({
+      where,
       include: { product: true, user: true },
       orderBy: { createdAt: 'desc' }
     });
@@ -18,10 +25,23 @@ export class SubscriptionService {
 
   public static async createSubscription(data: any) {
     const { product, id, createdAt, user, ...rest } = data;
+
+    let userId = rest.userId;
+    const phone = data.userPhone || data.phoneNumber || data.phone;
+    if (!userId && phone) {
+      const cleanPhone = String(phone).replace(/[^0-9]/g, '');
+      try {
+        const found = await prisma.user.findUnique({ where: { phoneNumber: cleanPhone } });
+        if (found) {
+          userId = found.id;
+        }
+      } catch {}
+    }
+
     return prisma.subscription.create({
       data: {
         productId: rest.productId || (product ? product.id : undefined),
-        userId: rest.userId,
+        userId: userId || undefined,
         quantity: parseInt(rest.quantity, 10) || 1,
         frequency: rest.frequency || 'Daily',
         deliveryTime: rest.deliveryTime || rest.time || rest.timeSlot || '06:30 AM',

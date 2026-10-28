@@ -64,6 +64,20 @@ export default function App() {
   const [cart, setCart] = useState<{ product: Product; qty: number }[]>([]);
   const cartCount = cart.reduce((sum, item) => sum + item.qty, 0);
 
+  // Mobile OTP Auth states (Customer-only login, Passwordless)
+  const [authStep, setAuthStep] = useState<'PHONE' | 'OTP'>('PHONE');
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [receivedOtp, setReceivedOtp] = useState('');
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [customerToken, setCustomerToken] = useState<string | null>(null);
+  const [vendorToken, setVendorToken] = useState<string | null>(null);
+  const [isAdminUser, setIsAdminUser] = useState(false);
+  const [isSwitchingToVendor, setIsSwitchingToVendor] = useState(false);
+  const [vendorStatus, setVendorStatus] = useState<'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED'>('NONE');
+
   useEffect(() => {
     fetch(API_ENDPOINTS.products)
       .then(res => res.json())
@@ -83,11 +97,15 @@ export default function App() {
       })
       .catch(() => {});
 
-    fetch(API_ENDPOINTS.subscriptions)
+    const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
+    const subUrl = cleanPhone ? API_ENDPOINTS.userSubscriptions(cleanPhone) : API_ENDPOINTS.subscriptions;
+    fetch(subUrl)
       .then(res => res.json())
       .then(json => {
         if (json.success && Array.isArray(json.data)) {
           setSubscriptions(json.data);
+        } else {
+          setSubscriptions([]);
         }
       })
       .catch(() => {});
@@ -100,7 +118,7 @@ export default function App() {
         }
       })
       .catch(() => {});
-  }, [refreshKey]);
+  }, [refreshKey, phone]);
 
   // Mandatory Location Selection (Requirement 5)
   const [selectedLocation, setSelectedLocation] = useState<SelectedLocation | null>(null);
@@ -111,20 +129,6 @@ export default function App() {
   const [lockoutCountdown, setLockoutCountdown] = useState(0); // in seconds
   const [resendCooldown, setResendCooldown] = useState(0);     // in seconds
   const [deviceId] = useState(() => `dev_inst_${Date.now()}_${Math.floor(Math.random() * 9000 + 1000)}`);
-
-  // Mobile OTP Auth states (Customer-only login, Passwordless)
-  const [authStep, setAuthStep] = useState<'PHONE' | 'OTP'>('PHONE');
-  const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState('');
-  const [receivedOtp, setReceivedOtp] = useState('');
-  const [isSendingOtp, setIsSendingOtp] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [customerToken, setCustomerToken] = useState<string | null>(null);
-  const [vendorToken, setVendorToken] = useState<string | null>(null);
-  const [isAdminUser, setIsAdminUser] = useState(false);
-  const [isSwitchingToVendor, setIsSwitchingToVendor] = useState(false);
-  const [vendorStatus, setVendorStatus] = useState<'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED'>('NONE');
 
   // Lockout & Resend countdown timer interval
   useEffect(() => {
@@ -440,6 +444,8 @@ export default function App() {
     setAuthError(null);
     setCustomerToken(null);
     setVendorToken(null);
+    setCart([]);
+    setSubscriptions([]);
     setCustomerScreen('HOME');
     setAdminTab('dashboard');
     setVendorTab('dashboard');

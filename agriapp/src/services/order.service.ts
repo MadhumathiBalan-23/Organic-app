@@ -25,10 +25,12 @@ export interface OrderItem {
 }
 
 export const orderService = {
-  // Fetch orders
-  getOrders: async (): Promise<OrderItem[]> => {
+  // Fetch orders (strictly filtered by user phone if provided)
+  getOrders: async (userPhone?: string): Promise<OrderItem[]> => {
     try {
-      const res = await axios.get(API_ENDPOINTS.orders, { timeout: 12000 });
+      const cleanPhone = userPhone ? String(userPhone).replace(/[^0-9]/g, '') : '';
+      const endpoint = cleanPhone ? API_ENDPOINTS.userOrders(cleanPhone) : API_ENDPOINTS.orders;
+      const res = await axios.get(endpoint, { timeout: 12000 });
       return extractDataList<OrderItem>(res.data);
     } catch (err: any) {
       console.warn('⚠️ [OrderService.getOrders] Error:', err.message);
@@ -36,8 +38,8 @@ export const orderService = {
     }
   },
 
-  getAll: async (): Promise<OrderItem[]> => {
-    return orderService.getOrders();
+  getAll: async (userPhone?: string): Promise<OrderItem[]> => {
+    return orderService.getOrders(userPhone);
   },
 
   // Create new order
@@ -93,10 +95,12 @@ export const orderService = {
     }
   },
 
-  // Fetch subscriptions
-  getSubscriptions: async (): Promise<any[]> => {
+  // Fetch subscriptions (strictly filtered by user phone if provided)
+  getSubscriptions: async (userPhone?: string): Promise<any[]> => {
     try {
-      const res = await axios.get(API_ENDPOINTS.subscriptions, { timeout: 10000 });
+      const cleanPhone = userPhone ? String(userPhone).replace(/[^0-9]/g, '') : '';
+      const endpoint = cleanPhone ? API_ENDPOINTS.userSubscriptions(cleanPhone) : API_ENDPOINTS.subscriptions;
+      const res = await axios.get(endpoint, { timeout: 10000 });
       return extractDataList(res.data);
     } catch (err: any) {
       console.warn('⚠️ [OrderService.getSubscriptions] Error:', err.message);

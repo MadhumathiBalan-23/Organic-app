@@ -167,8 +167,11 @@ export const API_ENDPOINTS = {
 
   // Orders, Subscriptions, Deliveries
   get orders() { return `${getApiBase()}/orders`; },
+  userOrders: (phone: string) => `${getApiBase()}/orders?phoneNumber=${String(phone || '').replace(/[^0-9]/g, '')}`,
   verifyDeliveryOtp: (id: string) => `${getApiBase()}/orders/${id}/verify-delivery`,
   get subscriptions() { return `${getApiBase()}/subscriptions`; },
+  userSubscriptions: (phone: string) => `${getApiBase()}/subscriptions?phoneNumber=${String(phone || '').replace(/[^0-9]/g, '')}`,
+  vendorProducts: (vendorId: string) => `${getApiBase()}/products?vendorId=${encodeURIComponent(String(vendorId || '').replace(/[^0-9]/g, ''))}`,
   get deliveries() { return `${getApiBase()}/deliveries`; },
   get aiAlerts() { return `${getApiBase()}/ai-alerts`; },
   get userLogs() { return `${getApiBase()}/user-logs`; },

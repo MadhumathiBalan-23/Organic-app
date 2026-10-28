@@ -268,7 +268,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
 
   const fetchOrders = async () => {
     try {
-      const orders = await orderService.getAll();
+      const orders = await orderService.getAll(userPhone);
       const mapped = orders.map((o: any) => {
         const firstProd = o.items && o.items.length > 0 ? o.items[0]?.product : null;
         const prodNames =
@@ -304,7 +304,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
     fetchCategories();
     fetchProducts();
     fetchOrders();
-  }, [customerScreen]);
+  }, [customerScreen, userPhone]);
 
   const handleBannerPress = (banner: DynamicBanner) => {
     if (!banner.targetType || banner.targetType === 'ALL_PRODUCTS' || banner.targetType === 'SCREEN') {

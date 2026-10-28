@@ -18,13 +18,16 @@ export class ProductService {
     };
   }
 
-  public static async getAllProducts(category?: string, search?: string) {
+  public static async getAllProducts(category?: string, search?: string, vendorId?: string) {
     const where: any = {};
     if (category && category !== 'All') {
       where.categoryName = String(category);
     }
     if (search) {
       where.name = { contains: String(search) };
+    }
+    if (vendorId) {
+      where.vendorId = String(vendorId);
     }
 
     const products = await prisma.product.findMany({
