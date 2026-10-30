@@ -22,6 +22,24 @@ export interface Product {
   subscriptionAllowed: boolean;
   oneTimeAllowed: boolean;
   organicCertified: boolean;
+  brand?: string;
+  originalPrice?: number;
+  discountBadge?: string;
+  discountPercentage?: number;
+  isAvailable?: boolean;
+  categoryId?: string;
+  vendorId?: string;
+  vendorName?: string;
+  vendorAddress?: string;
+  vendorRating?: number;
+  vendor?: {
+    id: string;
+    businessName: string;
+    ownerName?: string;
+    phoneNumber?: string;
+    address?: string;
+    rating?: number;
+  };
 }
 
 export const Categories = [

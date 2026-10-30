@@ -1,6 +1,6 @@
 import * as Location from 'expo-location';
 import { Platform } from 'react-native';
-import { API_ENDPOINTS } from './api';
+import { API_ENDPOINTS } from './api.client';
 
 export function offlineResolveCoordinates(lat: number, lng: number) {
   return {

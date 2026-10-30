@@ -8,4 +8,7 @@ export * from './PaymentScreen';
 export * from './MySubscriptionsScreen';
 export * from './OrderHistoryScreen';
 export * from './ProfileScreen';
+export * from './CategoryProductListingScreen';
+export * from './CategoryVendorDiscoveryScreen';
+export * from './VendorStoreScreen';
 export { CustomerPortalScreen, CustomerPortalScreen as CustomerScreens } from './CustomerPortalScreen';

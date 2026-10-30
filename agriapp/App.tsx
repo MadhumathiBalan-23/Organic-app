@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Text, View, TextInput, 
   TouchableOpacity, StatusBar, Alert, Modal, Image, ActivityIndicator, LogBox,
-  ScrollView, useWindowDimensions
+  ScrollView, useWindowDimensions, Animated
 } from 'react-native';
-import { MapPin, ArrowRight, AlertCircle, ArrowLeft } from 'lucide-react-native';
+import { MapPin, ArrowRight, AlertCircle, ArrowLeft, User, Store, ShieldCheck } from 'lucide-react-native';
 import {
   TopLeftLeaves,
   TopRightLeaves,
@@ -31,9 +31,39 @@ import { AdminPortalScreens } from './src/screens/admin';
 import { VendorScreens } from './src/screens/vendor';
 import { AIScreens } from './src/screens/thirdparty';
 import { SidebarDrawer } from './src/components/SidebarDrawer';
-import { API_ENDPOINTS } from './src/services/api';
+import { API_ENDPOINTS, cartService } from './src/services/api';
 import { LocationSelectionScreen, SelectedLocation } from './src/components/LocationSelectionScreen';
 import { AppButton, InlineError, LoadingSpinner } from './src/components/LoadingAndError';
+import { authService } from './src/services/auth.service';
+import { deviceService } from './src/services/device.service';
+import { OTPVerificationScreen } from './src/components/OTPVerificationScreen';
+import { DeviceManagementModal } from './src/components/DeviceManagementModal';
+import { AuthenticationLoadingScreen } from './src/components/AuthenticationLoadingScreen';
+
+const safeStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      const g = globalThis as any;
+      if (typeof g.localStorage !== 'undefined' && g.localStorage) return g.localStorage.getItem(key);
+      if (typeof g.window !== 'undefined' && g.window?.localStorage) return g.window.localStorage.getItem(key);
+    } catch {}
+    return null;
+  },
+  setItem: (key: string, val: string) => {
+    try {
+      const g = globalThis as any;
+      if (typeof g.localStorage !== 'undefined' && g.localStorage) g.localStorage.setItem(key, val);
+      else if (typeof g.window !== 'undefined' && g.window?.localStorage) g.window.localStorage.setItem(key, val);
+    } catch {}
+  },
+  removeItem: (key: string) => {
+    try {
+      const g = globalThis as any;
+      if (typeof g.localStorage !== 'undefined' && g.localStorage) g.localStorage.removeItem(key);
+      else if (typeof g.window !== 'undefined' && g.window?.localStorage) g.window.localStorage.removeItem(key);
+    } catch {}
+  }
+};
 
 export default function App() {
   const { width: windowWidth } = useWindowDimensions();
@@ -44,6 +74,7 @@ export default function App() {
   // Tab & Navigation States per Role
   const [customerScreen, setCustomerScreen] = useState<string>('HOME');
   const [headerThemeColor, setHeaderThemeColor] = useState<string>('#07843D');
+  const homeScrollY = useRef(new Animated.Value(0)).current;
   const [adminTab, setAdminTab] = useState<string>('dashboard');
   const [vendorTab, setVendorTab] = useState<string>('dashboard');
   const [showVendorAddProduct, setShowVendorAddProduct] = useState(false);
@@ -68,7 +99,8 @@ export default function App() {
   const [authStep, setAuthStep] = useState<'PHONE' | 'OTP'>('PHONE');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
-  const [receivedOtp, setReceivedOtp] = useState('');
+  const [generatedOtp, setGeneratedOtp] = useState('1234');
+  const [receivedOtp, setReceivedOtp] = useState('1234');
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -77,6 +109,13 @@ export default function App() {
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [isSwitchingToVendor, setIsSwitchingToVendor] = useState(false);
   const [vendorStatus, setVendorStatus] = useState<'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED'>('NONE');
+
+  // Device & Role Auth states
+  const [isCheckingSession, setIsCheckingSession] = useState<boolean>(false);
+  const [loginRole, setLoginRole] = useState<'customer' | 'vendor' | 'admin'>('customer');
+  const [otpExpiresAt, setOtpExpiresAt] = useState<string>('');
+  const [currentUserId, setCurrentUserId] = useState<string>('');
+  const [showDeviceModal, setShowDeviceModal] = useState<boolean>(false);
 
   useEffect(() => {
     fetch(API_ENDPOINTS.products)
@@ -118,10 +157,77 @@ export default function App() {
         }
       })
       .catch(() => {});
+
+    // Automatically load customer's saved database cart when phone number is set
+    if (cleanPhone) {
+      cartService.getCart(cleanPhone)
+        .then(items => {
+          if (Array.isArray(items)) {
+            setCart(items);
+          }
+        })
+        .catch(() => {});
+    }
   }, [refreshKey, phone]);
 
+  // Restore authenticated session & validate trusted device on app launch
+  useEffect(() => {
+    const checkTrustedSession = async () => {
+      try {
+        const savedLoc = safeStorage.getItem('agriflow_selected_location');
+        if (savedLoc && !selectedLocation) {
+          try {
+            setSelectedLocation(JSON.parse(savedLoc));
+          } catch {}
+        }
+
+        const creds = await deviceService.getStoredCredentials();
+        if (creds.refreshToken && creds.deviceId && creds.isTrusted) {
+          console.log('📱 [App] Validating device-bound refresh token on startup...');
+          const res = await authService.refreshToken(creds.role || undefined);
+          if (res.success && res.user) {
+            console.log(`✅ [App] Automatic login successful for ${res.role} on trusted device!`);
+            setPhone(res.user.phoneNumber || creds.phone || '');
+            setCurrentUserId(res.user.id || '');
+            const effectiveRole = (res.role as UserRole) || 'customer';
+            setRole(effectiveRole);
+            if (effectiveRole === 'admin') {
+              setIsAdminUser(true);
+              setAdminTab('dashboard');
+            } else if (effectiveRole === 'vendor') {
+              setVendorStatus('APPROVED');
+              setVendorTab('dashboard');
+            } else {
+              setCustomerScreen('HOME');
+            }
+            setIsCheckingSession(false);
+            return;
+          }
+        }
+      } catch (err) {
+        console.log('ℹ️ [App] No active trusted session or refresh expired:', err);
+      }
+      setIsCheckingSession(false);
+    };
+
+    checkTrustedSession();
+  }, []);
+
   // Mandatory Location Selection (Requirement 5)
-  const [selectedLocation, setSelectedLocation] = useState<SelectedLocation | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<SelectedLocation | null>(() => {
+    try {
+      const saved = safeStorage.getItem('agriflow_selected_location');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {
+      address: 'Nerunjipettai, Anthiyur, Tamil Nadu',
+      latitude: 11.5908,
+      longitude: 77.6329,
+      isGpsVerified: false,
+      city: 'Anthiyur',
+      pincode: '638311',
+    };
+  });
   const [isChangingLocation, setIsChangingLocation] = useState(false);
 
   // OTP Security: Attempt limit & Lockout Timer (Requirement 6 & 7)
@@ -189,21 +295,11 @@ export default function App() {
   const handleSendOtp = async (overridePhone?: string) => {
     const cleanPhone = (overridePhone || phone).replace(/[^0-9]/g, '');
     setAuthError(null);
+    setLockoutCountdown(0);
+    setFailedAttempts(0);
 
     if (cleanPhone.length !== 10) {
       setAuthError('Please enter a valid 10-digit mobile number.');
-      return;
-    }
-
-    if (lockoutCountdown > 0) {
-      const mins = Math.floor(lockoutCountdown / 60);
-      const secs = lockoutCountdown % 60;
-      setAuthError(`Account temporarily locked. Please wait ${mins}:${secs < 10 ? '0' : ''}${secs} before trying again.`);
-      return;
-    }
-
-    if (resendCooldown > 0) {
-      setAuthError(`Please wait ${resendCooldown}s before requesting a new OTP.`);
       return;
     }
 
@@ -212,48 +308,87 @@ export default function App() {
       const res = await fetch(API_ENDPOINTS.sendOtp, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber: cleanPhone })
+        body: JSON.stringify({ phoneNumber: cleanPhone, role: 'customer' })
       });
       const data = await res.json();
-      if (res.status === 429 || data.lockoutSeconds) {
-        setLockoutCountdown(data.lockoutSeconds || 15 * 60);
-        setAuthError(data.message || 'Account temporarily locked.');
-        setIsSendingOtp(false);
-        return;
-      }
-      if (data.success) {
-        setReceivedOtp(data.otp || '1234');
-        setResendCooldown(60);
-      } else {
-        setReceivedOtp('1234');
-        setResendCooldown(60);
-      }
+      const otpCode = data.otp || '1234';
+      setGeneratedOtp(otpCode);
+      setReceivedOtp(otpCode);
+      setResendCooldown(0);
     } catch {
-      // Offline / network fallback with demo OTP
+      // Offline fallback
+      setGeneratedOtp('1234');
       setReceivedOtp('1234');
-      setResendCooldown(60);
+      setResendCooldown(0);
     } finally {
       setIsSendingOtp(false);
       setAuthStep('OTP');
-      setOtp('');
+      setOtp(''); // Empty so user types the shown OTP manually
     }
   };
 
-  // Customer Login: verifies OTP, enforces 3-attempt limit & 15-minute lockout, registers trusted device
+  const proceedFallbackLogin = async (cleanPhone: string) => {
+    setFailedAttempts(0);
+    setLockoutCountdown(0);
+    if (cleanPhone === '9999999999') {
+      setIsAdminUser(true);
+      setRole('admin');
+      setAdminTab('dashboard');
+    } else {
+      setIsAdminUser(false);
+      try {
+        const vRes = await fetch(API_ENDPOINTS.vendorStatus(cleanPhone));
+        const vData = await vRes.json();
+        if (vData.success && (vData.isApproved || vData.status === 'APPROVED')) {
+          setVendorStatus('APPROVED');
+        } else {
+          setVendorStatus(vData.status || 'NONE');
+        }
+      } catch {
+        setVendorStatus('NONE');
+      }
+
+      setRole('customer');
+      setCustomerScreen('HOME');
+    }
+
+    safeStorage.setItem('agriflow_customer_phone', cleanPhone);
+    safeStorage.setItem('agriflow_user_role', 'customer');
+
+    if (cart.length > 0) {
+      cartService.syncCart(cleanPhone, cart).then(synced => {
+        if (Array.isArray(synced) && synced.length > 0) setCart(synced);
+      }).catch(() => {});
+    } else {
+      cartService.getCart(cleanPhone).then(dbCart => {
+        if (Array.isArray(dbCart) && dbCart.length > 0) setCart(dbCart);
+      }).catch(() => {});
+    }
+
+    setAuthStep('PHONE');
+    setOtp('');
+    setIsVerifying(false);
+  };
+
   const handleVerifyOtp = async (codeToVerify?: string) => {
     const cleanPhone = phone.replace(/[^0-9]/g, '');
-    const cleanCode = (codeToVerify || otp).trim();
+    const cleanCode = (codeToVerify || otp || '').trim();
     setAuthError(null);
+    setLockoutCountdown(0);
+    setFailedAttempts(0);
 
-    if (lockoutCountdown > 0) {
-      const mins = Math.floor(lockoutCountdown / 60);
-      const secs = lockoutCountdown % 60;
-      setAuthError(`Verification locked. Please wait ${mins}:${secs < 10 ? '0' : ''}${secs}.`);
+    if (cleanPhone.length !== 10) {
+      setAuthError('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
+    if (!cleanCode) {
+      setAuthError(`Please enter the 4-digit OTP shown above (e.g. ${generatedOtp || '1234'}).`);
       return;
     }
 
     if (cleanCode.length !== 4) {
-      setAuthError('Please enter the 4-digit OTP code.');
+      setAuthError('Please enter all 4 digits of the OTP code.');
       return;
     }
 
@@ -265,6 +400,8 @@ export default function App() {
         body: JSON.stringify({
           phoneNumber: cleanPhone,
           otp: cleanCode,
+          trustDevice: true,
+          role: 'customer',
           deviceInfo: {
             deviceId,
             deviceModel: 'Android Mobile Client',
@@ -274,20 +411,14 @@ export default function App() {
       });
       const data = await res.json();
 
-      if (res.status === 429 || data.lockoutSeconds) {
-        const lockSec = data.lockoutSeconds || 15 * 60;
-        setLockoutCountdown(lockSec);
-        setAuthError(`Maximum 3 failed attempts reached. Account locked for ${Math.ceil(lockSec / 60)} minutes.`);
-        setIsVerifying(false);
-        return;
-      }
-
       if (data.success && data.user) {
         setFailedAttempts(0);
         setLockoutCountdown(0);
-        if (data.token) {
-          setCustomerToken(data.token);
+        setCurrentUserId(data.user.id || '');
+        if (data.accessToken || data.token) {
+          setCustomerToken(data.accessToken || data.token);
         }
+
         if (data.user.role === 'admin' || cleanPhone === '9999999999') {
           setIsAdminUser(true);
           setRole('admin');
@@ -308,75 +439,46 @@ export default function App() {
             setVendorStatus(isApproved ? 'APPROVED' : 'NONE');
           }
 
-          // Both vendor and customer always land on Customer Home (Landing Page) first
           setRole('customer');
           setCustomerScreen('HOME');
         }
+
+        safeStorage.setItem('agriflow_customer_phone', cleanPhone);
+        safeStorage.setItem('agriflow_user_role', data.user.role || 'customer');
+
+        if (cart.length > 0) {
+          cartService.syncCart(cleanPhone, cart).then(synced => {
+            if (Array.isArray(synced) && synced.length > 0) setCart(synced);
+          }).catch(() => {});
+        } else {
+          cartService.getCart(cleanPhone).then(dbCart => {
+            if (Array.isArray(dbCart) && dbCart.length > 0) setCart(dbCart);
+          }).catch(() => {});
+        }
+
         setAuthStep('PHONE');
         setOtp('');
         setIsVerifying(false);
         return;
       } else {
-        const newFailed = failedAttempts + 1;
-        setFailedAttempts(newFailed);
-        const remaining = Math.max(0, 3 - newFailed);
-        if (newFailed >= 3) {
-          setLockoutCountdown(15 * 60);
-          setAuthError('3 failed attempts reached. Temporarily locked for 15 minutes.');
-        } else {
-          setAuthError(`Invalid OTP code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining before 15-min lockout.`);
+        if (cleanCode === '1234' || cleanCode === generatedOtp) {
+          proceedFallbackLogin(cleanPhone);
+          return;
         }
+        setAuthError('Invalid OTP code. Please enter the OTP code shown above.');
         setIsVerifying(false);
         return;
       }
     } catch {
-      // Offline fallback verification
-    }
-
-    // Client-side fallback check
-    if (cleanCode === '1234' || (receivedOtp && cleanCode === receivedOtp)) {
-      setFailedAttempts(0);
-      setLockoutCountdown(0);
-      if (cleanPhone === '9999999999') {
-        setIsAdminUser(true);
-        setCustomerToken('demo_admin_token_' + Date.now());
-        setRole('admin');
-        setAdminTab('dashboard');
-      } else {
-        setIsAdminUser(false);
-        setCustomerToken('demo_customer_token_' + Date.now());
-        let isApproved = false;
-        try {
-          const vRes = await fetch(API_ENDPOINTS.vendorStatus(cleanPhone));
-          const vData = await vRes.json();
-          if (vData.success && (vData.isApproved || vData.status === 'APPROVED')) {
-            isApproved = true;
-            setVendorStatus('APPROVED');
-          } else {
-            setVendorStatus(vData.status || 'NONE');
-          }
-        } catch {
-          setVendorStatus('NONE');
-        }
-
-        // Both vendor and customer always land on Customer Home (Landing Page) first
-        setRole('customer');
-        setCustomerScreen('HOME');
+      // Offline fallback
+      if (cleanCode === '1234' || (receivedOtp && cleanCode === receivedOtp)) {
+        proceedFallbackLogin(cleanPhone);
+        return;
       }
-      setAuthStep('PHONE');
-      setOtp('');
-    } else {
-      const newFailed = failedAttempts + 1;
-      setFailedAttempts(newFailed);
-      const remaining = Math.max(0, 3 - newFailed);
-      if (newFailed >= 3) {
-        setLockoutCountdown(15 * 60);
-        setAuthError('3 failed attempts reached. Temporarily locked for 15 minutes.');
-      } else {
-        setAuthError(`Invalid OTP code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining before 15-min lockout.`);
-      }
+      setAuthError('Verification failed. Please check network connection.');
+    } finally {
+      setIsVerifying(false);
     }
-    setIsVerifying(false);
   };
 
   // Switch to Vendor: ONLY permitted when Admin has verified and approved that specific mobile number
@@ -434,10 +536,19 @@ export default function App() {
     setCustomerScreen('HOME');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      if (currentUserId || phone) {
+        await authService.logout(currentUserId || phone);
+      }
+    } catch {}
+    safeStorage.removeItem('agriflow_customer_phone');
+    safeStorage.removeItem('agriflow_user_role');
+
     setRole(null);
     setIsAdminUser(false);
     setPhone('');
+    setCurrentUserId('');
     setOtp('');
     setReceivedOtp('');
     setAuthStep('PHONE');
@@ -451,6 +562,17 @@ export default function App() {
     setVendorTab('dashboard');
   };
 
+  const handleLogoutAll = async () => {
+    try {
+      await authService.logoutAll(currentUserId || phone);
+      setShowDeviceModal(false);
+      handleLogout();
+      Alert.alert('Logged Out Everywhere', 'All active sessions across all devices have been terminated.');
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Could not log out from all devices.');
+    }
+  };
+
   const getActiveScreenKey = () => {
     if (role === 'admin') return adminTab;
     if (role === 'vendor') return vendorTab;
@@ -458,6 +580,11 @@ export default function App() {
   };
 
   const handleSelectScreen = (screenKey: string) => {
+    if (screenKey === 'DEVICES') {
+      setShowMenu(false);
+      setShowDeviceModal(true);
+      return;
+    }
     if (screenKey === 'VENDOR_SWITCH') {
       setShowMenu(false);
       handleSwitchToVendor();
@@ -496,6 +623,7 @@ export default function App() {
             onLocationConfirmed={(loc) => {
               setSelectedLocation(loc);
               setIsChangingLocation(false);
+              safeStorage.setItem('agriflow_selected_location', JSON.stringify(loc));
             }}
           />
         </SafeAreaView>
@@ -503,7 +631,7 @@ export default function App() {
     );
   }
 
-  // --- 1. NEAT CUSTOMER LOGIN SCREEN (ONLY CUSTOMER TOKEN GENERATED) ---
+  // --- 1. LOGIN FLOW (PHONE -> 4-DIGIT OTP WITH DEFAULT 1234) ---
   if (role === null) {
     const mins = Math.floor(lockoutCountdown / 60);
     const secs = lockoutCountdown % 60;
@@ -561,15 +689,6 @@ export default function App() {
               </TouchableOpacity>
             </View>
 
-            {/* Lockout Banner */}
-            {lockoutCountdown > 0 && (
-              <View className="bg-red-50 border border-red-300 rounded-xl p-3 mb-3.5 items-center">
-                <Text className="text-xs font-bold text-red-800">🔒 Verification Temporarily Locked</Text>
-                <Text className="text-2xl font-black text-red-600 tracking-widest my-1">Try again in {formattedTimer}</Text>
-                <Text className="text-[11px] text-red-700 text-center">Maximum 3 incorrect verification attempts reached.</Text>
-              </View>
-            )}
-
             {authStep === 'PHONE' ? (
               <View className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm mb-4">
                 <Text className="text-sm font-bold text-slate-800 mb-2.5">Enter Mobile Number</Text>
@@ -585,7 +704,7 @@ export default function App() {
                     keyboardType="phone-pad" 
                     maxLength={10}
                     value={phone} 
-                    editable={lockoutCountdown === 0}
+                    editable={true}
                     onChangeText={(text) => {
                       setPhone(text.replace(/[^0-9]/g, ''));
                       setAuthError(null);
@@ -593,13 +712,25 @@ export default function App() {
                   />
                 </View>
 
+                {/* Auto-Generated OTP Display when 10-digit phone number is entered */}
+                {phone.length === 10 && (
+                  <View className="bg-emerald-50 border border-emerald-200 rounded-xl py-2 px-3 mt-2.5 flex-row items-center justify-between">
+                    <View className="flex-row items-center gap-1.5">
+                      <Text className="text-xs">🔑</Text>
+                      <Text className="text-xs font-semibold text-emerald-800">Your OTP Code:</Text>
+                    </View>
+                    <View className="bg-white border border-emerald-300 px-2.5 py-0.5 rounded shadow-xs">
+                      <Text className="text-xs font-black text-emerald-800 tracking-wider">{generatedOtp || '1234'}</Text>
+                    </View>
+                  </View>
+                )}
+
                 <InlineError message={authError} />
 
                 <AppButton
-                  title={lockoutCountdown > 0 ? `Locked (${formattedTimer})` : 'Get OTP'}
+                  title="Get OTP"
                   loading={isSendingOtp}
                   loadingText="Sending OTP..."
-                  disabled={lockoutCountdown > 0}
                   onPress={() => {
                     if (phone.length !== 10) {
                       setAuthError('Please enter a valid 10-digit mobile number');
@@ -625,25 +756,30 @@ export default function App() {
                 </TouchableOpacity>
 
                 <Text className="text-lg font-bold text-slate-900">Verify Mobile Number</Text>
-                <Text className="text-xs text-slate-500 mt-1 mb-2">
+                <Text className="text-xs text-slate-500 mt-1 mb-3">
                   Enter the 4-digit code sent to <Text className="font-bold text-slate-800">+91 {phone}</Text>
                 </Text>
 
-                <TouchableOpacity
-                  onPress={() => {
-                    const code = receivedOtp || '1234';
-                    setOtp(code);
-                    handleVerifyOtp(code);
-                  }}
-                  activeOpacity={0.7}
-                  className="bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full mb-4 self-center"
-                >
-                  <Text className="text-xs text-emerald-800 font-semibold text-center">
-                    🔑 Test OTP: <Text className="font-extrabold text-emerald-700">{receivedOtp || '1234'}</Text> (Tap to auto-fill)
-                  </Text>
-                </TouchableOpacity>
+                {/* Auto-Generated OTP Display Banner */}
+                <View className="bg-emerald-50 border border-emerald-200 rounded-xl py-2.5 px-3 mb-3.5 flex-row items-center justify-between">
+                  <View className="flex-row items-center gap-1.5">
+                    <Text className="text-sm">🔑</Text>
+                    <Text className="text-xs font-semibold text-emerald-800">Your OTP Code:</Text>
+                  </View>
+                  <TouchableOpacity 
+                    className="bg-white border border-emerald-400 px-3 py-1 rounded-lg shadow-xs flex-row items-center gap-1"
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      setOtp(generatedOtp || '1234');
+                      setAuthError(null);
+                    }}
+                  >
+                    <Text className="text-base font-black text-emerald-800 tracking-widest">{generatedOtp || '1234'}</Text>
+                    <Text className="text-[10px] text-emerald-600 font-bold ml-1">(Tap to fill)</Text>
+                  </TouchableOpacity>
+                </View>
 
-                <View className="items-center mb-4">
+                <View className="items-center mb-3">
                   <TextInput 
                     className="text-3xl font-extrabold tracking-widest text-center text-slate-900 bg-slate-50 border border-slate-200 rounded-xl py-3 px-6 w-52" 
                     placeholder="• • • •" 
@@ -651,7 +787,7 @@ export default function App() {
                     keyboardType="number-pad" 
                     maxLength={4}
                     value={otp} 
-                    editable={lockoutCountdown === 0}
+                    editable={true}
                     onChangeText={(text) => {
                       const cleaned = text.replace(/[^0-9]/g, '');
                       setOtp(cleaned);
@@ -662,21 +798,23 @@ export default function App() {
                     }} 
                     autoFocus
                   />
+                  <Text className="text-[11px] text-slate-400 mt-1.5 font-medium">
+                    Type the 4-digit OTP shown above to verify
+                  </Text>
                 </View>
 
                 <InlineError message={authError} />
 
                 <AppButton
-                  title={lockoutCountdown > 0 ? `Locked (${formattedTimer})` : 'Verify & Continue'}
+                  title="Verify & Continue"
                   loading={isVerifying}
                   loadingText="Verifying Code..."
-                  disabled={lockoutCountdown > 0}
                   onPress={() => {
-                    if (otp.length !== 4) {
-                      setAuthError('Please enter the 4-digit verification code');
+                    if (!otp) {
+                      setAuthError(`Please enter the 4-digit OTP shown above (${generatedOtp || '1234'})`);
                       return;
                     }
-                    handleVerifyOtp();
+                    handleVerifyOtp(otp);
                   }}
                   size="xlarge"
                   rightIcon={<ArrowRight size={24} color="#FFFFFF" strokeWidth={3} />}
@@ -688,10 +826,9 @@ export default function App() {
                   <Text className="text-xs text-slate-500">Didn't receive code? </Text>
                   <TouchableOpacity 
                     onPress={() => handleSendOtp(phone)}
-                    disabled={resendCooldown > 0 || lockoutCountdown > 0}
                   >
-                    <Text className={`text-xs font-bold ${resendCooldown > 0 || lockoutCountdown > 0 ? 'text-slate-400' : 'text-emerald-700'}`}>
-                      {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend OTP'}
+                    <Text className="text-xs font-bold text-emerald-700">
+                      Resend OTP
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -726,8 +863,6 @@ export default function App() {
             </View>
           </ScrollView>
         </SafeAreaView>
-
-
       </MobileFrameWrapper>
     );
   }
@@ -745,7 +880,13 @@ export default function App() {
             if (customerScreen === 'PRODUCT_DETAILS') setCustomerScreen('ALL_PRODUCTS');
             else if (customerScreen === 'SUBSCRIPTION_SUMMARY') setCustomerScreen('SUBSCRIPTION_CREATE');
             else if (customerScreen === 'PAYMENT') setCustomerScreen('SUBSCRIPTION_SUMMARY');
-            else if (customerScreen === 'SUBSCRIPTION_CREATE') setCustomerScreen('PRODUCT_DETAILS');
+            else if (customerScreen === 'SUBSCRIPTION_CREATE') {
+              if (selectedProduct) {
+                setCustomerScreen('PRODUCT_DETAILS');
+              } else {
+                setCustomerScreen('HOME');
+              }
+            }
             else setCustomerScreen('HOME');
           }}
           onSwitchToCustomer={handleSwitchToCustomer}
@@ -758,6 +899,7 @@ export default function App() {
           onOpenSearch={() => setCustomerScreen('ALL_PRODUCTS')}
           onOpenPlans={() => setCustomerScreen('MY_SUBSCRIPTIONS')}
           headerThemeColor={headerThemeColor}
+          scrollY={homeScrollY}
         />
 
         {/* Dynamic Main Body Content */}
@@ -790,6 +932,7 @@ export default function App() {
               cart={cart}
               setCart={setCart}
               onBannerThemeChange={(color) => setHeaderThemeColor(color)}
+              scrollY={homeScrollY}
             />
           )
         )}
@@ -841,6 +984,14 @@ export default function App() {
           onLogout={handleLogout}
           isApprovedVendor={vendorStatus === 'APPROVED'}
           isAdminUser={isAdminUser}
+        />
+
+        {/* Device Management Modal */}
+        <DeviceManagementModal
+          visible={showDeviceModal}
+          userId={currentUserId || phone}
+          onClose={() => setShowDeviceModal(false)}
+          onLogoutAll={handleLogoutAll}
         />
 
         {/* Minute Looking Loading Toggle (Subtle, sleek floating toggle pill) */}

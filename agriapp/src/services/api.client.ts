@@ -136,11 +136,32 @@ export const API_ENDPOINTS = {
   // Authentication & Device Security
   get sendOtp() { return `${getApiBase()}/auth/send-otp`; },
   get verifyOtp() { return `${getApiBase()}/auth/verify-otp`; },
+  get refreshToken() { return `${getApiBase()}/auth/refresh-token`; },
+  get logout() { return `${getApiBase()}/auth/logout`; },
+  get logoutAll() { return `${getApiBase()}/auth/logout-all`; },
+  get me() { return `${getApiBase()}/auth/me`; },
+
+  // Role-Specific Endpoints
+  get customerLogin() { return `${getApiBase()}/customer/auth/login`; },
+  get customerRefresh() { return `${getApiBase()}/customer/auth/refresh`; },
+  get vendorLogin() { return `${getApiBase()}/vendor/auth/login`; },
+  get vendorRefresh() { return `${getApiBase()}/vendor/auth/refresh`; },
+  get adminLogin() { return `${getApiBase()}/admin/auth/login`; },
+  get adminRefresh() { return `${getApiBase()}/admin/auth/refresh`; },
+
+  // Device Management
+  get registerDevice() { return `${getApiBase()}/devices/register`; },
+  userDevices: (userId: string) => `${getApiBase()}/devices/my-devices?userId=${encodeURIComponent(userId)}`,
+  revokeDeviceTrust: (deviceId: string) => `${getApiBase()}/devices/${deviceId}/revoke-trust`,
+  deleteDevice: (deviceId: string) => `${getApiBase()}/devices/${deviceId}`,
   get verifyDevice() { return `${getApiBase()}/auth/verify-device`; },
   get revokeDevice() { return `${getApiBase()}/auth/revoke-device`; },
   get vendorToken() { return `${getApiBase()}/auth/vendor-token`; },
 
-  // Vendor Onboarding & Management
+  // Vendor Onboarding & Directory
+  get vendors() { return `${getApiBase()}/vendors`; },
+  vendorDetails: (id: string) => `${getApiBase()}/vendors/${id}`,
+  vendorByPhone: (phone: string) => `${getApiBase()}/vendors/by-phone/${String(phone || '').replace(/[^0-9]/g, '')}`,
   get vendorRequests() { return `${getApiBase()}/vendor-requests`; },
   vendorStatus: (phone: string) => `${getApiBase()}/vendor-requests/status/${phone}`,
   approveVendor: (id: string) => `${getApiBase()}/vendor-requests/${id}/approve`,
@@ -160,18 +181,32 @@ export const API_ENDPOINTS = {
   get users() { return `${getApiBase()}/users`; },
   get customers() { return `${getApiBase()}/customers`; },
 
-  // Catalog
+  // Catalog & Customer Discovery
   get products() { return `${getApiBase()}/products`; },
   get categories() { return `${getApiBase()}/categories`; },
   get brands() { return `${getApiBase()}/brands`; },
+  get customerCategories() { return `${getApiBase()}/customer/categories`; },
+  customerCategoryDetails: (categoryId: string) => `${getApiBase()}/customer/categories/${encodeURIComponent(categoryId)}`,
+  customerCategoryVendors: (categoryId: string) => `${getApiBase()}/customer/categories/${encodeURIComponent(categoryId)}/vendors`,
+  get customerProducts() { return `${getApiBase()}/customer/products`; },
+  customerVendorProducts: (vendorId: string) => `${getApiBase()}/customer/vendors/${encodeURIComponent(vendorId)}/products`,
+  customerProductDetails: (productId: string) => `${getApiBase()}/customer/products/${encodeURIComponent(productId)}`,
+  get customerSearch() { return `${getApiBase()}/customer/products/search`; },
 
   // Orders, Subscriptions, Deliveries
   get orders() { return `${getApiBase()}/orders`; },
   userOrders: (phone: string) => `${getApiBase()}/orders?phoneNumber=${String(phone || '').replace(/[^0-9]/g, '')}`,
+  vendorOrders: (vendorId: string) => `${getApiBase()}/orders?vendorId=${encodeURIComponent(vendorId)}`,
+  vendorSubscriptions: (vendorId: string) => `${getApiBase()}/subscriptions?vendorId=${encodeURIComponent(vendorId)}`,
   verifyDeliveryOtp: (id: string) => `${getApiBase()}/orders/${id}/verify-delivery`,
   get subscriptions() { return `${getApiBase()}/subscriptions`; },
   userSubscriptions: (phone: string) => `${getApiBase()}/subscriptions?phoneNumber=${String(phone || '').replace(/[^0-9]/g, '')}`,
-  vendorProducts: (vendorId: string) => `${getApiBase()}/products?vendorId=${encodeURIComponent(String(vendorId || '').replace(/[^0-9]/g, ''))}`,
+  subscriptionSettings: (productId: string) => `${getApiBase()}/subscriptions/settings/${productId}`,
+  get allSubscriptionSettings() { return `${getApiBase()}/subscriptions/settings`; },
+  get calculateSubscription() { return `${getApiBase()}/subscriptions/calculate`; },
+  skipSubscriptionDate: (id: string) => `${getApiBase()}/subscriptions/${id}/skip`,
+  pauseSubscription: (id: string) => `${getApiBase()}/subscriptions/${id}/pause`,
+  vendorProducts: (vendorId: string) => `${getApiBase()}/products?vendorId=${encodeURIComponent(String(vendorId || ''))}`,
   get deliveries() { return `${getApiBase()}/deliveries`; },
   get aiAlerts() { return `${getApiBase()}/ai-alerts`; },
   get userLogs() { return `${getApiBase()}/user-logs`; },
@@ -183,6 +218,15 @@ export const API_ENDPOINTS = {
   get createBanner() { return `${getApiBase()}/banners`; },
   updateBanner: (id: string) => `${getApiBase()}/banners/${id}`,
   deleteBanner: (id: string) => `${getApiBase()}/banners/${id}`,
+
+  // Customer Persistent Cart (Stored in Database)
+  get cart() { return `${getApiBase()}/cart`; },
+  userCart: (phone: string) => `${getApiBase()}/cart?phoneNumber=${String(phone || '').replace(/[^0-9]/g, '')}`,
+  get addToCart() { return `${getApiBase()}/cart/add`; },
+  get updateCartQty() { return `${getApiBase()}/cart/update`; },
+  removeFromCart: (productId: string, phone: string) => `${getApiBase()}/cart/${productId}?phoneNumber=${String(phone || '').replace(/[^0-9]/g, '')}`,
+  clearCart: (phone: string) => `${getApiBase()}/cart/clear?phoneNumber=${String(phone || '').replace(/[^0-9]/g, '')}`,
+  get syncCart() { return `${getApiBase()}/cart/sync`; },
 };
 
 export const safeCategory = (cat: any): string => {

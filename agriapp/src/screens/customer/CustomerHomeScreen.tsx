@@ -9,6 +9,8 @@ import {
   Dimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  Animated,
+  Platform,
 } from 'react-native';
 import {
   Zap,
@@ -19,6 +21,9 @@ import {
   Heart,
   ShoppingCart,
   Check,
+  Sunrise,
+  Clock,
+  CheckCircle2,
 } from 'lucide-react-native';
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Stop, Rect } from 'react-native-svg';
 import { Product } from '../../constants/mockData';
@@ -51,9 +56,12 @@ interface CustomerHomeScreenProps {
   onOpenDetails: (p: Product) => void;
   onSubscribe: (p: Product) => void;
   setCustomerScreen: (screen: string) => void;
+  onOpenCategory?: (categoryId: string, categoryName: string) => void;
+  onOpenVendorDiscovery?: (categoryId?: string) => void;
   isApprovedVendor?: boolean;
   setShowAddProductModal?: (open: boolean) => void;
   renderProductCard: (p: Product) => React.ReactNode;
+  scrollY?: any;
 }
 
 export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
@@ -61,6 +69,7 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
   isLoadingBanners,
   bannersList,
   bannerScrollRef,
+  scrollY,
   activeBannerIdx,
   handleBannerChange,
   handleBannerPress,
@@ -79,6 +88,8 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
   onOpenDetails,
   onSubscribe,
   setCustomerScreen,
+  onOpenCategory,
+  onOpenVendorDiscovery,
   isApprovedVendor,
   setShowAddProductModal,
   renderProductCard,
@@ -113,14 +124,31 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
 
   return (
     <View className="flex-1 bg-[#F0F7F2]">
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="pb-[130px]">
-        {/* Half-Banner Gradient Backdrop */}
-        <View className="absolute top-0 left-0 right-0 h-[104px] overflow-hidden" pointerEvents="none">
+      <Animated.ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerClassName="pb-[130px]"
+        decelerationRate="normal"
+        overScrollMode="never"
+        bounces={Platform.OS === 'ios'}
+        nestedScrollEnabled={true}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        onScroll={
+          scrollY
+            ? Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+                useNativeDriver: false,
+              })
+            : undefined
+        }
+        scrollEventThrottle={16}
+      >
+        {/* Seamless Half-Banner Gradient Backdrop matching header theme */}
+        <View className="absolute top-0 left-0 right-0 h-[140px] overflow-hidden" pointerEvents="none">
           <Svg width="100%" height="100%" key={`home_backdrop_${headerGrad.light}`}>
             <Defs>
               <SvgLinearGradient id="homeHalfBannerGrad" x1="0" y1="0" x2="0" y2="1">
                 <Stop offset="0%" stopColor={headerGrad.light} stopOpacity="1" />
-                <Stop offset="70%" stopColor={headerGrad.light} stopOpacity="0.75" />
+                <Stop offset="55%" stopColor={headerGrad.light} stopOpacity="0.85" />
                 <Stop offset="100%" stopColor="#F0F7F2" stopOpacity="0" />
               </SvgLinearGradient>
             </Defs>
@@ -138,6 +166,7 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
             <ScrollView
               ref={bannerScrollRef}
               horizontal
+              nestedScrollEnabled={true}
               pagingEnabled={false}
               snapToInterval={BANNER_WIDTH + 12}
               decelerationRate="fast"
@@ -157,6 +186,7 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
               {bannersList.map((banner) => {
                 const grad = getGradientTheme(banner.backgroundColor);
                 const bannerGradId = `bannerGrad_${banner.id}_${(grad.dark + grad.light).replace(/[^a-zA-Z0-9]/g, '')}`;
+                const hasImage = Boolean(banner.imageUrl && banner.imageUrl.trim());
 
                 return (
                   <TouchableOpacity
@@ -167,63 +197,64 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
                       backgroundColor: grad.dark,
                       width: BANNER_WIDTH,
                     }}
-                    className="h-[165px] rounded-[22px] overflow-hidden relative mr-3 shadow-md flex-row items-center justify-between"
+                    className="h-[165px] rounded-[22px] overflow-hidden relative mr-3 shadow-md"
                   >
-                    {/* Dark-to-Light Linear Gradient Background */}
-                    <View className="absolute inset-0" pointerEvents="none">
-                      <Svg width="100%" height="100%" key={bannerGradId}>
-                        <Defs>
-                          <SvgLinearGradient id={bannerGradId} x1="0" y1="0" x2="1" y2="1">
-                            <Stop offset="0%" stopColor={grad.dark} stopOpacity="1" />
-                            <Stop offset="50%" stopColor={grad.mid} stopOpacity="1" />
-                            <Stop offset="100%" stopColor={grad.light} stopOpacity="1" />
-                          </SvgLinearGradient>
-                        </Defs>
-                        <Rect width="100%" height="100%" rx="22" ry="22" fill={`url(#${bannerGradId})`} />
-                      </Svg>
-                    </View>
-
-                    {/* Left Column: Badge, Title, Subtitle, CTA Button */}
-                    <View className="flex-1 p-4 justify-between h-full z-10">
-                      <View>
-                        <View className="self-start bg-white/20 px-2.5 py-0.5 rounded-full mb-1.5">
-                          <Text className="text-2xs font-black text-white uppercase tracking-wider">
-                            🌿 100% ORGANIC
-                          </Text>
+                    {hasImage ? (
+                      /* Full Banner Image ONLY: Clean, full-bleed promotional banner image */
+                      <Image
+                        source={{ uri: banner.imageUrl }}
+                        className="w-full h-full"
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      /* Fallback only when banner has no image */
+                      <View className="w-full h-full flex-row items-center justify-between">
+                        {/* Dark-to-Light Linear Gradient Background */}
+                        <View className="absolute inset-0" pointerEvents="none">
+                          <Svg width="100%" height="100%" key={bannerGradId}>
+                            <Defs>
+                              <SvgLinearGradient id={bannerGradId} x1="0" y1="0" x2="0" y2="1">
+                                <Stop offset="0%" stopColor={grad.dark} stopOpacity="1" />
+                                <Stop offset="50%" stopColor={grad.mid} stopOpacity="1" />
+                                <Stop offset="100%" stopColor={grad.light} stopOpacity="1" />
+                              </SvgLinearGradient>
+                            </Defs>
+                            <Rect width="100%" height="100%" rx="22" ry="22" fill={`url(#${bannerGradId})`} />
+                          </Svg>
                         </View>
-                        <Text className="text-base font-black text-white shadow-sm leading-tight" numberOfLines={2}>
-                          {banner.title || 'Pure Organic Farm Harvest 🌿'}
-                        </Text>
-                        {banner.subtitle ? (
-                          <Text className="text-xs text-white/90 font-medium mt-1 leading-normal" numberOfLines={1}>
-                            {banner.subtitle}
-                          </Text>
-                        ) : null}
-                      </View>
 
-                      <View
-                        className="self-start px-3.5 py-1.5 rounded-xl shadow-sm"
-                        style={{ backgroundColor: banner.buttonColor || '#FDE047' }}
-                      >
-                        <Text
-                          className="text-xs font-black"
-                          style={{ color: banner.buttonTextColor || '#78350F' }}
-                        >
-                          {banner.buttonText || 'Shop Now →'}
-                        </Text>
-                      </View>
-                    </View>
+                        {/* Left Column: Badge, Title, Subtitle, CTA Button */}
+                        <View className="flex-1 p-4 justify-between h-full z-10">
+                          <View>
+                            <View className="self-start bg-white/20 px-2.5 py-0.5 rounded-full mb-1.5">
+                              <Text className="text-2xs font-black text-white uppercase tracking-wider">
+                                🌿 100% ORGANIC
+                              </Text>
+                            </View>
+                            <Text className="text-base font-black text-white shadow-sm leading-tight" numberOfLines={2}>
+                              {banner.title || 'Pure Organic Farm Harvest 🌿'}
+                            </Text>
+                            {banner.subtitle ? (
+                              <Text className="text-xs text-white/90 font-medium mt-1 leading-normal" numberOfLines={1}>
+                                {banner.subtitle}
+                              </Text>
+                            ) : null}
+                          </View>
 
-                    {/* Right Column: Featured Produce / Photo (if any) */}
-                    {banner.imageUrl ? (
-                      <View className="w-36 h-full p-2.5 z-10 justify-center">
-                        <Image
-                          source={{ uri: banner.imageUrl }}
-                          className="w-full h-full rounded-2xl border border-white/40 shadow-sm"
-                          resizeMode="cover"
-                        />
+                          <View
+                            className="self-start px-3.5 py-1.5 rounded-xl shadow-sm"
+                            style={{ backgroundColor: banner.buttonColor || '#FDE047' }}
+                          >
+                            <Text
+                              className="text-xs font-black"
+                              style={{ color: banner.buttonTextColor || '#78350F' }}
+                            >
+                              {banner.buttonText || 'Shop Now →'}
+                            </Text>
+                          </View>
+                        </View>
                       </View>
-                    ) : null}
+                    )}
                   </TouchableOpacity>
                 );
               })}
@@ -259,79 +290,151 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
           </View>
         ) : (
           <View className="mt-3.5 px-3">
+            {/* Section Header: Categories & Quick Discovery Toggle */}
+            <View className="flex-row items-center justify-between mb-2">
+              <Text className="text-sm font-black text-slate-900 tracking-tight">
+                Shop by Category
+              </Text>
+              {onOpenVendorDiscovery ? (
+                <TouchableOpacity
+                  onPress={() => onOpenVendorDiscovery(activeCategory !== 'All' ? activeCategory : undefined)}
+                  className="flex-row items-center bg-[#E7F5EB] px-2.5 py-1 rounded-lg"
+                >
+                  <Text className="text-2xs font-extrabold text-[#07843D] mr-1">Browse Farms →</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false} 
               contentContainerClassName="py-1 gap-2.5"
             >
-              {categories.map((cat) => {
-                const isActive = activeCategory === cat;
-                const photoUrl = getCategoryPhoto(cat);
+              {categories
+                .filter((cat) => cat !== 'All' && cat?.toLowerCase() !== 'all')
+                .map((cat) => {
+                  const photoUrl = getCategoryPhoto(cat);
+                  const match = (dbCategories || []).find(
+                    (c: any) => c.name?.toLowerCase() === cat?.toLowerCase()
+                  );
+                  const catId = match?.id || cat;
 
-                return (
-                  <TouchableOpacity
-                    key={cat}
-                    onPress={() => setActiveCategory(cat)}
-                    className="items-center"
-                    style={{ width: 72 }}
-                    activeOpacity={0.8}
-                    accessibilityLabel={cat}
-                  >
-                    {/* Blinkit-Style Square Card Image Container */}
-                    <View 
-                      className={`w-[66px] h-[66px] rounded-2xl overflow-hidden items-center justify-center relative ${
-                        isActive 
-                          ? 'border-2 border-[#07843D] bg-[#E7F5EB] shadow-sm' 
-                          : 'border border-[#DFE9E1] bg-white'
-                      }`}
+                  return (
+                    <TouchableOpacity
+                      key={cat}
+                      onPress={() => {
+                        if (onOpenCategory) {
+                          onOpenCategory(catId, cat);
+                        } else {
+                          setCustomerScreen('CATEGORY_PRODUCTS');
+                        }
+                      }}
+                      className="items-center"
+                      style={{ width: 72 }}
+                      activeOpacity={0.8}
+                      accessibilityLabel={cat}
                     >
-                      <Image
-                        source={{ uri: photoUrl }}
-                        className="w-full h-full"
-                        resizeMode="cover"
-                      />
-                      {isActive && (
-                        <View className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#07843D] items-center justify-center border border-white">
-                          <Check size={9} color="#FFFFFF" strokeWidth={3.5} />
-                        </View>
-                      )}
-                    </View>
+                      {/* Blinkit-Style Square Card Image Container */}
+                      <View className="w-[66px] h-[66px] rounded-2xl overflow-hidden items-center justify-center border border-[#DFE9E1] bg-white shadow-xs">
+                        <Image
+                          source={{ uri: photoUrl }}
+                          className="w-full h-full"
+                          resizeMode="cover"
+                        />
+                      </View>
 
-                    {/* Neat Blinkit-Style Typography */}
-                    <Text 
-                      className={`mt-1.5 text-center ${
-                        isActive ? 'text-[#07843D] font-extrabold' : 'text-slate-700 font-semibold'
-                      }`}
-                      style={{ fontSize: 11, lineHeight: 14 }}
-                      numberOfLines={2}
-                    >
-                      {cat}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+                      {/* Neat Typography */}
+                      <Text 
+                        className="mt-1.5 text-center text-slate-800 font-bold"
+                        style={{ fontSize: 11, lineHeight: 14 }}
+                        numberOfLines={2}
+                      >
+                        {cat}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
             </ScrollView>
           </View>
         )}
 
-        {/* 3. Daily Confirmation & AI Assistant Card */}
-        <View className="mx-3 mt-3.5 p-4 rounded-2xl bg-white border border-[#DFE9E1] shadow-sm flex-row items-center justify-between">
-          <View className="flex-1 mr-3">
-            <View className="flex-row items-center gap-1.5 mb-1">
-              <Zap size={15} color="#07843D" />
-              <Text className="text-sm font-extrabold text-[#07843D]">MORNING DELIVERY HUB</Text>
-            </View>
-            <Text className="text-sm font-bold text-slate-800">Fresh harvest ready for tomorrow morning 6:30 AM</Text>
-            <Text className="text-xs text-slate-500 mt-0.5">Pause or skip anytime with 1-click</Text>
+        {/* 3. Morning Delivery Hub - Premium Organic Hero Card */}
+        <View className="mx-3 mt-3.5 rounded-3xl overflow-hidden shadow-lg border border-emerald-500/30 relative">
+          {/* Rich Dual-Tone Emerald & Forest Gradient Background */}
+          <View className="absolute inset-0" pointerEvents="none">
+            <Svg width="100%" height="100%">
+              <Defs>
+                <SvgLinearGradient id="morningHubGrad" x1="0" y1="0" x2="1" y2="1">
+                  <Stop offset="0%" stopColor="#0A5C36" stopOpacity="1" />
+                  <Stop offset="55%" stopColor="#064426" stopOpacity="1" />
+                  <Stop offset="100%" stopColor="#032B18" stopOpacity="1" />
+                </SvgLinearGradient>
+              </Defs>
+              <Rect width="100%" height="100%" fill="url(#morningHubGrad)" />
+            </Svg>
           </View>
-          <TouchableOpacity
-            className="bg-emerald-700 px-4 py-2.5 rounded-xl flex-row items-center gap-1.5 shadow-sm active:bg-emerald-800"
-            onPress={() => setCustomerScreen('MY_SUBSCRIPTIONS')}
-            activeOpacity={0.8}
-          >
-            <Repeat size={14} color="#FFFFFF" />
-            <Text className="text-white text-sm font-bold">Manage Plan</Text>
-          </TouchableOpacity>
+
+          {/* Decorative Subtle Ambient Glow Orbs */}
+          <View 
+            className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-amber-400/15" 
+            pointerEvents="none" 
+          />
+          <View 
+            className="absolute -left-6 -bottom-6 w-28 h-28 rounded-full bg-emerald-300/10" 
+            pointerEvents="none" 
+          />
+
+          <View className="p-4 relative z-10">
+            {/* Header Badge Row */}
+            <View className="flex-row items-center justify-between mb-2">
+              <View className="flex-row items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 border border-white/20">
+                <Sunrise size={14} color="#FDE047" strokeWidth={2.4} />
+                <Text className="text-[11px] font-black text-amber-300 tracking-wider uppercase">
+                  MORNING DELIVERY HUB
+                </Text>
+              </View>
+
+              {/* Status Indicator Pill */}
+              <View className="flex-row items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/60 border border-emerald-400/30">
+                <View className="w-2 h-2 rounded-full bg-emerald-400" />
+                <Text className="text-[11px] font-extrabold text-emerald-200">
+                  6:30 AM Drop
+                </Text>
+              </View>
+            </View>
+
+            {/* Headline and Description */}
+            <Text className="text-base font-black text-white leading-tight">
+              Fresh Harvest Ready for Tomorrow
+            </Text>
+            <Text className="text-xs text-emerald-100/90 font-medium mt-1 leading-4">
+              Punctual morning farm drop at your doorstep • Pause or skip anytime with 1-click
+            </Text>
+
+            {/* Bottom Row: Feature Badges & High-Contrast Golden Action Button */}
+            <View className="flex-row items-center justify-between mt-3 pt-2.5 border-t border-white/15">
+              <View className="flex-row items-center gap-2">
+                <View className="flex-row items-center gap-1">
+                  <CheckCircle2 size={13} color="#6EE7B7" strokeWidth={2.5} />
+                  <Text className="text-[11px] font-bold text-emerald-100">100% Organic</Text>
+                </View>
+                <Text className="text-white/30">•</Text>
+                <View className="flex-row items-center gap-1">
+                  <Clock size={13} color="#FDE047" strokeWidth={2.5} />
+                  <Text className="text-[11px] font-bold text-amber-200">Daily Punctual</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                className="bg-[#F2C500] px-3.5 py-2 rounded-xl flex-row items-center gap-1.5 shadow-md active:bg-[#D9B200]"
+                onPress={() => setCustomerScreen('MY_SUBSCRIPTIONS')}
+                activeOpacity={0.85}
+              >
+                <Repeat size={13} color="#18352B" strokeWidth={2.5} />
+                <Text className="text-[#18352B] text-xs font-black">Manage Plan →</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
 
         {/* 4. Verified Farm Products Section */}
@@ -357,7 +460,7 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
             {products.slice(0, 8).map((product) => renderProductCard(product))}
           </View>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 };

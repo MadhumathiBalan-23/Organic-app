@@ -28,6 +28,7 @@ export interface OrderHistoryRecord {
   paymentStatus: string;
   deliveryStatus: string;
   deliveryOtp?: string;
+  vendorName?: string;
   items?: any[];
 }
 
@@ -170,6 +171,14 @@ export const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({
                       </Text>
                     </View>
                   </View>
+
+                  {order.vendorName ? (
+                    <View className="flex-row items-center gap-1 mt-1 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 self-start">
+                      <Text className="text-3xs font-bold text-emerald-800">
+                        🌱 Farm: {order.vendorName}
+                      </Text>
+                    </View>
+                  ) : null}
 
                   <Text className="font-extrabold text-slate-900 mt-1" style={{ fontSize: 14 }}>
                     ₹{order.amount}

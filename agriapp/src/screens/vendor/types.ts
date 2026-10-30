@@ -71,10 +71,15 @@ export interface VendorScreensProps {
 }
 
 export interface VendorProfile {
+  id?: string;
+  businessName?: string;
   farmName?: string;
   farmLocation?: string;
   cropCategories?: string;
   userName?: string;
+  phoneNumber?: string;
+  address?: string;
+  rating?: number;
 }
 
 export interface VendorHarvestItem {

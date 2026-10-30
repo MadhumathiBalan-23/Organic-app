@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Clock, Calendar, Package, Sprout } from 'lucide-react-native';
 import { SubscriptionButton } from '../../components/SubscriptionButton';
+import { subscriptionService } from '../../services';
 import { theme } from '../../theme';
 
 export interface MySubscriptionsScreenProps {
@@ -24,15 +25,20 @@ export const MySubscriptionsScreen: React.FC<MySubscriptionsScreenProps> = ({
 }) => {
   const [subTab, setSubTab] = useState<'Active' | 'History'>('Active');
 
-  const handlePause = (id: string) => {
+  const handlePause = async (id: string) => {
     onUpdateSubscriptions(
       subscriptions.map((s: any) =>
         s.id === id ? { ...s, status: s.status === 'Active' ? 'Paused' : 'Active' } : s
       )
     );
+    try {
+      await subscriptionService.togglePause(id);
+    } catch (err: any) {
+      console.warn('Could not update pause status in DB:', err.message);
+    }
   };
 
-  const handleSkip = (id: string) => {
+  const handleSkip = async (id: string) => {
     const today = new Date().toISOString().split('T')[0];
     onUpdateSubscriptions(
       subscriptions.map((s: any) => {
@@ -46,6 +52,11 @@ export const MySubscriptionsScreen: React.FC<MySubscriptionsScreenProps> = ({
         };
       })
     );
+    try {
+      await subscriptionService.skipDate(id, today);
+    } catch (err: any) {
+      console.warn('Could not update skip date in DB:', err.message);
+    }
   };
 
   const handleCancel = (id: string) => {
@@ -54,7 +65,14 @@ export const MySubscriptionsScreen: React.FC<MySubscriptionsScreenProps> = ({
       {
         text: 'Yes, Cancel',
         style: 'destructive',
-        onPress: () => onUpdateSubscriptions(subscriptions.filter((s: any) => s.id !== id)),
+        onPress: async () => {
+          onUpdateSubscriptions(subscriptions.filter((s: any) => s.id !== id));
+          try {
+            await subscriptionService.deleteSubscription(id);
+          } catch (err: any) {
+            console.warn('Could not delete subscription from DB:', err.message);
+          }
+        },
       },
     ]);
   };

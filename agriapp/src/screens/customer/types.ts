@@ -4,6 +4,9 @@ import { Product } from '../../constants/mockData';
 export type CustomerScreenKey =
   | 'HOME'
   | 'ALL_PRODUCTS'
+  | 'CATEGORY_PRODUCTS'
+  | 'CATEGORY_VENDOR_DISCOVERY'
+  | 'VENDOR_STORE'
   | 'PRODUCT_DETAILS'
   | 'CART'
   | 'CHECKOUT'
@@ -53,4 +56,5 @@ export interface CustomerScreensProps {
   selectedLocation?: LocationData | null;
   onChangeLocation?: () => void;
   onBannerThemeChange?: (color: string) => void;
+  scrollY?: any;
 }

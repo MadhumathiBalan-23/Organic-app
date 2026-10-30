@@ -91,51 +91,73 @@ export const VendorPortalScreen: React.FC<VendorScreensProps> = ({
 
     const cleanPhone = (userPhone || '').replace(/[^0-9]/g, '');
     if (cleanPhone.length === 10) {
-      fetch(API_ENDPOINTS.vendorStatus(cleanPhone))
+      // 1. Fetch authenticated Vendor profile
+      fetch(API_ENDPOINTS.vendorByPhone(cleanPhone))
         .then((res) => res.json())
         .then((json) => {
-          if (isMounted && json.success && json.request) {
+          if (isMounted && json.success && json.data) {
             setVendorProfile({
-              farmName: json.request.farmName,
-              farmLocation: json.request.farmLocation,
-              cropCategories: json.request.cropCategories,
-              userName: json.request.userName,
+              farmName: json.data.businessName || 'Organic Farm',
+              farmLocation: json.data.address || 'Tamil Nadu',
+              cropCategories: 'Fresh Organic Produce & Dairy',
+              userName: json.data.ownerName || 'Partner Farmer',
             });
+          } else {
+            fetch(API_ENDPOINTS.vendorStatus(cleanPhone))
+              .then((r) => r.json())
+              .then((statusJson) => {
+                if (isMounted && statusJson.success && statusJson.request) {
+                  setVendorProfile({
+                    farmName: statusJson.request.farmName,
+                    farmLocation: statusJson.request.farmLocation,
+                    cropCategories: statusJson.request.cropCategories,
+                    userName: statusJson.request.userName,
+                  });
+                }
+              })
+              .catch(() => {});
           }
         })
         .catch(() => {});
     }
 
+    // 2. Fetch ONLY products belonging to this vendor
     const prodUrl = cleanPhone ? API_ENDPOINTS.vendorProducts(cleanPhone) : API_ENDPOINTS.products;
     fetch(prodUrl)
       .then((res) => res.json())
       .then((json) => {
         if (isMounted && json.success && Array.isArray(json.data)) {
-          if (json.data.length > 0) {
-            const sanitized = json.data.map((p: any) => ({
-              ...p,
-              category: getCategoryName(p.category || p.categoryName),
-            }));
-            setProductList(sanitized);
-          } else if (cleanPhone) {
-            fetch(API_ENDPOINTS.products)
-              .then((r) => r.json())
-              .then((genJson) => {
-                if (isMounted && genJson.success && Array.isArray(genJson.data)) {
-                  setProductList(genJson.data.map((p: any) => ({ ...p, category: getCategoryName(p.category || p.categoryName) })));
-                }
-              })
-              .catch(() => {});
-          }
+          const sanitized = json.data.map((p: any) => ({
+            ...p,
+            category: getCategoryName(p.category || p.categoryName),
+          }));
+          setProductList(sanitized);
         }
       })
       .catch(() => {});
 
-    fetch(API_ENDPOINTS.deliveries)
+    // 3. Fetch ONLY orders belonging to this vendor
+    const ordersUrl = cleanPhone ? API_ENDPOINTS.vendorOrders(cleanPhone) : API_ENDPOINTS.orders;
+    fetch(ordersUrl)
       .then((res) => res.json())
       .then((json) => {
         if (isMounted && json.success && Array.isArray(json.data)) {
-          setDeliveriesList(json.data);
+          const mapped = json.data.map((o: any) => ({
+            id: o.id,
+            customerName: o.customerName || 'Customer',
+            customerPhone: o.customerPhone,
+            address: o.deliveryAddress,
+            totalAmount: o.totalAmount,
+            amount: o.totalAmount,
+            status: o.deliveryStatus === 'PENDING_CONFIRMATION' ? 'Pending' : (o.deliveryStatus || 'Pending'),
+            deliveryTime: o.deliverySlot || 'Standard Delivery',
+            products: o.items && o.items.length > 0
+              ? o.items.map((it: any) => `${it.product?.name || 'Item'} ×${it.quantity}`).join(', ')
+              : 'Organic Harvest',
+            items: o.items || [],
+            createdAt: o.createdAt
+          }));
+          setDeliveriesList(mapped);
         }
       })
       .catch(() => {});
@@ -266,10 +288,10 @@ export const VendorPortalScreen: React.FC<VendorScreensProps> = ({
       })
     );
     try {
-      await fetch(`${API_ENDPOINTS.deliveries}/${orderId}`, {
+      await fetch(`${API_ENDPOINTS.orders}/${orderId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: newStatus, vendorId: userPhone }),
       });
     } catch {}
     triggerRefresh();
@@ -288,12 +310,14 @@ export const VendorPortalScreen: React.FC<VendorScreensProps> = ({
       )
     );
     try {
-      await fetch(`${API_ENDPOINTS.deliveries}/${orderId}`, {
+      await fetch(`${API_ENDPOINTS.orders}/${orderId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: 'Accepted',
+          deliveryStatus: 'ACCEPTED',
           estimatedPrepMinutes: prepTime,
+          vendorId: userPhone,
         }),
       });
     } catch {}
@@ -313,12 +337,14 @@ export const VendorPortalScreen: React.FC<VendorScreensProps> = ({
       )
     );
     try {
-      await fetch(`${API_ENDPOINTS.deliveries}/${orderId}`, {
+      await fetch(`${API_ENDPOINTS.orders}/${orderId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: 'Rejected',
+          deliveryStatus: 'CANCELLED',
           rejectionReason: reason,
+          vendorId: userPhone,
         }),
       });
     } catch {}
@@ -407,6 +433,7 @@ export const VendorPortalScreen: React.FC<VendorScreensProps> = ({
         visible={isAddModalOpen}
         onClose={() => setModalOpen(false)}
         userPhone={userPhone}
+        vendorId={vendorProfile?.id}
         onSuccess={(newCrop) => {
           setProductList((prev) => [newCrop, ...prev]);
           triggerRefresh();

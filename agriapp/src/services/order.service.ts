@@ -4,6 +4,16 @@ import axios from 'axios';
 
 export interface OrderItem {
   id: string;
+  vendorId?: string;
+  vendorName?: string;
+  vendor?: {
+    id: string;
+    businessName: string;
+    ownerName?: string;
+    phoneNumber?: string;
+    address?: string;
+    rating?: number;
+  };
   customerName?: string;
   customerPhone?: string;
   phoneNumber?: string;
@@ -34,6 +44,17 @@ export const orderService = {
       return extractDataList<OrderItem>(res.data);
     } catch (err: any) {
       console.warn('⚠️ [OrderService.getOrders] Error:', err.message);
+      return [];
+    }
+  },
+
+  // Fetch orders for a specific vendor
+  getVendorOrders: async (vendorId: string): Promise<OrderItem[]> => {
+    try {
+      const res = await axios.get(API_ENDPOINTS.vendorOrders(vendorId), { timeout: 12000 });
+      return extractDataList<OrderItem>(res.data);
+    } catch (err: any) {
+      console.warn('⚠️ [OrderService.getVendorOrders] Error:', err.message);
       return [];
     }
   },

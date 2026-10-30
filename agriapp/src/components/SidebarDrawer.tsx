@@ -8,7 +8,7 @@ import {
   X, LayoutDashboard, ShoppingBag, Tags, Sprout, Users,
   Package, FileText, Store, Calendar, Wallet, Home,
   RefreshCw, User, MessageSquare, PhoneCall, LogOut, ChevronRight, MonitorCog,
-  Sparkles
+  Sparkles, Smartphone
 } from 'lucide-react-native';
 import { UserRole } from './RoleHeader';
 
@@ -51,6 +51,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
     { key: 'customers', label: 'Customers', badge: 'VIP', icon: <Users size={16} /> },
     { key: 'orders', label: 'Orders', badge: 'Live', icon: <Package size={16} /> },
     { key: 'logs', label: 'System Logs', icon: <FileText size={16} /> },
+    { key: 'DEVICES', label: 'Trusted Devices', icon: <Smartphone size={16} /> },
     { key: 'CUSTOMER_SWITCH', label: 'View Customer Market', badge: 'STORE', icon: <Home size={16} /> },
   ];
 
@@ -60,6 +61,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
     { key: 'orders', label: 'Orders Dispatch', badge: '3', icon: <Package size={16} /> },
     { key: 'harvests', label: 'Harvest Tracker', icon: <Calendar size={16} /> },
     { key: 'payouts', label: 'Payouts', badge: '₹48K', icon: <Wallet size={16} /> },
+    { key: 'DEVICES', label: 'Trusted Devices', icon: <Smartphone size={16} /> },
     { key: 'CUSTOMER_SWITCH', label: 'Back to Customer Market', badge: 'STORE', icon: <Home size={16} /> },
   ];
 
@@ -71,6 +73,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
       { key: 'MY_SUBSCRIPTIONS', label: 'Subscriptions', badge: 'Active', icon: <RefreshCw size={16} /> },
       { key: 'ORDER_HISTORY', label: 'My Orders', icon: <FileText size={16} /> },
       { key: 'PROFILE', label: 'My Profile', icon: <User size={16} /> },
+      { key: 'DEVICES', label: 'Trusted Devices', icon: <Smartphone size={16} /> },
     ];
 
     // Admin Console & CMS direct switch inside the app

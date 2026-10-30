@@ -32,7 +32,8 @@
         {
           "locationWhenInUsePermission": "Allow Mathira Organic Farming to access your location to discover nearby organic vendors and calculate delivery charges."
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "extra": {
       "eas": {

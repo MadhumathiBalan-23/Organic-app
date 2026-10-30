@@ -404,44 +404,45 @@ export const AdminBannersScreen: React.FC = () => {
 
               {/* Banner Card Preview in List */}
               <View
-                className="h-28 rounded-2xl overflow-hidden p-3 relative flex-row items-center justify-between"
+                className="h-28 rounded-2xl overflow-hidden relative shadow-sm"
                 style={{ backgroundColor: bGrad.dark }}
               >
-                <View className="absolute inset-0" pointerEvents="none">
-                  <Svg width="100%" height="100%">
-                    <Defs>
-                      <SvgLinearGradient id={`cardGrad_${b.id}`} x1="0" y1="0" x2="1" y2="1">
-                        <Stop offset="0%" stopColor={bGrad.dark} stopOpacity="1" />
-                        <Stop offset="100%" stopColor={bGrad.light} stopOpacity="1" />
-                      </SvgLinearGradient>
-                    </Defs>
-                    <Rect width="100%" height="100%" fill={`url(#cardGrad_${b.id})`} />
-                  </Svg>
-                </View>
-
-                <View className="flex-1 mr-3 z-10">
-                  <Text className="text-sm font-black text-white" numberOfLines={1}>
-                    {b.title}
-                  </Text>
-                  {b.subtitle ? (
-                    <Text className="text-xs text-white/85 mt-0.5" numberOfLines={1}>
-                      {b.subtitle}
-                    </Text>
-                  ) : null}
-                  <View className="self-start mt-2 px-2 py-0.5 rounded bg-white/20">
-                    <Text className="text-2xs font-bold text-white">
-                      {b.buttonText || 'Shop Now →'}
-                    </Text>
-                  </View>
-                </View>
-
                 {b.imageUrl ? (
                   <Image
                     source={{ uri: b.imageUrl }}
-                    className="w-20 h-20 rounded-xl border border-white/40 z-10"
+                    className="w-full h-full"
                     resizeMode="cover"
                   />
-                ) : null}
+                ) : (
+                  <View className="w-full h-full p-3 justify-between">
+                    <View className="absolute inset-0" pointerEvents="none">
+                      <Svg width="100%" height="100%">
+                        <Defs>
+                          <SvgLinearGradient id={`cardGrad_${b.id}`} x1="0" y1="0" x2="1" y2="1">
+                            <Stop offset="0%" stopColor={bGrad.dark} stopOpacity="1" />
+                            <Stop offset="100%" stopColor={bGrad.light} stopOpacity="1" />
+                          </SvgLinearGradient>
+                        </Defs>
+                        <Rect width="100%" height="100%" fill={`url(#cardGrad_${b.id})`} />
+                      </Svg>
+                    </View>
+                    <View className="z-10">
+                      <Text className="text-sm font-black text-white" numberOfLines={1}>
+                        {b.title}
+                      </Text>
+                      {b.subtitle ? (
+                        <Text className="text-xs text-white/85 mt-0.5" numberOfLines={1}>
+                          {b.subtitle}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <View className="self-start px-2 py-0.5 rounded bg-white/20 z-10">
+                      <Text className="text-2xs font-bold text-white">
+                        {b.buttonText || 'Shop Now →'}
+                      </Text>
+                    </View>
+                  </View>
+                )}
               </View>
 
               {/* Actions */}
@@ -530,57 +531,56 @@ export const AdminBannersScreen: React.FC = () => {
 
                 {/* Banner Container with Dynamic Background Color */}
                 <View
-                  className="h-36 rounded-2xl overflow-hidden relative shadow-sm border border-slate-300 flex-row"
+                  className="h-36 rounded-2xl overflow-hidden relative shadow-sm border border-slate-300"
                   style={{ backgroundColor: form.topColor || '#02381A' }}
                 >
-                  {/* SVG Gradient Background Layer */}
-                  <View className="absolute inset-0" pointerEvents="none">
-                    <Svg width="100%" height="100%">
-                      <Defs>
-                        <SvgLinearGradient id="neatLiveGrad" x1="0" y1="0" x2="1" y2="1">
-                          <Stop offset="0%" stopColor={form.topColor || '#02381A'} stopOpacity="1" />
-                          <Stop offset="100%" stopColor={form.bottomColor || '#15803D'} stopOpacity="1" />
-                        </SvgLinearGradient>
-                      </Defs>
-                      <Rect width="100%" height="100%" fill="url(#neatLiveGrad)" />
-                    </Svg>
-                  </View>
-
-                  {/* Left Side: Headline & Button */}
-                  <View className="flex-1 p-3.5 justify-between z-10">
-                    <View>
-                      <View className="self-start bg-white/20 px-2 py-0.5 rounded mb-1">
-                        <Text className="text-2xs font-black text-white uppercase tracking-wider">
-                          {form.isActive ? '🌿 CERTIFIED ORGANIC' : 'HIDDEN DRAFT'}
-                        </Text>
-                      </View>
-                      <Text className="text-base font-black text-white shadow-sm" numberOfLines={1}>
-                        {form.title || 'Banner Title Goes Here 🌿'}
-                      </Text>
-                      {form.subtitle ? (
-                        <Text className="text-xs text-white/90 font-medium mt-0.5" numberOfLines={1}>
-                          {form.subtitle}
-                        </Text>
-                      ) : null}
-                    </View>
-
-                    <View className="self-start px-3 py-1.5 rounded-lg bg-[#FDE047] shadow-sm">
-                      <Text className="text-xs font-black text-[#78350F]">
-                        {form.buttonText || 'Shop Now →'}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Right Side: Featured Photo (if selected) */}
                   {form.imageUrl ? (
-                    <View className="w-32 h-full p-2 z-10 justify-center">
-                      <Image
-                        source={{ uri: form.imageUrl }}
-                        className="w-full h-full rounded-xl border border-white/40 shadow-sm"
-                        resizeMode="cover"
-                      />
-                    </View>
-                  ) : null}
+                    <Image
+                      source={{ uri: form.imageUrl }}
+                      className="w-full h-full"
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <>
+                      {/* SVG Gradient Background Layer */}
+                      <View className="absolute inset-0" pointerEvents="none">
+                        <Svg width="100%" height="100%">
+                          <Defs>
+                            <SvgLinearGradient id="neatLiveGrad" x1="0" y1="0" x2="1" y2="1">
+                              <Stop offset="0%" stopColor={form.topColor || '#02381A'} stopOpacity="1" />
+                              <Stop offset="100%" stopColor={form.bottomColor || '#15803D'} stopOpacity="1" />
+                            </SvgLinearGradient>
+                          </Defs>
+                          <Rect width="100%" height="100%" fill="url(#neatLiveGrad)" />
+                        </Svg>
+                      </View>
+
+                      {/* Headline & Button */}
+                      <View className="flex-1 p-3.5 justify-between z-10">
+                        <View>
+                          <View className="self-start bg-white/20 px-2 py-0.5 rounded mb-1">
+                            <Text className="text-2xs font-black text-white uppercase tracking-wider">
+                              {form.isActive ? '🌿 CERTIFIED ORGANIC' : 'HIDDEN DRAFT'}
+                            </Text>
+                          </View>
+                          <Text className="text-base font-black text-white shadow-sm" numberOfLines={1}>
+                            {form.title || 'Banner Title Goes Here 🌿'}
+                          </Text>
+                          {form.subtitle ? (
+                            <Text className="text-xs text-white/90 font-medium mt-0.5" numberOfLines={1}>
+                              {form.subtitle}
+                            </Text>
+                          ) : null}
+                        </View>
+
+                        <View className="self-start px-3 py-1.5 rounded-lg bg-[#FDE047] shadow-sm">
+                          <Text className="text-xs font-black text-[#78350F]">
+                            {form.buttonText || 'Shop Now →'}
+                          </Text>
+                        </View>
+                      </View>
+                    </>
+                  )}
                 </View>
               </View>
 

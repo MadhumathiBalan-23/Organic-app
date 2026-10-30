@@ -342,23 +342,51 @@ export const LocationSelectionScreen: React.FC<LocationSelectionScreenProps> = (
               <View className="flex-1">
                 <Text className="text-xs font-semibold text-red-700 leading-4">{errorMessage}</Text>
                 {settingsRequired && (
-                  <View className="flex-row items-center gap-2 mt-2">
-                    <TouchableOpacity
-                      className="flex-row items-center bg-red-600 px-2.5 py-1.5 rounded-lg gap-1"
-                      onPress={handleOpenSettings}
-                      activeOpacity={0.8}
-                    >
-                      <Settings size={14} color="#FFFFFF" />
-                      <Text className="text-white text-xs font-bold">Open Phone Settings</Text>
-                    </TouchableOpacity>
+                  <View className="mt-2.5 gap-2">
+                    <View className="flex-row items-center gap-2">
+                      <TouchableOpacity
+                        className="flex-row items-center bg-red-600 px-3 py-1.5 rounded-lg gap-1"
+                        onPress={handleOpenSettings}
+                        activeOpacity={0.8}
+                      >
+                        <Settings size={14} color="#FFFFFF" />
+                        <Text className="text-white text-xs font-bold">Open Phone Settings</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        className="flex-row items-center bg-white border border-emerald-700 px-3 py-1.5 rounded-lg gap-1"
+                        onPress={handleUseCurrentLocation}
+                        activeOpacity={0.8}
+                      >
+                        <RotateCcw size={14} color="#047857" />
+                        <Text className="text-emerald-700 text-xs font-bold">Retry GPS</Text>
+                      </TouchableOpacity>
+                    </View>
 
                     <TouchableOpacity
-                      className="flex-row items-center bg-white border border-emerald-700 px-2.5 py-1.5 rounded-lg gap-1"
-                      onPress={handleUseCurrentLocation}
+                      className="bg-emerald-100 border border-emerald-300 py-2 px-3 rounded-xl flex-row items-center justify-between"
+                      onPress={() => {
+                        setErrorMessage(null);
+                        setSelectedArea({
+                          success: true,
+                          latitude: 11.5908,
+                          longitude: 77.6329,
+                          areaLabel: 'Nerunjipettai, Anthiyur, Tamil Nadu',
+                          city: 'Anthiyur',
+                          state: 'Tamil Nadu',
+                          pincode: '638311',
+                          isGpsVerified: false,
+                        });
+                      }}
                       activeOpacity={0.8}
                     >
-                      <RotateCcw size={14} color="#047857" />
-                      <Text className="text-emerald-700 text-xs font-bold">Retry GPS</Text>
+                      <View className="flex-row items-center gap-1.5">
+                        <MapPin size={14} color="#047857" />
+                        <Text className="text-xs font-bold text-emerald-800">
+                          Use Default: Nerunjipettai, Anthiyur
+                        </Text>
+                      </View>
+                      <ArrowRight size={14} color="#047857" />
                     </TouchableOpacity>
                   </View>
                 )}
@@ -513,6 +541,44 @@ export const LocationSelectionScreen: React.FC<LocationSelectionScreenProps> = (
             )}
           </View>
         )}
+
+        {/* Quick Popular Delivery Hubs */}
+        <View className="mb-4">
+          <Text className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Popular Delivery Areas</Text>
+          <View className="flex-row flex-wrap gap-2">
+            {[
+              { label: 'Nerunjipettai, Anthiyur', lat: 11.5908, lng: 77.6329, city: 'Anthiyur', pincode: '638311' },
+              { label: 'Perundurai, Erode', lat: 11.2741, lng: 77.5828, city: 'Perundurai', pincode: '638052' },
+              { label: 'Gobichettipalayam', lat: 11.4552, lng: 77.4332, city: 'Gobi', pincode: '638452' },
+            ].map((loc, idx) => (
+              <TouchableOpacity
+                key={idx}
+                onPress={() => {
+                  setErrorMessage(null);
+                  setSelectedArea({
+                    success: true,
+                    latitude: loc.lat,
+                    longitude: loc.lng,
+                    areaLabel: `${loc.label}, Tamil Nadu`,
+                    city: loc.city,
+                    state: 'Tamil Nadu',
+                    pincode: loc.pincode,
+                    isGpsVerified: false,
+                  });
+                }}
+                className={`py-2 px-3 rounded-xl border flex-row items-center gap-1.5 ${
+                  selectedArea?.areaLabel?.includes(loc.city)
+                    ? 'bg-emerald-100 border-emerald-500'
+                    : 'bg-slate-50 border-slate-200'
+                }`}
+                activeOpacity={0.8}
+              >
+                <MapPin size={13} color="#059669" />
+                <Text className="text-xs font-semibold text-slate-800">{loc.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
 
         {/* Continue Button */}
         <TouchableOpacity

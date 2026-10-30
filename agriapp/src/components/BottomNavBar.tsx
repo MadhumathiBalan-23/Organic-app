@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Home, ShoppingBag, LayoutGrid, Calendar, User, Store } from 'lucide-react-native';
+import { Home, LayoutGrid, User, Store } from 'lucide-react-native';
 
 interface BottomNavBarProps {
   currentScreen: string;
@@ -21,16 +21,10 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
   const insets = useSafeAreaInsets();
   const bottomPadding = Math.max(insets.bottom, 6);
 
-  // Standard customer tabs:
-  // 1. Home, 2. Order Again, 3. Categories, 4. Plans, 5. Profile
-  // IF and ONLY IF this particular logged-in number is an approved vendor:
-  // Show the Vendor menu item directly in the bottom navigation bar!
-  // Any other number will NOT see this vendor menu.
+  // Clean customer tabs: Home, Categories, Vendor (if approved), Profile
   const navItems = [
     { key: 'HOME', label: 'Home', Icon: Home, isVendorAction: false },
-    { key: 'ORDER_HISTORY', label: 'Order Again', Icon: ShoppingBag, isVendorAction: false },
     { key: 'ALL_PRODUCTS', label: 'Categories', Icon: LayoutGrid, isVendorAction: false },
-    { key: 'MY_SUBSCRIPTIONS', label: 'Plans', Icon: Calendar, isVendorAction: false },
     ...(isApprovedVendor
       ? [{ key: 'VENDOR', label: 'Vendor', Icon: Store, isVendorAction: true }]
       : []),
@@ -62,19 +56,17 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
             accessibilityLabel={item.label}
           >
             {item.isVendorAction && isSwitchingToVendor ? (
-              <ActivityIndicator size="small" color="#047857" style={{ height: 22, width: 22 }} />
+              <ActivityIndicator size="small" color="#07843D" style={{ height: 22, width: 22 }} />
             ) : (
               <item.Icon 
                 size={22} 
-                color={item.isVendorAction ? '#047857' : isActive ? '#07843D' : '#718078'} 
-                strokeWidth={item.isVendorAction || isActive ? 2.4 : 1.8}
+                color={isActive ? '#07843D' : '#718078'} 
+                strokeWidth={isActive ? 2.4 : 1.8}
               />
             )}
             <Text 
               className={`mt-0.5 tracking-tight ${
-                item.isVendorAction 
-                  ? 'text-[#047857] font-bold' 
-                  : isActive 
+                isActive 
                   ? 'text-[#07843D] font-bold' 
                   : 'text-[#718078] font-medium'
               }`}
@@ -83,12 +75,6 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
             >
               {item.label}
             </Text>
-            {item.isVendorAction && (
-              <View className="w-1.5 h-1.5 rounded-full bg-[#047857] mt-0.5" />
-            )}
-            {!item.isVendorAction && isActive && (
-              <View className="w-1.5 h-1.5 rounded-full bg-[#07843D] mt-0.5" />
-            )}
           </TouchableOpacity>
         );
       })}

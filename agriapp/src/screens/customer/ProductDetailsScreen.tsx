@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Image,
   Alert,
+  Platform,
 } from 'react-native';
 import {
   Heart,
@@ -22,7 +23,10 @@ import {
   Repeat,
   Store,
   MapPin,
+  Plus,
+  Minus,
 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Product } from '../../constants/mockData';
 import { SubscriptionButton } from '../../components/SubscriptionButton';
 import { safeCategory } from '../../services/api.client';
@@ -50,6 +54,7 @@ export const ProductDetailsScreen: React.FC<ProductDetailsScreenProps> = ({
   onStartSubscription,
   selectedLocation,
 }) => {
+  const insets = useSafeAreaInsets();
   const [detailQty, setDetailQty] = useState(1);
 
   const origPrice = (product as any).originalPrice || Math.round(product.price * 1.25);
@@ -60,12 +65,17 @@ export const ProductDetailsScreen: React.FC<ProductDetailsScreenProps> = ({
     selectedLocation?.city ||
     (selectedLocation?.address ? selectedLocation.address.split(',')[0].trim() : 'Local Area');
   const vendorName =
+    product.vendor?.businessName ||
+    product.vendorName ||
     (product as any).farmerName ||
     (product as any).farmName ||
     (product as any).brand ||
-    'Jeena Organic Farm';
+    'Certified Organic Partner';
   const vendorLocation =
-    (product as any).farmerLocation || `${customerCity} Organic Cluster`;
+    product.vendor?.address ||
+    product.vendorAddress ||
+    (product as any).farmerLocation ||
+    `${customerCity} Organic Cluster`;
   const certNumber =
     (product as any).certificationNumber || (product as any).certificateNo || 'TN-ORG-4821';
 
@@ -75,38 +85,14 @@ export const ProductDetailsScreen: React.FC<ProductDetailsScreenProps> = ({
 
   return (
     <View className="flex-1 bg-slate-50">
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
-        {/* 1. Elevated Hero Media & Floating Actions */}
-        <View className="relative w-full h-80 bg-slate-900">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 130 }}>
+        {/* 1. Elevated Hero Media (Balanced Height for Optimal Product Visibility) */}
+        <View className="relative w-full h-[320px] bg-slate-900">
           <Image
             source={{ uri: product.imageUrl || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80' }}
             className="w-full h-full"
             resizeMode="cover"
           />
-
-          {/* Top Floating Action Buttons (Favorite & Share on top-right) */}
-          <View className="absolute top-3.5 right-3.5 flex-row gap-2 z-10">
-            <TouchableOpacity
-              className="w-9 h-9 rounded-full bg-white/90 items-center justify-center shadow-sm"
-              onPress={() => onToggleFavorite(product.id)}
-              activeOpacity={0.8}
-              accessibilityLabel="Favorite"
-            >
-              <Heart
-                size={18}
-                color={isFavorite ? '#EF4444' : '#0F172A'}
-                fill={isFavorite ? '#EF4444' : 'transparent'}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              className="w-9 h-9 rounded-full bg-white/90 items-center justify-center shadow-sm"
-              onPress={() => Alert.alert('Share Product', `Share link copied for ${product.name}!`)}
-              activeOpacity={0.8}
-              accessibilityLabel="Share"
-            >
-              <Share2 size={16} color="#0F172A" />
-            </TouchableOpacity>
-          </View>
 
           {/* Ambient Badges Floating at bottom of Hero */}
           <View className="absolute bottom-4 left-4 right-4 flex-row justify-between items-center">
@@ -130,7 +116,7 @@ export const ProductDetailsScreen: React.FC<ProductDetailsScreenProps> = ({
         </View>
 
         {/* 2. Main Product Identity & Pricing Card */}
-        <View className="p-5 bg-white -mt-6 rounded-t-3xl shadow-sm">
+        <View className="p-5 bg-white -mt-4 rounded-t-3xl shadow-sm">
           {/* Category tag & Rating Pill */}
           <View className="flex-row justify-between items-center mb-2.5">
             <View className="bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
@@ -153,117 +139,143 @@ export const ProductDetailsScreen: React.FC<ProductDetailsScreenProps> = ({
             {product.name}
           </Text>
 
-          {/* Price & Savings Row */}
-          <View className="flex-row items-baseline gap-2 mb-3.5">
-            <Text className="font-extrabold text-slate-900" style={{ fontSize: 22 }}>
-              ₹{product.price}
-            </Text>
-            <Text className="text-xs text-slate-500 font-semibold">/ {product.unit}</Text>
-            {origPrice > product.price && (
-              <Text className="text-xs text-slate-400 line-through">₹{origPrice}</Text>
-            )}
-            {savings > 0 && (
-              <View className="bg-emerald-100 px-2 py-0.5 rounded-md">
-                <Text className="text-emerald-800 font-bold" style={{ fontSize: 11 }}>
-                  Save ₹{savings}
-                </Text>
-              </View>
-            )}
+          {/* Price & Actions Row (Price on Left, Heart + Share on the Right) */}
+          <View className="flex-row items-center justify-between mb-3.5">
+            {/* Left: Price & Savings */}
+            <View className="flex-row items-baseline gap-2">
+              <Text className="font-extrabold text-slate-900" style={{ fontSize: 24 }}>
+                ₹{product.price}
+              </Text>
+              <Text className="text-xs text-slate-500 font-semibold">/ {product.unit}</Text>
+              {origPrice > product.price && (
+                <Text className="text-xs text-slate-400 line-through">₹{origPrice}</Text>
+              )}
+              {savings > 0 && (
+                <View className="bg-emerald-100 px-2 py-0.5 rounded-md">
+                  <Text className="text-emerald-800 font-bold" style={{ fontSize: 11 }}>
+                    Save ₹{savings}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Right: Heart (Favorite) & Share Action Buttons */}
+            <View className="flex-row items-center gap-2">
+              <TouchableOpacity
+                className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 items-center justify-center shadow-xs"
+                onPress={() => onToggleFavorite(product.id)}
+                activeOpacity={0.8}
+                accessibilityLabel="Favorite"
+              >
+                <Heart
+                  size={19}
+                  color={isFavorite ? '#EF4444' : '#334155'}
+                  fill={isFavorite ? '#EF4444' : 'transparent'}
+                  strokeWidth={2.2}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 items-center justify-center shadow-xs"
+                onPress={() => Alert.alert('Share Product', `Share link copied for ${product.name}!`)}
+                activeOpacity={0.8}
+                accessibilityLabel="Share"
+              >
+                <Share2 size={17} color="#334155" strokeWidth={2.2} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* 3. Express Farm Delivery Banner */}
-          <View className="flex-row items-center bg-emerald-50/60 border border-emerald-200 rounded-2xl p-3.5 gap-3 mb-4">
-            <View className="w-10 h-10 rounded-xl bg-white border border-emerald-200 items-center justify-center shadow-sm">
-              <Zap size={20} color="#16A34A" fill="#16A34A" />
+          <View className="flex-row items-center bg-emerald-50/60 border border-emerald-200 rounded-2xl p-3 gap-2.5 mb-4">
+            <View className="w-9 h-9 rounded-xl bg-white border border-emerald-200 items-center justify-center shadow-xs shrink-0">
+              <Zap size={18} color="#16A34A" fill="#16A34A" />
             </View>
-            <View className="flex-1">
-              <Text className="text-sm font-bold text-slate-900">Express Delivery in 15–20 Mins</Text>
-              <Text className="text-xs text-slate-500 mt-0.5">Direct cold-chain transit · Harvested fresh daily</Text>
+            <View className="flex-1 mr-1">
+              <Text className="text-[13px] font-bold text-slate-900" numberOfLines={1}>
+                Express Delivery in 15–20 Mins
+              </Text>
             </View>
-            <View className="flex-row items-center gap-1 bg-white px-2.5 py-1 rounded-md border border-emerald-200">
+            <View className="flex-row items-center gap-1 bg-white px-2.5 py-1 rounded-md border border-emerald-200 shrink-0">
               <View className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
               <Text className="text-xs font-bold text-emerald-700">In Stock</Text>
             </View>
           </View>
 
-          {/* 4. Quantity Stepper */}
-          <View className="flex-row justify-between items-center bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-5">
-            <View>
-              <Text className="text-sm font-bold text-slate-900">Quantity</Text>
-              <Text className="text-xs text-slate-500 mt-0.5">
-                Total: ₹{product.price * detailQty} for {detailQty} {product.unit}
+          {/* 4. Prominent Quantity Stepper */}
+          <View className="flex-row justify-between items-center bg-slate-50 border border-slate-200 rounded-2xl p-3.5 mb-4 shadow-xs">
+            <View className="flex-1 mr-3">
+              <Text className="text-sm font-extrabold text-slate-900">Select Quantity</Text>
+              <Text className="text-xs font-semibold text-slate-500 mt-0.5">
+                Pack Size: {product.unit || '1 Unit'}
               </Text>
             </View>
-            <View className="flex-row items-center bg-white border border-slate-300 rounded-xl px-2 py-1 gap-3">
+
+            {/* Prominent Stepper Controls */}
+            <View className="flex-row items-center bg-emerald-50 border-2 border-emerald-600 rounded-2xl p-1 gap-2.5 shadow-xs">
               <TouchableOpacity
-                className="w-7 h-7 rounded items-center justify-center bg-emerald-700"
+                className="w-9 h-9 rounded-xl items-center justify-center bg-emerald-700 active:bg-emerald-800"
                 onPress={() => setDetailQty(Math.max(1, detailQty - 1))}
-                activeOpacity={0.7}
+                activeOpacity={0.8}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel="Decrease Quantity"
               >
-                <Text className="text-white text-sm font-black">−</Text>
+                <Minus size={18} color="#FFFFFF" strokeWidth={3} />
               </TouchableOpacity>
-              <Text className="text-sm font-black text-slate-900">{detailQty} {product.unit}</Text>
+
+              <View className="min-w-[34px] items-center justify-center px-1">
+                <Text className="text-base font-black text-emerald-950 text-center">
+                  {detailQty}
+                </Text>
+              </View>
+
               <TouchableOpacity
-                className="w-7 h-7 rounded items-center justify-center bg-emerald-700"
+                className="w-9 h-9 rounded-xl items-center justify-center bg-emerald-700 active:bg-emerald-800"
                 onPress={() => setDetailQty(detailQty + 1)}
-                activeOpacity={0.7}
+                activeOpacity={0.8}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel="Increase Quantity"
               >
-                <Text className="text-white text-sm font-black">+</Text>
+                <Plus size={18} color="#FFFFFF" strokeWidth={3} />
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* 5. Customer Nearby Organic Vendor Card */}
-          <View className="bg-[#08281A] border border-emerald-800/80 rounded-2xl p-4 mb-4 shadow-sm">
-            {/* Top row: Nearby Tag + Proximity Distance */}
-            <View className="flex-row justify-between items-center mb-3">
-              <View className="flex-row items-center gap-1.5 bg-emerald-900/80 border border-emerald-600/50 px-2.5 py-1 rounded-full">
-                <Store size={12} color="#86EFAC" />
-                <Text className="text-emerald-300 font-extrabold uppercase tracking-wider" style={{ fontSize: 10 }}>
-                  Nearby Organic Vendor
-                </Text>
-              </View>
-              <View className="flex-row items-center gap-1 bg-black/40 px-2 py-0.5 rounded-md border border-emerald-900/60">
-                <MapPin size={11} color="#34D399" />
-                <Text className="text-emerald-300 font-bold" style={{ fontSize: 11 }}>
-                  ~2.8 km away
-                </Text>
-              </View>
-            </View>
-
-            {/* Middle: Vendor/Farmer Identity */}
-            <View className="flex-row items-center gap-3">
-              <View className="w-11 h-11 rounded-full bg-emerald-900/90 items-center justify-center border border-emerald-600/70 shadow-xs">
-                <Sprout size={20} color="#86EFAC" />
-              </View>
-              <View className="flex-1">
-                <View className="flex-row items-center gap-1.5">
-                  <Text className="text-white font-extrabold tracking-tight" style={{ fontSize: 15 }}>
-                    {vendorName}
-                  </Text>
-                  <View className="bg-emerald-500/20 px-1.5 py-0.5 rounded border border-emerald-500/40">
-                    <Text className="text-emerald-300 font-bold" style={{ fontSize: 9 }}>VERIFIED</Text>
-                  </View>
+          {/* 5. Organic Farm & Origin Card */}
+          <View className="bg-[#F0FDF4] border border-[#BBF7D0] rounded-2xl p-3.5 mb-4 shadow-xs">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center gap-2.5 flex-1 mr-2">
+                <View className="w-10 h-10 rounded-xl bg-emerald-100 items-center justify-center border border-emerald-200">
+                  <Sprout size={20} color="#047857" />
                 </View>
-                <Text className="text-emerald-200/90 font-medium mt-0.5" style={{ fontSize: 12 }}>
-                  📍 Near {vendorLocation}
-                </Text>
+                <View className="flex-1">
+                  <View className="flex-row items-center gap-1.5">
+                    <Text className="text-sm font-extrabold text-slate-900" numberOfLines={1}>
+                      {vendorName}
+                    </Text>
+                    <View className="bg-emerald-100 px-1.5 py-0.2 rounded border border-emerald-300">
+                      <Text className="text-[9px] font-black text-emerald-800">VERIFIED</Text>
+                    </View>
+                  </View>
+                  <Text className="text-xs text-slate-500 font-medium mt-0.5" numberOfLines={1}>
+                    📍 {vendorLocation}
+                  </Text>
+                </View>
+              </View>
+
+              <View className="bg-white px-2.5 py-1 rounded-lg border border-emerald-200 items-end">
+                <Text className="text-[10px] font-bold text-slate-400">Radius</Text>
+                <Text className="text-xs font-black text-emerald-700">~2.8 km</Text>
               </View>
             </View>
 
-            {/* Bottom: Freshness & Certification */}
-            <View className="flex-row items-center justify-between mt-3 pt-2.5 border-t border-emerald-900/70">
+            <View className="flex-row items-center justify-between mt-2.5 pt-2 border-t border-emerald-200/60">
               <View className="flex-row items-center gap-1">
-                <ShieldCheck size={12} color="#34D399" />
-                <Text className="text-emerald-300/90 font-medium" style={{ fontSize: 11 }}>
-                  Cert #{certNumber}
-                </Text>
+                <ShieldCheck size={13} color="#059669" />
+                <Text className="text-[11px] font-bold text-slate-600">Cert #{certNumber}</Text>
               </View>
               <View className="flex-row items-center gap-1">
-                <Truck size={12} color="#FDE047" />
-                <Text className="text-amber-200 font-bold" style={{ fontSize: 11 }}>
-                  Direct Farm Delivery
-                </Text>
+                <Truck size={13} color="#D97706" />
+                <Text className="text-[11px] font-bold text-amber-800">Direct Farm Delivery</Text>
               </View>
             </View>
           </View>
@@ -272,26 +284,45 @@ export const ProductDetailsScreen: React.FC<ProductDetailsScreenProps> = ({
           <Text className="font-bold text-slate-900 mb-2 mt-1" style={{ fontSize: 14 }}>
             Why Choose Mathira Organic?
           </Text>
-          <View className="flex-row flex-wrap justify-between gap-y-2.5 mb-4">
-            <View className="w-[48%] bg-slate-50 border border-slate-200 rounded-xl p-3">
-              <ShieldCheck size={16} color="#16A34A" />
-              <Text className="font-bold text-slate-900 mt-1" style={{ fontSize: 12 }}>Zero Pesticides</Text>
-              <Text className="text-slate-500 mt-0.5 leading-4" style={{ fontSize: 11 }}>Lab tested for 120+ chemical residues</Text>
+          <View className="flex-row flex-wrap justify-between gap-y-2 mb-4">
+            <View className="w-[48.5%] bg-white border border-slate-200 rounded-xl p-2.5 flex-row items-center gap-2 shadow-xs">
+              <View className="w-8 h-8 rounded-lg bg-emerald-50 items-center justify-center shrink-0">
+                <ShieldCheck size={16} color="#059669" />
+              </View>
+              <View className="flex-1">
+                <Text className="font-bold text-slate-900 text-xs">Zero Pesticides</Text>
+                <Text className="text-slate-400 text-[10px]" numberOfLines={1}>100% Lab Tested</Text>
+              </View>
             </View>
-            <View className="w-[48%] bg-slate-50 border border-slate-200 rounded-xl p-3">
-              <Sprout size={16} color="#059669" />
-              <Text className="font-bold text-slate-900 mt-1" style={{ fontSize: 12 }}>Native Seeds</Text>
-              <Text className="text-slate-500 mt-0.5 leading-4" style={{ fontSize: 11 }}>Non-GMO traditional heirloom crops</Text>
+
+            <View className="w-[48.5%] bg-white border border-slate-200 rounded-xl p-2.5 flex-row items-center gap-2 shadow-xs">
+              <View className="w-8 h-8 rounded-lg bg-emerald-50 items-center justify-center shrink-0">
+                <Sprout size={16} color="#059669" />
+              </View>
+              <View className="flex-1">
+                <Text className="font-bold text-slate-900 text-xs">Native Heirloom</Text>
+                <Text className="text-slate-400 text-[10px]" numberOfLines={1}>Non-GMO Seeds</Text>
+              </View>
             </View>
-            <View className="w-[48%] bg-slate-50 border border-slate-200 rounded-xl p-3">
-              <Truck size={16} color="#2563EB" />
-              <Text className="font-bold text-slate-900 mt-1" style={{ fontSize: 12 }}>Direct Cold Chain</Text>
-              <Text className="text-slate-500 mt-0.5 leading-4" style={{ fontSize: 11 }}>From farm to doorstep in under 12 hours</Text>
+
+            <View className="w-[48.5%] bg-white border border-slate-200 rounded-xl p-2.5 flex-row items-center gap-2 shadow-xs">
+              <View className="w-8 h-8 rounded-lg bg-blue-50 items-center justify-center shrink-0">
+                <Truck size={16} color="#2563EB" />
+              </View>
+              <View className="flex-1">
+                <Text className="font-bold text-slate-900 text-xs">Fresh Harvest</Text>
+                <Text className="text-slate-400 text-[10px]" numberOfLines={1}>Direct Local Farm</Text>
+              </View>
             </View>
-            <View className="w-[48%] bg-slate-50 border border-slate-200 rounded-xl p-3">
-              <Award size={16} color="#D97706" />
-              <Text className="font-bold text-slate-900 mt-1" style={{ fontSize: 12 }}>Fair Trade</Text>
-              <Text className="text-slate-500 mt-0.5 leading-4" style={{ fontSize: 11 }}>100% fair payout to organic vendors</Text>
+
+            <View className="w-[48.5%] bg-white border border-slate-200 rounded-xl p-2.5 flex-row items-center gap-2 shadow-xs">
+              <View className="w-8 h-8 rounded-lg bg-amber-50 items-center justify-center shrink-0">
+                <Award size={16} color="#D97706" />
+              </View>
+              <View className="flex-1">
+                <Text className="font-bold text-slate-900 text-xs">Fair Trade</Text>
+                <Text className="text-slate-400 text-[10px]" numberOfLines={1}>Fair to Farmers</Text>
+              </View>
             </View>
           </View>
 
@@ -379,31 +410,41 @@ export const ProductDetailsScreen: React.FC<ProductDetailsScreenProps> = ({
       </ScrollView>
 
       {/* 10. Floating Sticky Bottom Bar */}
-      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 flex-row items-center justify-between shadow-lg">
-        <View className="flex-1">
-          <Text className="text-xs font-black text-emerald-800 uppercase tracking-wider">TOTAL PRICE</Text>
-          <Text className="text-xl font-black text-slate-900">₹{product.price * detailQty}</Text>
-          <Text className="text-xs text-slate-500">for {detailQty} {product.unit} · Incl. all taxes</Text>
+      <View
+        style={{
+          paddingBottom: Math.max(insets.bottom, Platform.OS === 'android' ? 12 : 8) + 6,
+        }}
+        className="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 pt-3 flex-row items-center justify-between shadow-xl"
+      >
+        <View className="flex-1 mr-2">
+          <Text className="text-[10px] font-black text-emerald-800 uppercase tracking-wider">TOTAL PRICE</Text>
+          <Text className="text-xl font-black text-slate-900 leading-tight">₹{product.price * detailQty}</Text>
+          <Text className="text-[11px] text-slate-500 font-medium" numberOfLines={1}>
+            {detailQty} {detailQty === 1 ? 'pack' : 'packs'} · Incl. taxes
+          </Text>
         </View>
-        <View className="flex-row gap-2">
+
+        <View className="flex-row items-center gap-2 shrink-0">
           {product.oneTimeAllowed && (
             <TouchableOpacity
-              className="flex-row items-center gap-1.5 bg-emerald-700 px-4 py-2.5 rounded-xl"
+              className="flex-row items-center justify-center gap-1.5 bg-emerald-700 px-3.5 py-2.5 rounded-xl shadow-xs active:bg-emerald-800"
               onPress={() => onAddToCart(product, detailQty)}
               activeOpacity={0.85}
             >
-              <ShoppingCart size={17} color="#FFFFFF" />
-              <Text className="text-white text-sm font-black">Add to Cart</Text>
+              <ShoppingCart size={16} color="#FFFFFF" strokeWidth={2.3} />
+              <Text className="text-white text-xs font-black">Add to Cart</Text>
             </TouchableOpacity>
           )}
+
           {product.subscriptionAllowed && (
-            <SubscriptionButton
-              title="Subscribe"
-              icon={<Repeat size={14} color="#FFFFFF" />}
-              variant="primary"
-              size="small"
+            <TouchableOpacity
+              className="flex-row items-center justify-center gap-1.5 bg-[#F2C500] px-3.5 py-2.5 rounded-xl shadow-xs active:bg-amber-400"
               onPress={() => onStartSubscription(product, detailQty)}
-            />
+              activeOpacity={0.85}
+            >
+              <Repeat size={14} color="#18352B" strokeWidth={2.5} />
+              <Text className="text-[#18352B] text-xs font-black">Subscribe</Text>
+            </TouchableOpacity>
           )}
         </View>
       </View>

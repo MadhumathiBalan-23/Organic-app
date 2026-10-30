@@ -13,7 +13,8 @@
     "api:start": "npm --prefix api run start",
     "app:start": "npm --prefix agriapp run start",
     "app:web": "npm --prefix agriapp run web",
-    "app:android": "npm --prefix agriapp run android"
+    "app:android": "npm --prefix agriapp run android",
+    "test": "node test-suite.js"
   },
   "devDependencies": {
     "metro-runtime": "^0.83.8",

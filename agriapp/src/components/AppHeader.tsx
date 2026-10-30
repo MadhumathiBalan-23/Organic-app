@@ -15,6 +15,7 @@ import {
   Store,
 } from 'lucide-react-native';
 import { HomeHeader } from './HomeHeader';
+import { CommonHeader } from './CommonHeader';
 
 export type UserRole = 'customer' | 'admin' | 'vendor' | null;
 
@@ -34,6 +35,7 @@ export interface AppHeaderProps {
   onOpenSearch?: () => void;
   onOpenPlans?: () => void;
   headerThemeColor?: string;
+  scrollY?: any;
 }
 
 const STATUSBAR_HEIGHT = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
@@ -53,6 +55,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   onOpenCart,
   onOpenPlans,
   headerThemeColor,
+  scrollY,
 }) => {
   const isCustomer = role === 'customer';
   const isHomeScreen = !currentScreen || currentScreen === 'HOME';
@@ -64,17 +67,30 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         selectedLocation={selectedLocation}
         onChangeLocation={onChangeLocation}
         onOpenPlans={onOpenPlans}
-        onOpenCart={onOpenCart}
-        cartCount={cartCount}
+        onOpenCart={undefined}
+        cartCount={0}
         searchQuery={searchQuery}
         onSearchChange={onSearchChange}
         placeholder={placeholder}
         headerThemeColor={headerThemeColor}
+        scrollY={scrollY}
       />
     );
   }
 
-  // ── CASE 2: CUSTOMER OTHER SCREENS (Clean Top Bar: Back Icon + Screen Name) ──
+  // ── Discovery Screens have their own integrated Amazon-style header bars ──
+  if (
+    isCustomer &&
+    (currentScreen === 'CATEGORY_PRODUCTS' ||
+      currentScreen === 'ALL_PRODUCTS' ||
+      currentScreen === 'CATEGORY_VENDOR_DISCOVERY' ||
+      currentScreen === 'VENDOR_STORE')
+  ) {
+    return null;
+  }
+
+
+  // ── CASE 2: CUSTOMER OTHER SCREENS (Unified Common Header with Safe Area & Theme) ──
   if (isCustomer && !isHomeScreen) {
     const getScreenTitle = () => {
       switch (currentScreen) {
@@ -83,17 +99,17 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         case 'ALL_PRODUCTS':
           return 'Categories';
         case 'MY_SUBSCRIPTIONS':
-          return 'Plans';
+          return 'Subscription Plans';
         case 'PROFILE':
-          return 'Profile';
+          return 'My Profile';
         case 'CART':
           return 'Shopping Cart';
         case 'PRODUCT_DETAILS':
           return 'Product Details';
         case 'SUBSCRIPTION_CREATE':
-          return 'Daily Subscription';
+          return 'Configure Subscription';
         case 'SUBSCRIPTION_SUMMARY':
-          return 'Subscription Plan';
+          return 'Review Subscription';
         case 'PAYMENT':
           return 'Secure Payment';
         case 'WHATSAPP_AI':
@@ -107,28 +123,25 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       }
     };
 
-    return (
-      <View 
-        className="bg-white border-b border-slate-100 pb-3 px-4 shadow-xs z-[100]"
-        style={{ paddingTop: Platform.OS === 'web' ? 12 : STATUSBAR_HEIGHT + 8 }}
-      >
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent />
-        <View className="flex-row items-center">
-          <TouchableOpacity
-            className="w-9 h-9 rounded-full items-center justify-center -ml-1 active:bg-slate-100"
-            onPress={onBack}
-            activeOpacity={0.7}
-            accessibilityLabel="Go Back"
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <ArrowLeft size={22} color="#0F172A" strokeWidth={2.4} />
-          </TouchableOpacity>
+    // Screens where header should be clean and uncluttered (no cart or dollar icons)
+    const isFocusedCheckoutOrFlow =
+      currentScreen === 'SUBSCRIPTION_CREATE' ||
+      currentScreen === 'SUBSCRIPTION_SUMMARY' ||
+      currentScreen === 'PAYMENT' ||
+      currentScreen === 'CART' ||
+      currentScreen === 'DAILY_CONFIRMATION';
 
-          <Text className="text-lg font-bold text-slate-900 tracking-tight ml-2">
-            {getScreenTitle()}
-          </Text>
-        </View>
-      </View>
+    return (
+      <CommonHeader
+        title={getScreenTitle()}
+        showSearch={false}
+        showBack={true}
+        onBack={onBack}
+        onOpenCart={isFocusedCheckoutOrFlow ? undefined : onOpenCart}
+        onOpenPlans={isFocusedCheckoutOrFlow ? undefined : onOpenPlans}
+        cartCount={isFocusedCheckoutOrFlow ? 0 : cartCount}
+        headerThemeColor={headerThemeColor}
+      />
     );
   }
 
@@ -206,9 +219,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               <View className="flex-row items-center gap-1 mt-0.5">
                 <Settings size={11} color="#BBF7D0" />
                 <Text className="text-xs text-[#BBF7D0] font-semibold">Super Admin</Text>
-                <View className="bg-red-600 rounded-md px-1.5 py-0.5 ml-1">
-                  <Text className="text-white text-2xs font-extrabold">SIDEBAR ☰</Text>
-                </View>
               </View>
             </View>
           </View>

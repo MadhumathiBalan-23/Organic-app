@@ -6,6 +6,8 @@ export * from './order.service';
 export * from './vendor.service';
 export * from './auth.service';
 export * from './location.service';
+export * from './cart.service';
+export * from './subscription.service';
 
 import {
   API_BASE,

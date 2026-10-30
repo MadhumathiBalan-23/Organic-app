@@ -41,6 +41,9 @@ import { PaymentScreen } from './PaymentScreen';
 import { MySubscriptionsScreen } from './MySubscriptionsScreen';
 import { OrderHistoryScreen } from './OrderHistoryScreen';
 import { ProfileScreen } from './ProfileScreen';
+import { CategoryProductListingScreen } from './CategoryProductListingScreen';
+import { CategoryVendorDiscoveryScreen } from './CategoryVendorDiscoveryScreen';
+import { VendorStoreScreen } from './VendorStoreScreen';
 
 // Modular API Services & Theme
 import {
@@ -49,6 +52,8 @@ import {
   orderService,
   vendorService,
   authService,
+  cartService,
+  subscriptionService,
 } from '../../services';
 import { safeCategory, DynamicBanner, DynamicCategory } from '../../services/api.client';
 import { theme } from '../../theme';
@@ -75,6 +80,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
   cart: propCart,
   setCart: propSetCart,
   onBannerThemeChange,
+  scrollY,
 }) => {
   // ── Cart State ──
   const [internalCart, setInternalCart] = useState<{ product: Product; qty: number }[]>([]);
@@ -82,19 +88,84 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
   const setCart = propSetCart !== undefined ? propSetCart : setInternalCart;
   const [activeCategory, setActiveCategory] = useState('All');
 
+  // ── Category & Vendor Discovery Navigation State ──
+  const [navCategoryId, setNavCategoryId] = useState<string | undefined>(undefined);
+  const [navCategoryName, setNavCategoryName] = useState<string | undefined>(undefined);
+  const [navVendorId, setNavVendorId] = useState<string | undefined>(undefined);
+  const [navVendorName, setNavVendorName] = useState<string | undefined>(undefined);
+
+  const handleOpenCategory = (catId: string, catName: string) => {
+    setNavCategoryId(catId || undefined);
+    setNavCategoryName(catName || 'All Products');
+    setNavVendorId(undefined);
+    setNavVendorName(undefined);
+    setCustomerScreen('CATEGORY_PRODUCTS');
+  };
+
+  const handleOpenVendorDiscovery = (catId?: string) => {
+    setNavCategoryId(catId || undefined);
+    setCustomerScreen('CATEGORY_VENDOR_DISCOVERY');
+  };
+
+  const handleSelectVendorCategory = (catId: string, vId: string, catName: string, vName: string) => {
+    setNavCategoryId(catId);
+    setNavCategoryName(catName);
+    setNavVendorId(vId);
+    setNavVendorName(vName);
+    setCustomerScreen('VENDOR_STORE');
+  };
+
+  const handleOpenVendorStore = (vId: string, vName?: string) => {
+    setNavVendorId(vId);
+    setNavVendorName(vName);
+    setCustomerScreen('VENDOR_STORE');
+  };
+
+  const cleanUserPhone = (userPhone || '').replace(/[^0-9]/g, '');
+
   const cartTotal = cart.reduce((s, i) => s + i.product.price * i.qty, 0);
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
 
+  // Load database saved cart for customer on open / mount
+  useEffect(() => {
+    if (cleanUserPhone) {
+      cartService.getCart(cleanUserPhone)
+        .then((dbCart: any) => {
+          if (Array.isArray(dbCart) && dbCart.length > 0) {
+            setCart(dbCart);
+          }
+        })
+        .catch((err: any) => {
+          console.warn('⚠️ [CustomerPortalScreen] Could not fetch saved database cart:', err.message);
+        });
+    }
+  }, [cleanUserPhone]);
+
   const addToCart = (p: Product, qty = 1) => {
+    // Optimistic UI update
     setCart(prev => {
       const existing = prev.find(i => i.product.id === p.id);
       if (existing) return prev.map(i => (i.product.id === p.id ? { ...i, qty: i.qty + qty } : i));
       return [...prev, { product: p, qty }];
     });
-    Alert.alert('Added to Cart', `${p.name} added!`);
+    Alert.alert('Added to Cart', `${p.name} added to cart!`);
+
+    // Persist to PostgreSQL database
+    if (cleanUserPhone) {
+      cartService.addToCart(cleanUserPhone, p.id, qty)
+        .then((dbCart: any) => {
+          if (Array.isArray(dbCart) && dbCart.length > 0) {
+            setCart(dbCart);
+          }
+        })
+        .catch((err: any) => {
+          console.warn('⚠️ [CustomerPortalScreen.addToCart] DB save error:', err.message);
+        });
+    }
   };
 
   const updateCartQty = (p: Product, delta: number) => {
+    // Optimistic UI update
     setCart(prev => {
       const existing = prev.find(i => i.product.id === p.id);
       if (!existing) {
@@ -105,9 +176,38 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
       if (newQty <= 0) return prev.filter(i => i.product.id !== p.id);
       return prev.map(i => (i.product.id === p.id ? { ...i, qty: newQty } : i));
     });
+
+    // Persist to PostgreSQL database
+    if (cleanUserPhone) {
+      cartService.updateCartQty(cleanUserPhone, p.id, delta)
+        .then((dbCart: any) => {
+          if (Array.isArray(dbCart)) {
+            setCart(dbCart);
+          }
+        })
+        .catch((err: any) => {
+          console.warn('⚠️ [CustomerPortalScreen.updateCartQty] DB update error:', err.message);
+        });
+    }
   };
 
-  const removeFromCart = (id: string) => setCart(prev => prev.filter(i => i.product.id !== id));
+  const removeFromCart = (id: string) => {
+    // Optimistic UI update
+    setCart(prev => prev.filter(i => i.product.id !== id));
+
+    // Remove from PostgreSQL database
+    if (cleanUserPhone) {
+      cartService.removeFromCart(cleanUserPhone, id)
+        .then((dbCart: any) => {
+          if (Array.isArray(dbCart)) {
+            setCart(dbCart);
+          }
+        })
+        .catch((err: any) => {
+          console.warn('⚠️ [CustomerPortalScreen.removeFromCart] DB delete error:', err.message);
+        });
+    }
+  };
 
   // ── Favorites State ──
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
@@ -281,6 +381,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
             ? o.id
             : `#ORD-${o.id.substring(0, 6).toUpperCase()}`
           : '#ORD';
+        const effectiveVendorName = o.vendor?.businessName || o.vendorName || (o.items && o.items[0]?.product?.vendorName) || 'Organic Partner Farm';
 
         return {
           id: orderIdDisplay,
@@ -293,6 +394,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
           paymentStatus: o.paymentStatus || 'SUCCESS',
           deliveryStatus: o.deliveryStatus || 'CONFIRMED',
           deliveryOtp: o.deliveryOtp,
+          vendorName: effectiveVendorName,
         };
       });
       setUserOrders(mapped);
@@ -427,35 +529,44 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
     if (cart.length === 0) return;
     setIsPlacingOrder(true);
     try {
+      const itemsPayload = cart.map(item => ({
+        productId: item.product.id,
+        quantity: item.qty,
+        price: item.product.price,
+        vendorId: item.product.vendorId || (item as any).vendorId,
+      }));
+
       const data = await orderService.createOrder({
         customerName: profileName.trim() || 'Customer',
         customerPhone: userPhone || '',
         deliveryAddress: profileLocation || selectedLocation?.address || '',
         totalAmount: cartTotal,
         paymentMethod: 'UPI',
-        items: cart.map(item => ({
-          productId: item.product.id,
-          quantity: item.qty,
-          price: item.product.price,
-        })),
+        items: itemsPayload,
       });
-      if (data.success) {
-        Alert.alert(
-          'Order Placed via API!',
-          `Your order #${data.data?.id ? data.data.id.substring(0, 8) : 'ORD'} for ₹${cartTotal} was successfully stored in the database.`
-        );
-        setCart([]);
-        fetchOrders();
-        setCustomerScreen('ORDER_HISTORY');
-      } else {
-        Alert.alert('Order Recorded', `Your order of ₹${cartTotal} has been submitted.`);
-        setCart([]);
-        setCustomerScreen('HOME');
-      }
-    } catch {
-      Alert.alert('Order Placed!', `Your order of ₹${cartTotal} has been recorded.`);
+
+      const orderList = (data as any)?.orders || (data.data as any)?.orders || [];
+      const orderCount = orderList.length || 1;
+      const orderMessage =
+        orderCount > 1
+          ? `Your order was split into ${orderCount} separate partner orders for different farms and recorded in the database.`
+          : `Your order #${data.data?.id ? data.data.id.substring(0, 8) : 'ORD'} for ₹${cartTotal} was successfully placed.`;
+
+      Alert.alert('Order Placed Successfully!', orderMessage);
       setCart([]);
-      setCustomerScreen('HOME');
+      if (cleanUserPhone) {
+        cartService.clearCart(cleanUserPhone).catch(() => {});
+      }
+      fetchOrders();
+      setCustomerScreen('ORDER_HISTORY');
+    } catch (err: any) {
+      Alert.alert('Order Placement Notice', err.message || `Your order of ₹${cartTotal} has been recorded.`);
+      setCart([]);
+      if (cleanUserPhone) {
+        cartService.clearCart(cleanUserPhone).catch(() => {});
+      }
+      fetchOrders();
+      setCustomerScreen('ORDER_HISTORY');
     } finally {
       setIsPlacingOrder(false);
     }
@@ -479,14 +590,22 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
     try {
       const payload = {
         productId: activeSubscriptionData.product.id,
+        vendorId: activeSubscriptionData.product.vendorId || activeSubscriptionData.product.vendor?.id,
         quantity: activeSubscriptionData.qty,
         frequency: activeSubscriptionData.freq,
         duration: activeSubscriptionData.duration,
+        deliveryTime: activeSubscriptionData.time,
         timeSlot: activeSubscriptionData.time,
         totalAmount: activeSubscriptionData.priceTotal,
+        priceTotal: activeSubscriptionData.priceTotal,
+        selectedDays: activeSubscriptionData.selectedDays,
+        selectedDates: activeSubscriptionData.selectedDates,
+        startDate: activeSubscriptionData.startDate,
+        endDate: activeSubscriptionData.endDate,
+        totalDeliveries: activeSubscriptionData.totalDeliveries,
         userPhone: userPhone || '',
       };
-      const data = await orderService.createSubscription(payload);
+      const data = await subscriptionService.createSubscription(payload);
       const newSub =
         data.success && data.data
           ? {
@@ -498,7 +617,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
               time: activeSubscriptionData.time,
               priceTotal: activeSubscriptionData.priceTotal,
               status: 'Active',
-              startDate: new Date().toISOString().split('T')[0],
+              startDate: activeSubscriptionData.startDate || new Date().toISOString().split('T')[0],
               skippedDates: [],
             }
           : {
@@ -510,7 +629,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
               time: activeSubscriptionData.time,
               priceTotal: activeSubscriptionData.priceTotal,
               status: 'Active',
-              startDate: new Date().toISOString().split('T')[0],
+              startDate: activeSubscriptionData.startDate || new Date().toISOString().split('T')[0],
               skippedDates: [],
             };
       setSubscriptions((prev: any[]) => [newSub, ...prev]);
@@ -526,7 +645,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
         time: activeSubscriptionData.time,
         priceTotal: activeSubscriptionData.priceTotal,
         status: 'Active',
-        startDate: new Date().toISOString().split('T')[0],
+        startDate: activeSubscriptionData.startDate || new Date().toISOString().split('T')[0],
         skippedDates: [],
       };
       setSubscriptions((prev: any[]) => [newSub, ...prev]);
@@ -734,6 +853,12 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
           {p.unit || '1 kg'}
         </Text>
 
+        <View className="flex-row items-center mt-1">
+          <Text className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100" numberOfLines={1}>
+            🌱 {p.vendorName || p.vendor?.businessName || p.brand || 'Local Farm'}
+          </Text>
+        </View>
+
         <View className="flex-row items-center justify-between mt-2 pt-1">
           <Text className="text-base font-black text-slate-900">₹{p.price}</Text>
 
@@ -773,12 +898,20 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
     );
   };
 
-  // ── Floating Cart Bar ──
+  // ── Floating Cart Bar with Close / Dismiss Button ──
+  const [isCartBarDismissed, setIsCartBarDismissed] = useState(false);
+
+  useEffect(() => {
+    if (cartCount > 0) {
+      setIsCartBarDismissed(false);
+    }
+  }, [cartCount]);
+
   const renderFloatingCartBar = () => {
-    if (cartCount === 0 || customerScreen === 'CART' || customerScreen === 'CHECKOUT') return null;
+    if (isCartBarDismissed || cartCount === 0 || customerScreen === 'CART' || customerScreen === 'CHECKOUT') return null;
     return (
       <View className="absolute bottom-3 left-4 right-4 bg-[#0D2B1D] rounded-2xl px-4 py-3 flex-row items-center justify-between shadow-xl border border-[#22c55e] z-50">
-        <View className="flex-1">
+        <View className="flex-1 mr-2">
           <Text className="text-[#86EFAC] text-xs font-extrabold uppercase tracking-wider">
             {cartCount} {cartCount === 1 ? 'Item' : 'Items'} in Cart
           </Text>
@@ -786,12 +919,23 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
             ₹{cartTotal} <Text className="text-xs text-white/70 font-normal">+ Free Delivery</Text>
           </Text>
         </View>
-        <TouchableOpacity
-          className="bg-[#22c55e] px-4 py-2 rounded-xl"
-          onPress={() => setCustomerScreen('CART')}
-        >
-          <Text className="text-[#0D2B1D] text-xs font-black">View Cart →</Text>
-        </TouchableOpacity>
+        <View className="flex-row items-center gap-2 shrink-0">
+          <TouchableOpacity
+            className="bg-[#22c55e] px-4 py-2.5 rounded-xl active:bg-emerald-600 shadow-xs"
+            onPress={() => setCustomerScreen('CART')}
+          >
+            <Text className="text-[#0D2B1D] text-xs font-black">View Cart →</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            className="w-8 h-8 rounded-full bg-white/20 items-center justify-center active:bg-white/30"
+            onPress={() => setIsCartBarDismissed(true)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityLabel="Close Cart Bar"
+          >
+            <X size={16} color="#FFFFFF" strokeWidth={2.5} />
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
@@ -820,6 +964,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
       {customerScreen === 'HOME' && (
         <CustomerHomeScreen
           headerGrad={activeBannerGrad}
+          scrollY={scrollY}
           isLoadingBanners={isLoadingBanners}
           bannersList={bannersList}
           bannerScrollRef={bannerScrollRef}
@@ -857,23 +1002,76 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
             setCustomerScreen('SUBSCRIPTION_CREATE');
           }}
           setCustomerScreen={setCustomerScreen}
+          onOpenCategory={handleOpenCategory}
+          onOpenVendorDiscovery={handleOpenVendorDiscovery}
           isApprovedVendor={isApprovedVendor}
           setShowAddProductModal={setShowAddProductModal}
           renderProductCard={renderProductCard}
         />
       )}
 
-      {customerScreen === 'ALL_PRODUCTS' && (
-        <AllProductsScreen
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          categories={categories}
-          activeCategory={activeCategory}
-          setActiveCategory={setActiveCategory}
-          getCategoryIcon={getCategoryIcon}
-          filteredProducts={filteredProducts}
-          renderProductCard={renderProductCard}
+      {(customerScreen === 'CATEGORY_PRODUCTS' || customerScreen === 'ALL_PRODUCTS') && (
+        <CategoryProductListingScreen
+          categoryId={navCategoryId}
+          categoryName={navCategoryName}
+          vendorId={navVendorId}
+          vendorName={navVendorName}
+          cart={cart}
+          favorites={favoritesArray}
+          toggleFavorite={toggleFavorite}
+          addToCart={addToCart}
+          updateCartQty={updateCartQty}
+          onOpenDetails={(p: Product) => {
+            setSelectedProduct(p);
+            setCustomerScreen('PRODUCT_DETAILS');
+          }}
+          onOpenVendorStore={handleOpenVendorStore}
+          onOpenVendorDiscovery={handleOpenVendorDiscovery}
           onBack={() => setCustomerScreen('HOME')}
+          onOpenCart={() => setCustomerScreen('CART')}
+          onOpenPlans={() => setCustomerScreen('MY_SUBSCRIPTIONS')}
+          headerThemeColor={activeBannerColor}
+        />
+      )}
+
+      {customerScreen === 'CATEGORY_VENDOR_DISCOVERY' && (
+        <CategoryVendorDiscoveryScreen
+          initialCategoryId={navCategoryId}
+          cart={cart}
+          addToCart={addToCart}
+          updateCartQty={updateCartQty}
+          onOpenDetails={(p: Product) => {
+            setSelectedProduct(p);
+            setCustomerScreen('PRODUCT_DETAILS');
+          }}
+          onSelectVendorCategory={handleSelectVendorCategory}
+          onViewAllCategoryProducts={(catId, catName) => {
+            setNavCategoryId(catId);
+            setNavCategoryName(catName);
+            setCustomerScreen('CATEGORY_PRODUCTS');
+          }}
+          onBack={() => setCustomerScreen('HOME')}
+          onOpenCart={() => setCustomerScreen('CART')}
+          onOpenPlans={() => setCustomerScreen('MY_SUBSCRIPTIONS')}
+          headerThemeColor={activeBannerColor}
+        />
+      )}
+
+      {customerScreen === 'VENDOR_STORE' && navVendorId && (
+        <VendorStoreScreen
+          vendorId={navVendorId}
+          vendorName={navVendorName}
+          initialCategoryId={navCategoryId}
+          cart={cart}
+          favorites={favoritesArray}
+          toggleFavorite={toggleFavorite}
+          addToCart={addToCart}
+          updateCartQty={updateCartQty}
+          onOpenDetails={(p: Product) => {
+            setSelectedProduct(p);
+            setCustomerScreen('PRODUCT_DETAILS');
+          }}
+          onBack={() => setCustomerScreen('CATEGORY_PRODUCTS')}
         />
       )}
 
@@ -908,6 +1106,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
         <CartScreen
           cart={cart}
           onRemoveFromCart={removeFromCart}
+          onUpdateQty={updateCartQty}
           onBrowseProducts={() => setCustomerScreen('ALL_PRODUCTS')}
           selectedLocation={selectedLocation || null}
           profileLocation={profileLocation}
@@ -921,7 +1120,12 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
         <SubscriptionScreen
           product={activeSubscriptionData.product}
           initialQty={activeSubscriptionData.qty || 1}
-          onBack={() => setCustomerScreen('PRODUCT_DETAILS')}
+          userPhone={userPhone}
+          onBack={() => setCustomerScreen('HOME')}
+          onSubscriptionCreated={(createdSub: any) => {
+            setSubscriptions((prev: any[]) => [createdSub, ...prev]);
+            setCustomerScreen('MY_SUBSCRIPTIONS');
+          }}
           onProceedToPayment={cfg => {
             setActiveSubscriptionData(cfg);
             setCustomerScreen('PAYMENT');
@@ -1318,6 +1522,9 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
           </View>
         </Modal>
       )}
+
+      {/* Persistent Floating Cart Summary Bar */}
+      {renderFloatingCartBar()}
     </View>
   );
 };

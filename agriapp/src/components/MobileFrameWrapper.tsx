@@ -67,7 +67,7 @@ export const MobileFrameWrapper: React.FC<MobileFrameWrapperProps> = ({ children
             </View>
 
             {/* App Screen Content */}
-            <View className="flex-1 pt-2.5">
+            <View className="flex-1">
               {children}
             </View>
 
