@@ -4,10 +4,26 @@ import { CloudinaryService } from './cloudinary.service';
 export class ProductService {
   public static formatProduct(product: any) {
     if (!product) return null;
+    const vendorInfo = product.vendor ? {
+      id: product.vendor.id,
+      name: product.vendor.businessName,
+      businessName: product.vendor.businessName,
+      ownerName: product.vendor.ownerName,
+      phoneNumber: product.vendor.phoneNumber,
+      address: product.vendor.address,
+      rating: product.vendor.rating || 4.8,
+      status: product.vendor.status || 'ACTIVE'
+    } : null;
+
     return {
       ...product,
       category: product.category?.name || product.categoryName || 'Organic',
       categoryDetails: product.category,
+      vendor: vendorInfo,
+      vendorId: product.vendorId || (vendorInfo ? vendorInfo.id : null),
+      vendorName: vendorInfo?.businessName || product.brand || 'Certified Organic Partner',
+      vendorAddress: vendorInfo?.address || '',
+      vendorRating: vendorInfo?.rating || 4.8,
       benefits: (() => {
         try {
           return JSON.parse(product.benefits);
@@ -27,12 +43,25 @@ export class ProductService {
       where.name = { contains: String(search) };
     }
     if (vendorId) {
-      where.vendorId = String(vendorId);
+      const cleanPhone = String(vendorId).replace(/[^0-9]/g, '');
+      const v = await prisma.vendor.findFirst({
+        where: {
+          OR: [
+            { id: vendorId },
+            ...(cleanPhone ? [{ phoneNumber: cleanPhone }] : [])
+          ]
+        }
+      });
+      if (v) {
+        where.vendorId = v.id;
+      } else {
+        where.vendorId = String(vendorId);
+      }
     }
 
     const products = await prisma.product.findMany({
       where,
-      include: { category: true },
+      include: { category: true, vendor: true, subscriptionSettings: true },
       orderBy: { createdAt: 'asc' }
     });
 
@@ -42,7 +71,7 @@ export class ProductService {
   public static async getProductById(id: string) {
     const product = await prisma.product.findUnique({
       where: { id },
-      include: { category: true }
+      include: { category: true, vendor: true, subscriptionSettings: true }
     });
     return ProductService.formatProduct(product);
   }
@@ -83,11 +112,29 @@ export class ProductService {
       }
     }
 
+    let targetVendorId = rest.vendorId || undefined;
+    let vendorBrand = rest.brand ? String(rest.brand).trim() : '';
+    if (targetVendorId) {
+      const cleanPhone = String(targetVendorId).replace(/[^0-9]/g, '');
+      const v = await prisma.vendor.findFirst({
+        where: {
+          OR: [
+            { id: targetVendorId },
+            ...(cleanPhone ? [{ phoneNumber: cleanPhone }] : [])
+          ]
+        }
+      });
+      if (v) {
+        targetVendorId = v.id;
+        if (!vendorBrand) vendorBrand = v.businessName;
+      }
+    }
+
     const product = await prisma.product.create({
       data: {
         name: String(rest.name).trim(),
         categoryName: catName,
-        brand: rest.brand ? String(rest.brand).trim() : '',
+        brand: vendorBrand || 'NatureFarm',
         price,
         unit: rest.unit || 'Kg',
         stock: parseInt(rest.stock, 10) >= 0 ? parseInt(rest.stock, 10) : 0,
@@ -103,11 +150,11 @@ export class ProductService {
         organicCertified: rest.organicCertified !== undefined ? Boolean(rest.organicCertified) : true,
         originalPrice: rest.originalPrice ? parseFloat(rest.originalPrice) : undefined,
         discountBadge: rest.discountBadge || undefined,
-        vendorId: rest.vendorId || undefined,
+        vendorId: targetVendorId,
         cloudinaryPublicId: rest.cloudinaryPublicId || undefined,
         emoji: rest.emoji || '🌱'
       },
-      include: { category: true }
+      include: { category: true, vendor: true }
     });
     return ProductService.formatProduct(product);
   }

@@ -43,3 +43,70 @@ export const requireRole = (allowedRoles: string[]) => {
     next();
   };
 };
+
+export const requireCustomerAuth = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  authenticateToken(req, res, () => {
+    if (!req.user || (req.user.role !== 'customer' && req.user.role !== 'admin')) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Customer access required.'
+      });
+    }
+    if (req.user.aud && req.user.aud !== 'customer-api' && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Invalid token audience for Customer API.'
+      });
+    }
+    next();
+  });
+};
+
+export const requireVendorAuth = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  authenticateToken(req, res, () => {
+    if (!req.user || req.user.role !== 'vendor') {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Vendor access required.'
+      });
+    }
+    if (req.user.aud && req.user.aud !== 'vendor-api') {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Invalid token audience for Vendor API.'
+      });
+    }
+    next();
+  });
+};
+
+export const requireAdminAuth = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  authenticateToken(req, res, () => {
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Super Admin access required.'
+      });
+    }
+    if (req.user.aud && req.user.aud !== 'admin-api') {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Invalid token audience for Admin API.'
+      });
+    }
+    next();
+  });
+};
+

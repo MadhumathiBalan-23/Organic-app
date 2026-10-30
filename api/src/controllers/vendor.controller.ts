@@ -96,4 +96,37 @@ export class VendorController {
       return res.status(500).json({ success: false, error: error.message });
     }
   }
+
+  public static async getAllVendors(req: Request, res: Response) {
+    try {
+      const vendors = await VendorService.getAllVendors();
+      return res.json({ success: true, count: vendors.length, data: vendors });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  public static async getVendorById(req: Request, res: Response) {
+    try {
+      const vendor = await VendorService.getVendorById(req.params.id);
+      if (!vendor) {
+        return res.status(404).json({ success: false, message: 'Vendor not found' });
+      }
+      return res.json({ success: true, data: vendor });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  public static async getVendorByPhone(req: Request, res: Response) {
+    try {
+      const vendor = await VendorService.getVendorByPhone(req.params.phoneNumber);
+      if (!vendor) {
+        return res.status(404).json({ success: false, message: 'Vendor profile not found for this mobile number.' });
+      }
+      return res.json({ success: true, data: vendor });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  }
 }

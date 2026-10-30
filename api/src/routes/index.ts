@@ -14,6 +14,8 @@ import vendorRoutes from './vendor.routes';
 import uploadRoutes from './upload.routes';
 import locationRoutes from './location.routes';
 import bannerRoutes from './banner.routes';
+import cartRoutes from './cart.routes';
+import customerRoutes from './customer.routes';
 
 const router = Router();
 
@@ -33,5 +35,7 @@ router.use(vendorRoutes);
 router.use(uploadRoutes);
 router.use(locationRoutes);
 router.use(bannerRoutes);
+router.use(cartRoutes);
+router.use(customerRoutes);
 
 export default router;

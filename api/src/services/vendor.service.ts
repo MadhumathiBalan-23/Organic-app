@@ -141,12 +141,93 @@ export class VendorService {
       }
     });
 
+    const user = await prisma.user.findUnique({ where: { phoneNumber: request.phoneNumber } });
+    await prisma.vendor.upsert({
+      where: { phoneNumber: request.phoneNumber },
+      update: {
+        businessName: request.farmName,
+        ownerName: request.userName,
+        address: request.farmLocation,
+        status: 'ACTIVE',
+        userId: user ? user.id : undefined
+      },
+      create: {
+        id: `v-${request.phoneNumber}`,
+        businessName: request.farmName,
+        ownerName: request.userName,
+        phoneNumber: request.phoneNumber,
+        address: request.farmLocation,
+        status: 'ACTIVE',
+        userId: user ? user.id : undefined
+      }
+    });
+
     console.log(`[Admin]: Approved vendor request ${id} for +91 ${request.phoneNumber} (${request.farmName})`);
 
     return {
       message: `Approved "${request.farmName}" as verified Vendor!`,
       data: updatedReq
     };
+  }
+
+  public static async getAllVendors() {
+    return prisma.vendor.findMany({
+      where: { status: 'ACTIVE' },
+      include: {
+        _count: {
+          select: { products: true, orders: true }
+        }
+      },
+      orderBy: { rating: 'desc' }
+    });
+  }
+
+  public static async getVendorById(id: string) {
+    return prisma.vendor.findUnique({
+      where: { id },
+      include: {
+        products: { include: { category: true } },
+        _count: { select: { orders: true, subscriptions: true } }
+      }
+    });
+  }
+
+  public static async getVendorByPhone(phoneNumber: string) {
+    const cleanPhone = String(phoneNumber || '').replace(/[^0-9]/g, '');
+    let vendor = await prisma.vendor.findUnique({
+      where: { phoneNumber: cleanPhone },
+      include: {
+        user: true,
+        _count: { select: { products: true, orders: true } }
+      }
+    });
+
+    // If not yet in Vendor table, but has approved vendor request or role
+    if (!vendor) {
+      const user = await prisma.user.findUnique({ where: { phoneNumber: cleanPhone } });
+      const req = await prisma.vendorRequest.findFirst({
+        where: { phoneNumber: cleanPhone, status: 'APPROVED' }
+      });
+      if (user?.role === 'vendor' || req) {
+        vendor = await prisma.vendor.create({
+          data: {
+            id: `v-${cleanPhone}`,
+            businessName: req?.farmName || user?.fullName || 'Organic Farm',
+            ownerName: req?.userName || user?.fullName || 'Partner Farmer',
+            phoneNumber: cleanPhone,
+            address: req?.farmLocation || user?.location || 'Tamil Nadu',
+            status: 'ACTIVE',
+            userId: user ? user.id : undefined
+          },
+          include: {
+            user: true,
+            _count: { select: { products: true, orders: true } }
+          }
+        });
+      }
+    }
+
+    return vendor;
   }
 
   public static async rejectVendorRequest(id: string, reason?: string) {

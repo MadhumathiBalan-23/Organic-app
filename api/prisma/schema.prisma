@@ -62,6 +62,7 @@ model Product {
   imageUrl            String
   cloudinaryPublicId  String?
   vendorId            String?
+  vendor              Vendor?        @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   subscriptionAllowed Boolean        @default(true)
   oneTimeAllowed      Boolean        @default(true)
   organicCertified    Boolean        @default(true)
@@ -71,6 +72,30 @@ model Product {
   updatedAt           DateTime       @updatedAt
   subscriptions       Subscription[]
   orderItems          OrderItem[]
+  cartItems           CartItem[]
+  subscriptionSettings ProductSubscriptionSettings?
+}
+
+model Vendor {
+  id               String         @id @default(uuid())
+  userId           String?        @unique
+  user             User?          @relation(fields: [userId], references: [id])
+  businessName     String
+  ownerName        String
+  phoneNumber      String         @unique
+  email            String?
+  address          String
+  latitude         Float?         @default(0)
+  longitude        Float?         @default(0)
+  deliveryRadiusKm Float          @default(15.0)
+  rating           Float          @default(4.9)
+  status           String         @default("ACTIVE") // ACTIVE, PENDING, SUSPENDED
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  products         Product[]
+  orders           Order[]
+  subscriptions    Subscription[]
+  cartItems        CartItem[]
 }
 
 model User {
@@ -85,9 +110,15 @@ model User {
   vendorStatus  String?        @default("NONE") // NONE, PENDING, APPROVED, REJECTED
   totalOrders   Int            @default(0)
   totalSpend    Float          @default(0)
+  isPhoneVerified Boolean        @default(true)
   createdAt     DateTime       @default(now())
   subscriptions Subscription[]
   orders        Order[]
+  cartItems     CartItem[]
+  vendor        Vendor?
+  devices       UserDevice[]
+  refreshTokens RefreshToken[]
+  loginHistories LoginHistory[]
 }
 
 model Brand {
@@ -136,46 +167,111 @@ model Subscription {
   id                   String   @id @default(uuid())
   userId               String?
   user                 User?    @relation(fields: [userId], references: [id])
+  vendorId             String?
+  vendor               Vendor?  @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  customerPhone        String?
+  customerName         String?
+  deliveryAddress      String?
   productId            String
   product              Product  @relation(fields: [productId], references: [id])
-  quantity             Int      @default(1)
+  quantity             Float    @default(1)
+  unit                 String   @default("Kg")
   frequency            String   @default("Daily") // Daily, Weekly, Monthly
+  selectedDays         String   @default("[]") // JSON string of days, e.g. ["Mon","Wed","Fri"]
+  selectedDates        String   @default("[]") // JSON string of dates, e.g. [1,15]
   deliveryTime         String   @default("06:30 AM")
+  deliverySlot         String?
+  slotType             String   @default("RECOMMENDED") // RECOMMENDED, CUSTOM
   duration             Int      @default(30)
   startDate            String
+  endDate              String?
+  totalDeliveries      Int      @default(30)
+  pricePerDelivery     Float    @default(0)
+  priceTotal           Float
   paymentStatus        String   @default("Paid")
   status               String   @default("Active") // Active, Paused, Cancelled
-  priceTotal           Float
   autoRenew            Boolean  @default(true)
   confirmationRequired Boolean  @default(true)
   skippedDates         String   @default("[]")
   createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt @default(now())
+  schedules            SubscriptionDeliverySchedule[]
+}
+
+model SubscriptionDeliverySchedule {
+  id             String       @id @default(uuid())
+  subscriptionId String
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  deliveryDate   String       // YYYY-MM-DD
+  deliveryTime   String
+  status         String       @default("SCHEDULED") // SCHEDULED, DELIVERED, SKIPPED, CANCELLED
+  createdAt      DateTime     @default(now())
+
+  @@index([subscriptionId])
+  @@index([deliveryDate])
+}
+
+model ProductSubscriptionSettings {
+  id                     String   @id @default(uuid())
+  productId              String   @unique
+  product                Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  isSubscriptionEnabled  Boolean  @default(true)
+  allowedFrequencies     String   @default("[\"Daily\",\"Weekly\",\"Monthly\"]") // JSON array
+  minimumQuantity        Float    @default(1)
+  maximumQuantity        Float    @default(10)
+  quantityUnit           String   @default("Kg") // Kg, Litre, Gram, ml, Piece
+  unitMultipliers        String   @default("[]") // JSON array of preset options
+  allowedDeliverySlots   String   @default("[]") // JSON array of slots
+  customTimeAllowed      Boolean  @default(true)
+  morningDeliveryEnabled Boolean  @default(true)
+  eveningDeliveryEnabled Boolean  @default(false)
+  defaultSlot            String?  @default("06:00 AM - 08:00 AM")
+  minimumDuration        Int      @default(15)
+  maximumDuration        Int      @default(90)
+  deliveryCutoffTime     String   @default("21:00") // 9 PM
+  categoryNotice         String?
+  badgeText              String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 }
 
 model Order {
   id            String      @id @default(uuid())
   userId        String?
   user          User?       @relation(fields: [userId], references: [id])
+  vendorId      String?
+  vendor        Vendor?     @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   customerName  String
   customerPhone String
   deliveryAddress String
   totalAmount   Float
+  deliveryFee   Float       @default(0)
+  distanceKm    Float       @default(0)
+  deliverySlot  String?
+  deliveryOtp   String?
+  vendorPhone   String?
   orderType     String      @default("One-Time")
   paymentStatus String      @default("SUCCESS")
   deliveryStatus String     @default("CONFIRMED")
   paymentMethod String      @default("UPI")
   createdAt     DateTime    @default(now())
   items         OrderItem[]
+
+  @@index([vendorId])
+  @@index([userId])
+  @@index([customerPhone])
 }
 
 model OrderItem {
   id        String   @id @default(uuid())
   orderId   String
-  order     Order    @relation(fields: [orderId], references: [id])
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId String
   product   Product  @relation(fields: [productId], references: [id])
   quantity  Int      @default(1)
   price     Float
+  unitPrice Float    @default(0)
+  subtotal  Float    @default(0)
 }
 
 model VendorRequest {
@@ -193,3 +289,101 @@ model VendorRequest {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }
+
+model CartItem {
+  id          String   @id @default(uuid())
+  phoneNumber String
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  vendorId    String?
+  vendor      Vendor?  @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  quantity    Int      @default(1)
+  unit        String   @default("Kg")
+  price       Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([phoneNumber, productId])
+  @@index([phoneNumber])
+  @@index([vendorId])
+}
+
+model UserDevice {
+  id              String         @id @default(uuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId        String
+  deviceName      String?
+  deviceModel     String?
+  deviceType      String         @default("mobile") // mobile, tablet, web
+  operatingSystem String?        @default("Android")
+  osVersion       String?
+  appVersion      String?        @default("1.0.0")
+  isTrusted       Boolean        @default(false)
+  isActive        Boolean        @default(true)
+  trustedAt       DateTime?
+  lastLoginAt     DateTime       @default(now())
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  refreshTokens   RefreshToken[]
+  loginHistories  LoginHistory[]
+
+  @@unique([userId, deviceId])
+  @@index([deviceId])
+  @@index([userId])
+}
+
+model OtpVerification {
+  id           String    @id @default(uuid())
+  userId       String?
+  phoneNumber  String
+  otpHash      String
+  role         String    @default("customer") // customer, vendor, admin
+  purpose      String    @default("LOGIN")
+  expiresAt    DateTime
+  attemptCount Int       @default(0)
+  isVerified   Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+
+  @@index([phoneNumber])
+  @@index([expiresAt])
+}
+
+model RefreshToken {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userDeviceId  String
+  userDevice    UserDevice  @relation(fields: [userDeviceId], references: [id], onDelete: Cascade)
+  tokenHash     String      @unique
+  tokenFamilyId String
+  role          String      @default("customer")
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  createdAt     DateTime    @default(now())
+  lastUsedAt    DateTime    @default(now())
+
+  @@index([userId])
+  @@index([tokenFamilyId])
+  @@index([userDeviceId])
+}
+
+model LoginHistory {
+  id           String      @id @default(uuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userDeviceId String?
+  userDevice   UserDevice? @relation(fields: [userDeviceId], references: [id], onDelete: SetNull)
+  role         String      @default("customer")
+  loginType    String      @default("OTP") // OTP, TRUSTED_DEVICE_REFRESH
+  loginStatus  String      @default("SUCCESS") // SUCCESS, FAILED
+  ipAddress    String      @default("127.0.0.1")
+  userAgent    String?
+  createdAt    DateTime    @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
