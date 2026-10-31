@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Modal,
   ActivityIndicator,
   Share,
   Platform,
@@ -28,6 +27,7 @@ import {
   Filter,
 } from 'lucide-react-native';
 import { API_ENDPOINTS } from '../../services';
+import { CommonModal } from '../../components/CommonModal';
 import { C, Chip, SectionHeader, TypeIcon } from './types';
 
 export interface AdminLogItem {
@@ -805,61 +805,35 @@ export const AdminLogsScreen: React.FC = () => {
       )}
 
       {/* Audit Log Sheet Inspection Modal */}
-      <Modal
+      <CommonModal
         visible={!!selectedLog}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSelectedLog(null)}
+        onClose={() => setSelectedLog(null)}
+        title={selectedLog ? `Audit Log #${selectedLog.id}` : 'Audit Log'}
+        subtitle={selectedLog ? `Recorded on ${formatReportDate(selectedLog.timestamp)}` : undefined}
+        icon={<FileText size={16} color={C.primary} />}
+        maxHeight="88%"
       >
-        <TouchableOpacity
-          className="flex-1 bg-black/50 justify-end"
-          activeOpacity={1}
-          onPress={() => setSelectedLog(null)}
-        >
-          <View
-            className="bg-white rounded-t-3xl p-5 pb-8 max-h-[85%]"
-            onStartShouldSetResponder={() => true}
-          >
-            <View className="w-10 h-1 bg-[#E2EBE6] rounded-full self-center mb-3" />
+        {selectedLog && (
+          <>
+            {/* Event Tag */}
+            <View className="mb-3">
+              <View
+                className="px-2.5 py-1 rounded-full border self-start"
+                style={{
+                  backgroundColor: getActionTheme(selectedLog.type).bg,
+                  borderColor: getActionTheme(selectedLog.type).border,
+                }}
+              >
+                <Text
+                  className="text-3xs font-black uppercase tracking-wider"
+                  style={{ color: getActionTheme(selectedLog.type).text }}
+                >
+                  {getActionTheme(selectedLog.type).label} EVENT
+                </Text>
+              </View>
+            </View>
 
-            {selectedLog && (
-              <ScrollView showsVerticalScrollIndicator={false}>
-                {/* Modal Header */}
-                <View className="flex-row items-center justify-between pb-3 border-b border-[#E2EBE6] mb-3">
-                  <View>
-                    <View className="flex-row items-center gap-2">
-                      <View
-                        className="px-2 py-0.5 rounded-full border"
-                        style={{
-                          backgroundColor: getActionTheme(selectedLog.type).bg,
-                          borderColor: getActionTheme(selectedLog.type).border,
-                        }}
-                      >
-                        <Text
-                          className="text-3xs font-black uppercase tracking-wider"
-                          style={{ color: getActionTheme(selectedLog.type).text }}
-                        >
-                          {getActionTheme(selectedLog.type).label} EVENT
-                        </Text>
-                      </View>
-                      <Text className="text-xs font-mono font-bold text-[#0D2B1D]">
-                        #{selectedLog.id}
-                      </Text>
-                    </View>
-                    <Text className="text-2xs text-[#9aada6] mt-0.5">
-                      Recorded on {formatReportDate(selectedLog.timestamp)}
-                    </Text>
-                  </View>
-
-                  <TouchableOpacity
-                    className="w-7 h-7 rounded-full bg-[#F0F4F1] items-center justify-center"
-                    onPress={() => setSelectedLog(null)}
-                  >
-                    <X size={15} color="#5a6a63" />
-                  </TouchableOpacity>
-                </View>
-
-                {/* Operation Description Box */}
+            {/* Operation Description Box */}
                 <View className="bg-[#F7FAF8] rounded-xl p-3.5 border border-[#E2EBE6] mb-3">
                   <Text className="text-3xs font-extrabold uppercase tracking-wider text-[#5a6a63] mb-1">
                     Audited Event
@@ -912,16 +886,14 @@ export const AdminLogsScreen: React.FC = () => {
 
                 {/* Close Button */}
                 <TouchableOpacity
-                  className="h-11 rounded-xl items-center justify-center bg-[#0D2B1D]"
+                  className="h-11 rounded-xl items-center justify-center bg-[#0D2B1D] mb-4"
                   onPress={() => setSelectedLog(null)}
                 >
                   <Text className="text-xs font-bold text-white">Dismiss Report Sheet</Text>
                 </TouchableOpacity>
-              </ScrollView>
+              </>
             )}
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      </CommonModal>
     </View>
   );
 };

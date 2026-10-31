@@ -31,6 +31,7 @@ import Svg, { Defs, LinearGradient as SvgLinearGradient, Stop, Rect } from 'reac
 import { bannerService } from '../../services';
 import { getGradientTheme } from '../../components/HomeHeader';
 import { AppButton, EmptyState } from '../../components/LoadingAndError';
+import { CommonModal } from '../../components/CommonModal';
 import { C, SectionHeader } from './types';
 
 // Color Space Helpers (HSV <-> HEX)
@@ -650,45 +651,14 @@ export const AdminBannersScreen: React.FC = () => {
         )}
       </ScrollView>
 
-      {/* ─── NEAT & SIMPLE BANNER ADD / EDIT MODAL ─── */}
-      <Modal visible={!!modal} transparent animationType="slide" onRequestClose={() => setModal(null)}>
-        <View className="flex-1 bg-black/50 justify-end">
-          {/* Top backdrop touch area: ONLY touches above the sheet, never overlaps */}
-          <TouchableOpacity
-            className="flex-1"
-            activeOpacity={1}
-            onPress={() => setModal(null)}
-          />
-          <View
-            style={{ elevation: 25 }}
-            className="bg-white rounded-t-3xl p-5 pb-8 max-h-[92%]"
-          >
-            {/* Top Handle Bar */}
-            <View className="w-10 h-1 bg-[#E2EBE6] rounded-full self-center mb-3" />
-
-            {/* Modal Header */}
-            <View className="flex-row items-center justify-between mb-3">
-              <View className="flex-row items-center gap-2">
-                <View className="w-8 h-8 rounded-full bg-emerald-100 items-center justify-center">
-                  <Sparkles size={16} color="#047857" strokeWidth={2.5} />
-                </View>
-                <Text className="text-lg font-extrabold text-[#1a1a2e]">
-                  {modal === 'add' ? 'Add Promotional Banner' : 'Edit Banner'}
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => setModal(null)}
-                className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center"
-                activeOpacity={0.7}
-              >
-                <X size={16} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="always"
-            >
+      {/* ─── COMMON REUSABLE BANNER ADD / EDIT MODAL ─── */}
+      <CommonModal
+        visible={!!modal}
+        onClose={() => setModal(null)}
+        title={modal === 'add' ? 'Add Promotional Banner' : 'Edit Banner'}
+        icon={<Sparkles size={16} color="#047857" strokeWidth={2.5} />}
+        maxHeight="92%"
+      >
               {/* ─── 1. REALTIME LIVE PREVIEW CARD (Visible Color & Photo) ─── */}
               <View className="mb-4">
                 <View className="flex-row items-center justify-between mb-1.5">
@@ -1174,10 +1144,7 @@ export const AdminBannersScreen: React.FC = () => {
                   )}
                 </TouchableOpacity>
               </View>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      </CommonModal>
     </View>
   );
 };

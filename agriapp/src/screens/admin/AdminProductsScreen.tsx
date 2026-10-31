@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Modal,
   Alert,
   Image,
 } from 'react-native';
@@ -14,6 +13,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Product, Categories, ORGANIC_PRODUCT_PRESETS } from '../../constants/mockData';
 import { productService, bannerService } from '../../services';
 import { AppButton } from '../../components/LoadingAndError';
+import { CommonModal } from '../../components/CommonModal';
 import { C, SectionHeader, Chip, statusColor } from './types';
 
 export const AdminProductsScreen: React.FC = () => {
@@ -287,29 +287,20 @@ export const AdminProductsScreen: React.FC = () => {
       </ScrollView>
 
       {/* Add/Edit Modal */}
-      <Modal visible={!!modal} transparent animationType="slide" onRequestClose={() => setModal(null)}>
-        <TouchableOpacity
-          className="flex-1 bg-black/40 justify-end"
-          activeOpacity={1}
-          onPress={() => setModal(null)}
-        >
-          <View
-            className="bg-white rounded-t-3xl p-5 pb-8 max-h-[85%]"
-            onStartShouldSetResponder={() => true}
-          >
-            <View className="w-9 h-1 bg-[#E2EBE6] rounded-full self-center mb-4" />
-            <View className="flex-row items-center gap-2 mb-4">
-              {modal === 'add' ? (
-                <Plus size={18} color={C.primary} strokeWidth={2.5} />
-              ) : (
-                <Pencil size={18} color={C.primary} strokeWidth={2.5} />
-              )}
-              <Text className="text-base font-extrabold text-[#1a1a2e]">
-                {modal === 'add' ? 'Add Product' : 'Edit Product'}
-              </Text>
-            </View>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider mb-1 mt-2.5">
+      <CommonModal
+        visible={!!modal}
+        onClose={() => setModal(null)}
+        title={modal === 'add' ? 'Add Product' : 'Edit Product'}
+        icon={
+          modal === 'add' ? (
+            <Plus size={16} color={C.primary} strokeWidth={2.5} />
+          ) : (
+            <Pencil size={16} color={C.primary} strokeWidth={2.5} />
+          )
+        }
+        maxHeight="90%"
+      >
+        <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider mb-1 mt-2.5">
                 Product Name *
               </Text>
               <TextInput
@@ -481,7 +472,7 @@ export const AdminProductsScreen: React.FC = () => {
                 placeholderTextColor={C.textMuted}
               />
 
-              <View className="flex-row gap-2.5 mt-3">
+              <View className="flex-row gap-2.5 mt-3 mb-4">
                 <AppButton variant="outline" title="Cancel" onPress={() => setModal(null)} style={{ flex: 1 }} />
                 <AppButton
                   variant="primary"
@@ -492,10 +483,7 @@ export const AdminProductsScreen: React.FC = () => {
                   style={{ flex: 1.5 }}
                 />
               </View>
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      </CommonModal>
     </View>
   );
 };

@@ -22,7 +22,6 @@ import {
   Inbox,
 } from 'lucide-react-native';
 
-// ── Organic Design Tokens ─────────────────────────────────
 export const UI_COLORS = {
   primary: '#07843D',
   primaryDark: '#045A29',

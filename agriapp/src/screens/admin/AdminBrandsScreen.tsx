@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { Award, MapPin, Star, Pencil, Trash2, Plus } from 'lucide-react-native';
 import { AdminBrand } from '../../constants/mockData';
 import { API_ENDPOINTS } from '../../services/api.client';
+import { CommonModal } from '../../components/CommonModal';
 import { C, SectionHeader } from './types';
 
 export const AdminBrandsScreen: React.FC = () => {
@@ -144,75 +145,65 @@ export const AdminBrandsScreen: React.FC = () => {
         <View className="h-5" />
       </ScrollView>
 
-      <Modal visible={!!modal} transparent animationType="slide" onRequestClose={() => setModal(null)}>
-        <TouchableOpacity
-          className="flex-1 bg-black/40 justify-end"
-          activeOpacity={1}
-          onPress={() => setModal(null)}
-        >
-          <View
-            className="bg-white rounded-t-3xl p-5 pb-8 max-h-[85%]"
-            onStartShouldSetResponder={() => true}
+      <CommonModal
+        visible={!!modal}
+        onClose={() => setModal(null)}
+        title={modal === 'add' ? 'Add Brand' : 'Edit Brand'}
+        icon={
+          modal === 'add' ? (
+            <Plus size={16} color={C.primary} strokeWidth={2.5} />
+          ) : (
+            <Pencil size={16} color={C.primary} strokeWidth={2.5} />
+          )
+        }
+        maxHeight="80%"
+      >
+        <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider mb-1 mt-2.5">
+          Brand Name *
+        </Text>
+        <TextInput
+          className="border border-[#E2EBE6] rounded-xl px-3 h-11 text-sm text-[#1a1a2e] bg-[#F7FAF8]"
+          value={form.name}
+          onChangeText={v => setForm({ ...form, name: v })}
+          placeholder="e.g. NatureFarm"
+          placeholderTextColor={C.textMuted}
+        />
+        <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider mb-1 mt-2.5">
+          Origin State
+        </Text>
+        <TextInput
+          className="border border-[#E2EBE6] rounded-xl px-3 h-11 text-sm text-[#1a1a2e] bg-[#F7FAF8]"
+          value={form.origin}
+          onChangeText={v => setForm({ ...form, origin: v })}
+          placeholder="e.g. Tamil Nadu"
+          placeholderTextColor={C.textMuted}
+        />
+        <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider mb-1 mt-2.5">
+          Rating (1–5)
+        </Text>
+        <TextInput
+          className="border border-[#E2EBE6] rounded-xl px-3 h-11 text-sm text-[#1a1a2e] bg-[#F7FAF8]"
+          value={form.rating}
+          onChangeText={v => setForm({ ...form, rating: v })}
+          keyboardType="decimal-pad"
+          placeholder="4.5"
+          placeholderTextColor={C.textMuted}
+        />
+        <View className="flex-row gap-2.5 mt-4 mb-3">
+          <TouchableOpacity
+            className="flex-1 h-11 rounded-full items-center justify-center bg-[#F7FAF8] border border-[#E2EBE6]"
+            onPress={() => setModal(null)}
           >
-            <View className="w-9 h-1 bg-[#E2EBE6] rounded-full self-center mb-4" />
-            <View className="flex-row items-center gap-2 mb-4">
-              {modal === 'add' ? (
-                <Plus size={18} color={C.primary} strokeWidth={2.5} />
-              ) : (
-                <Pencil size={18} color={C.primary} strokeWidth={2.5} />
-              )}
-              <Text className="text-base font-extrabold text-[#1a1a2e]">
-                {modal === 'add' ? 'Add Brand' : 'Edit Brand'}
-              </Text>
-            </View>
-            <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider mb-1 mt-2.5">
-              Brand Name *
-            </Text>
-            <TextInput
-              className="border border-[#E2EBE6] rounded-xl px-3 h-11 text-sm text-[#1a1a2e] bg-[#F7FAF8]"
-              value={form.name}
-              onChangeText={v => setForm({ ...form, name: v })}
-              placeholder="e.g. NatureFarm"
-              placeholderTextColor={C.textMuted}
-            />
-            <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider mb-1 mt-2.5">
-              Origin State
-            </Text>
-            <TextInput
-              className="border border-[#E2EBE6] rounded-xl px-3 h-11 text-sm text-[#1a1a2e] bg-[#F7FAF8]"
-              value={form.origin}
-              onChangeText={v => setForm({ ...form, origin: v })}
-              placeholder="e.g. Tamil Nadu"
-              placeholderTextColor={C.textMuted}
-            />
-            <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider mb-1 mt-2.5">
-              Rating (1–5)
-            </Text>
-            <TextInput
-              className="border border-[#E2EBE6] rounded-xl px-3 h-11 text-sm text-[#1a1a2e] bg-[#F7FAF8]"
-              value={form.rating}
-              onChangeText={v => setForm({ ...form, rating: v })}
-              keyboardType="decimal-pad"
-              placeholder="4.5"
-              placeholderTextColor={C.textMuted}
-            />
-            <View className="flex-row gap-2.5 mt-3">
-              <TouchableOpacity
-                className="flex-1 h-11 rounded-full items-center justify-center bg-[#F7FAF8] border border-[#E2EBE6]"
-                onPress={() => setModal(null)}
-              >
-                <Text className="text-[#5a6a63] font-semibold">Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                className="flex-1 h-11 rounded-full items-center justify-center bg-[#0D2B1D]"
-                onPress={handleSave}
-              >
-                <Text className="text-white font-bold">Save</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+            <Text className="text-[#5a6a63] font-semibold">Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            className="flex-1 h-11 rounded-full items-center justify-center bg-[#0D2B1D]"
+            onPress={handleSave}
+          >
+            <Text className="text-white font-bold">Save</Text>
+          </TouchableOpacity>
+        </View>
+      </CommonModal>
     </View>
   );
 };

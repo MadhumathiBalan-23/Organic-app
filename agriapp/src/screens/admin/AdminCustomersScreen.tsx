@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Modal,
 } from 'react-native';
 import {
   Search,
@@ -17,9 +16,11 @@ import {
   XCircle,
   Clock,
   CreditCard,
+  User,
 } from 'lucide-react-native';
 import { AdminCustomer, AdminOrder } from '../../constants/mockData';
 import { API_ENDPOINTS } from '../../services';
+import { CommonModal } from '../../components/CommonModal';
 import { C, Chip, SectionHeader, statusColor } from './types';
 
 export const AdminCustomersScreen: React.FC = () => {
@@ -162,25 +163,16 @@ export const AdminCustomersScreen: React.FC = () => {
       </ScrollView>
 
       {/* Customer Detail Modal */}
-      <Modal
+      <CommonModal
         visible={!!selected}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSelected(null)}
+        onClose={() => setSelected(null)}
+        title="Customer Details"
+        icon={<User size={16} color={C.primary} />}
+        maxHeight="90%"
       >
-        <TouchableOpacity
-          className="flex-1 bg-black/40 justify-end"
-          activeOpacity={1}
-          onPress={() => setSelected(null)}
-        >
-          <View
-            className="bg-white rounded-t-3xl p-5 pb-8 max-h-[90%]"
-            onStartShouldSetResponder={() => true}
-          >
-            <View className="w-9 h-1 bg-[#E2EBE6] rounded-full self-center mb-4" />
-            {selected && (
-              <>
-                {/* Header */}
+        {selected && (
+          <>
+            {/* Header */}
                 <View className="flex-row items-center gap-3 mb-4">
                   <View className="w-14 h-14 rounded-full bg-[#2D6A4F] items-center justify-center shrink-0">
                     <Text className="text-white font-extrabold text-lg">
@@ -246,10 +238,7 @@ export const AdminCustomersScreen: React.FC = () => {
                     Order History
                   </Text>
                 </View>
-                <ScrollView
-                  showsVerticalScrollIndicator={false}
-                  className="max-h-[280px]"
-                >
+                <View>
                   {customerOrders.length === 0 ? (
                     <Text className="text-center text-[#9aada6] text-sm py-10">
                       No orders yet
@@ -309,18 +298,16 @@ export const AdminCustomersScreen: React.FC = () => {
                       </View>
                     ))
                   )}
-                </ScrollView>
+                </View>
                 <TouchableOpacity
-                  className="h-11 rounded-full items-center justify-center bg-[#F7FAF8] border border-[#E2EBE6] mt-3"
+                  className="h-11 rounded-full items-center justify-center bg-[#F7FAF8] border border-[#E2EBE6] mt-3 mb-4"
                   onPress={() => setSelected(null)}
                 >
                   <Text className="text-[#5a6a63] font-semibold">Close</Text>
                 </TouchableOpacity>
               </>
             )}
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      </CommonModal>
     </View>
   );
 };

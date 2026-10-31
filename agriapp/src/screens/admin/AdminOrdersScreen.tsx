@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Modal,
   TextInput,
   ActivityIndicator,
 } from 'react-native';
@@ -31,6 +30,7 @@ import {
   Filter,
 } from 'lucide-react-native';
 import { API_ENDPOINTS } from '../../services';
+import { CommonModal } from '../../components/CommonModal';
 import { C, Chip, SectionHeader } from './types';
 
 export interface OrderItemDetail {
@@ -758,55 +758,25 @@ export const AdminOrdersScreen: React.FC = () => {
       )}
 
       {/* Modern Order Detail Modal Sheet */}
-      <Modal
+      <CommonModal
         visible={!!selected}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSelected(null)}
+        onClose={() => setSelected(null)}
+        title={selected ? `Order #${selected.id}` : 'Order Details'}
+        subtitle={selected ? `Placed on ${selected.date} at ${selected.time}` : undefined}
+        icon={<Package size={16} color={C.primary} />}
+        maxHeight="92%"
       >
-        <TouchableOpacity
-          className="flex-1 bg-black/50 justify-end"
-          activeOpacity={1}
-          onPress={() => setSelected(null)}
-        >
-          <View
-            className="bg-white rounded-t-3xl p-5 pb-9 max-h-[90%]"
-            onStartShouldSetResponder={() => true}
-          >
-            {/* Grab handle */}
-            <View className="w-10 h-1.5 bg-[#E2EBE6] rounded-full self-center mb-3.5" />
+        {selected && (
+          <>
+            {selected.deliveryOtp && (
+              <View className="mb-3.5 self-start bg-[#FEF3C7] px-2.5 py-1 rounded-lg border border-[#FCD34D]">
+                <Text className="text-xs font-black text-[#B45309]">
+                  Delivery OTP: {selected.deliveryOtp}
+                </Text>
+              </View>
+            )}
 
-            {selected && (
-              <ScrollView showsVerticalScrollIndicator={false}>
-                {/* Header Row */}
-                <View className="flex-row items-center justify-between pb-3 border-b border-[#E2EBE6] mb-4">
-                  <View className="flex-1 mr-2">
-                    <View className="flex-row items-center gap-2">
-                      <Text className="text-lg font-black text-[#1a1a2e] font-mono">
-                        #{selected.id}
-                      </Text>
-                      {selected.deliveryOtp && (
-                        <View className="bg-[#FEF3C7] px-2 py-0.5 rounded border border-[#FCD34D]">
-                          <Text className="text-2xs font-extrabold text-[#B45309]">
-                            OTP: {selected.deliveryOtp}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text className="text-2xs text-[#9aada6] mt-0.5">
-                      Placed on {selected.date} at {selected.time}
-                    </Text>
-                  </View>
-
-                  <TouchableOpacity
-                    className="w-8 h-8 rounded-full bg-[#F0F4F1] items-center justify-center"
-                    onPress={() => setSelected(null)}
-                  >
-                    <X size={16} color="#5a6a63" strokeWidth={2.5} />
-                  </TouchableOpacity>
-                </View>
-
-                {/* Visual Order Progress Stepper */}
+            {/* Visual Order Progress Stepper */}
                 <View className="bg-[#F7FAF8] rounded-2xl p-3.5 border border-[#E2EBE6] mb-4">
                   <Text className="text-2xs font-bold text-[#5a6a63] uppercase tracking-wider mb-2.5">
                     Order Status Progress
@@ -1044,18 +1014,16 @@ export const AdminOrdersScreen: React.FC = () => {
 
                 {/* Close Button */}
                 <TouchableOpacity
-                  className="h-12 rounded-xl items-center justify-center bg-[#F0F4F1] border border-[#E2EBE6]"
+                  className="h-12 rounded-xl items-center justify-center bg-[#F0F4F1] border border-[#E2EBE6] mb-4"
                   onPress={() => setSelected(null)}
                 >
                   <Text className="text-sm text-[#0D2B1D] font-bold">
                     Close Details
                   </Text>
                 </TouchableOpacity>
-              </ScrollView>
+              </>
             )}
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      </CommonModal>
     </View>
   );
 };

@@ -33,6 +33,7 @@ import { Product } from '../../constants/mockData';
 import { customerService, ProductQueryParams, PaginationMetadata, CustomerCategoryItem } from '../../services/customer.service';
 import { getGradientTheme } from '../../components/HomeHeader';
 import { CommonHeader } from '../../components/CommonHeader';
+import { CommonModal } from '../../components/CommonModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const CARD_WIDTH: any = '48.5%';
@@ -532,66 +533,65 @@ export const CategoryProductListingScreen: React.FC<CategoryProductListingScreen
       )}
 
       {/* ── 5. SORT BOTTOM SHEET MODAL ── */}
-      <Modal visible={showSortModal} transparent animationType="fade" onRequestClose={() => setShowSortModal(false)}>
-        <TouchableOpacity
-          className="flex-1 bg-black/60 justify-end"
-          activeOpacity={1}
-          onPress={() => setShowSortModal(false)}
-        >
-          <TouchableOpacity activeOpacity={1} className="bg-white rounded-t-3xl p-5 pb-8">
-            <View className="flex-row items-center justify-between pb-3 border-b border-slate-100 mb-2">
-              <Text className="text-base font-black text-slate-900">Sort Products By</Text>
-              <TouchableOpacity onPress={() => setShowSortModal(false)}>
-                <X size={20} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-
-            {Object.keys(sortLabels).map((key) => {
-              const isSelected = sortBy === key;
-              return (
-                <TouchableOpacity
-                  key={key}
-                  className={`flex-row items-center justify-between py-3 px-3 rounded-xl mb-1 ${
-                    isSelected ? 'bg-[#E7F5EB]' : 'bg-transparent'
-                  }`}
-                  onPress={() => {
-                    setSortBy(key);
-                    setShowSortModal(false);
-                  }}
-                >
-                  <Text
-                    className={`text-sm ${
-                      isSelected ? 'font-black text-[#07843D]' : 'font-semibold text-slate-700'
-                    }`}
-                  >
-                    {sortLabels[key]}
-                  </Text>
-                  {isSelected ? <Check size={18} color="#07843D" strokeWidth={3} /> : null}
-                </TouchableOpacity>
-              );
-            })}
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+      <CommonModal
+        visible={showSortModal}
+        onClose={() => setShowSortModal(false)}
+        title="Sort Products By"
+        icon={<ArrowUpDown size={16} color="#07843D" />}
+        scrollable={false}
+      >
+        {Object.keys(sortLabels).map((key) => {
+          const isSelected = sortBy === key;
+          return (
+            <TouchableOpacity
+              key={key}
+              className={`flex-row items-center justify-between py-3 px-3 rounded-xl mb-1 ${
+                isSelected ? 'bg-[#E7F5EB]' : 'bg-transparent'
+              }`}
+              onPress={() => {
+                setSortBy(key);
+                setShowSortModal(false);
+              }}
+            >
+              <Text
+                className={`text-sm ${
+                  isSelected ? 'font-black text-[#07843D]' : 'font-semibold text-slate-700'
+                }`}
+              >
+                {sortLabels[key]}
+              </Text>
+              {isSelected ? <Check size={18} color="#07843D" strokeWidth={3} /> : null}
+            </TouchableOpacity>
+          );
+        })}
+      </CommonModal>
 
       {/* ── 6. AMAZON / FLIPKART STYLE FILTER MODAL ── */}
-      <Modal visible={showFilterModal} transparent animationType="slide" onRequestClose={() => setShowFilterModal(false)}>
-        <View className="flex-1 bg-black/60 justify-end">
-          <View className="bg-white rounded-t-3xl max-h-[85%] flex-col">
-            {/* Modal Header */}
-            <View className="flex-row items-center justify-between px-5 pt-4 pb-3 border-b border-slate-100">
-              <View>
-                <Text className="text-lg font-black text-slate-900">Filter Products</Text>
-                <Text className="text-xs text-slate-500 font-medium">Refine by price, vendor, ratings & delivery</Text>
-              </View>
-              <TouchableOpacity onPress={() => setShowFilterModal(false)} className="p-1">
-                <X size={22} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Filter Options Scrollable Content */}
-            <ScrollView className="p-5 flex-1" showsVerticalScrollIndicator={false}>
-              {/* Section A: Price Range */}
+      <CommonModal
+        visible={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        title="Filter Products"
+        subtitle="Refine by price, vendor, ratings & delivery"
+        icon={<SlidersHorizontal size={16} color="#07843D" />}
+        maxHeight="88%"
+        footer={
+          <View className="flex-row items-center pt-2 bg-white gap-3">
+            <TouchableOpacity
+              className="flex-1 py-3 rounded-xl border border-slate-200 items-center justify-center"
+              onPress={handleClearFilters}
+            >
+              <Text className="text-xs font-black text-slate-700">Clear All</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="flex-1 py-3 rounded-xl bg-[#07843D] items-center justify-center shadow-sm"
+              onPress={() => setShowFilterModal(false)}
+            >
+              <Text className="text-xs font-black text-white">Apply Filters</Text>
+            </TouchableOpacity>
+          </View>
+        }
+      >
+        {/* Section A: Price Range */}
               <View className="mb-5">
                 <Text className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2.5">
                   Price Range
@@ -778,26 +778,7 @@ export const CategoryProductListingScreen: React.FC<CategoryProductListingScreen
                   </View>
                 </TouchableOpacity>
               </View>
-            </ScrollView>
-
-            {/* Modal Bottom Actions: Clear All vs Apply */}
-            <View className="flex-row items-center p-4 border-t border-slate-100 bg-white gap-3">
-              <TouchableOpacity
-                className="flex-1 py-3 rounded-xl border border-slate-200 items-center justify-center"
-                onPress={handleClearFilters}
-              >
-                <Text className="text-xs font-black text-slate-700">Clear All</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                className="flex-1 py-3 rounded-xl bg-[#07843D] items-center justify-center shadow-sm"
-                onPress={() => setShowFilterModal(false)}
-              >
-                <Text className="text-xs font-black text-white">Apply Filters</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      </CommonModal>
     </View>
   );
 };
