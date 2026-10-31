@@ -24,6 +24,9 @@ import {
   X,
   CheckCircle2,
   ChevronRight,
+  ChevronDown,
+  Image as ImageIcon,
+  Video as VideoIcon,
   Pipette,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -198,10 +201,46 @@ export const SAMPLE_PHOTOS = [
   { name: '🌾 Farm', url: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&q=80&w=800' },
 ];
 
+// Banner Row Options (matching user's design)
+export const BANNER_ROWS = [
+  {
+    id: 'ROW_1',
+    label: 'Row 1 — Video Banner (Top video)',
+    description: 'Full-width video at the top of the home screen',
+    targetType: 'ALL_PRODUCTS',
+    targetId: 'ROW_1',
+  },
+  {
+    id: 'ROW_2',
+    label: 'Row 2 — Category Showcase (Middle banner)',
+    description: 'Full-width banner in the middle of the home screen',
+    targetType: 'CATEGORY',
+    targetId: 'ROW_2',
+  },
+  {
+    id: 'ROW_3',
+    label: 'Row 3 — Festival Specials (Bottom banner)',
+    description: 'Promotional festival offer banner at bottom of the screen',
+    targetType: 'SCREEN',
+    targetId: 'ROW_3',
+  },
+  {
+    id: 'ROW_4',
+    label: 'Row 4 — Daily Subscription Banner',
+    description: 'Morning fresh milk & recurring organic deliveries banner',
+    targetType: 'SUBSCRIPTION',
+    targetId: 'ROW_4',
+  },
+];
+
 export const AdminBannersScreen: React.FC = () => {
   const [banners, setBanners] = useState<any[]>([]);
   const [modal, setModal] = useState<'add' | 'edit' | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
+
+  // Banner Row selector state
+  const [showRowSelector, setShowRowSelector] = useState(false);
+  const [selectedRowId, setSelectedRowId] = useState('ROW_1');
 
   // Active Color Tab: 'top' | 'bottom'
   const [activeColorTab, setActiveColorTab] = useState<'top' | 'bottom'>('top');
@@ -260,22 +299,23 @@ export const AdminBannersScreen: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Clean form state
+  // Clean form state matching exact design
   const [form, setForm] = useState({
-    title: '',
+    title: 'Sowmi makeup studio',
     subtitle: '',
     imageUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&q=80&w=800',
-    topColor: '#02381A',
-    bottomColor: '#EA580C',
-    backgroundColor: '#02381A|#EA580C',
+    topColor: '#16A34A',
+    bottomColor: '#4ADE80',
+    backgroundColor: '#16A34A|#4ADE80',
     textColor: '#FFFFFF',
     buttonColor: '#FDE047',
     buttonTextColor: '#78350F',
     buttonText: 'Shop Now →',
     targetType: 'ALL_PRODUCTS',
-    targetId: 'ALL_PRODUCTS',
-    displayOrder: '1',
+    targetId: 'ROW_1',
+    displayOrder: '0',
     isActive: true,
+    bannerType: 'image' as 'image' | 'video',
   });
 
   const loadBanners = async () => {
@@ -383,21 +423,24 @@ export const AdminBannersScreen: React.FC = () => {
   // Open modal in Add mode
   const openAdd = () => {
     setForm({
-      title: 'Organic Promotional Banner',
+      title: 'Sowmi makeup studio',
       subtitle: '',
       imageUrl: SAMPLE_PHOTOS[0].url,
-      topColor: '#02381A',
-      bottomColor: '#EA580C',
-      backgroundColor: '#02381A|#EA580C',
+      topColor: '#16A34A',
+      bottomColor: '#4ADE80',
+      backgroundColor: '#16A34A|#4ADE80',
       textColor: '#FFFFFF',
       buttonColor: '#FDE047',
       buttonTextColor: '#78350F',
       buttonText: 'Shop Now →',
       targetType: 'ALL_PRODUCTS',
-      targetId: 'ALL_PRODUCTS',
-      displayOrder: String(banners.length + 1),
+      targetId: 'ROW_1',
+      displayOrder: '0',
       isActive: true,
+      bannerType: 'image',
     });
+    setSelectedRowId('ROW_1');
+    setShowRowSelector(false);
     setActiveColorTab('top');
     setColorModalTarget(null);
     setEditId(null);
@@ -406,22 +449,24 @@ export const AdminBannersScreen: React.FC = () => {
 
   // Open modal in Edit mode
   const openEdit = (b: any) => {
-    const rawBg = b.backgroundColor || '#02381A|#EA580C';
-    let top = '#02381A';
-    let bottom = '#EA580C';
+    const rawBg = b.backgroundColor || '#16A34A|#4ADE80';
+    let top = '#16A34A';
+    let bottom = '#4ADE80';
 
     if (rawBg.includes('|')) {
       const parts = rawBg.split('|').map((s: string) => s.trim()).filter(Boolean);
-      top = parts[0] || '#02381A';
-      bottom = parts[1] || parts[0] || '#EA580C';
+      top = parts[0] || '#16A34A';
+      bottom = parts[1] || parts[0] || '#4ADE80';
     } else {
       const bGrad = getGradientTheme(rawBg);
-      top = bGrad.dark;
-      bottom = bGrad.light;
+      top = bGrad.dark || '#16A34A';
+      bottom = bGrad.light || '#4ADE80';
     }
 
+    const matchedRow = BANNER_ROWS.find(r => r.id === b.targetId) || BANNER_ROWS[0];
+
     setForm({
-      title: b.title || 'Organic Promotional Banner',
+      title: b.title || 'Sowmi makeup studio',
       subtitle: b.subtitle || '',
       imageUrl: b.imageUrl || '',
       topColor: top,
@@ -431,11 +476,14 @@ export const AdminBannersScreen: React.FC = () => {
       buttonColor: b.buttonColor || '#FDE047',
       buttonTextColor: b.buttonTextColor || '#78350F',
       buttonText: b.buttonText || 'Shop Now →',
-      targetType: b.targetType || 'ALL_PRODUCTS',
-      targetId: b.targetId || 'ALL_PRODUCTS',
-      displayOrder: String(b.displayOrder || 1),
+      targetType: b.targetType || matchedRow.targetType,
+      targetId: b.targetId || matchedRow.id,
+      displayOrder: String(b.displayOrder ?? 0),
       isActive: b.isActive !== undefined ? b.isActive : true,
+      bannerType: (b.subtitle === 'video' || b.buttonTextColor === 'video') ? 'video' : 'image',
     });
+    setSelectedRowId(matchedRow.id);
+    setShowRowSelector(false);
     setActiveColorTab('top');
     setColorModalTarget(null);
     setEditId(b.id);
@@ -518,6 +566,23 @@ export const AdminBannersScreen: React.FC = () => {
       Alert.alert('Toggle Failed', e.message);
     }
   };
+
+  // Open image options alert when tapping banner image card
+  const handleImageCardPress = () => {
+    Alert.alert(
+      'Banner Photo',
+      'Choose an option for the banner photo:',
+      [
+        { text: 'Choose from Gallery', onPress: handlePickFromGallery },
+        { text: 'Take Photo', onPress: handleTakePhoto },
+        { text: 'Sample Farm Photo', onPress: () => setForm(prev => ({ ...prev, imageUrl: SAMPLE_PHOTOS[0].url })) },
+        ...(form.imageUrl ? [{ text: 'Remove Photo', style: 'destructive' as const, onPress: () => setForm(prev => ({ ...prev, imageUrl: '' })) }] : []),
+        { text: 'Cancel', style: 'cancel' as const },
+      ]
+    );
+  };
+
+  const currentRow = BANNER_ROWS.find(r => r.id === selectedRowId) || BANNER_ROWS[0];
 
   return (
     <View className="flex-1">
@@ -656,356 +721,384 @@ export const AdminBannersScreen: React.FC = () => {
         )}
       </ScrollView>
 
-      {/* ─── COMMON REUSABLE BANNER ADD / EDIT MODAL ─── */}
       <CommonModal
         visible={!!modal}
         onClose={() => setModal(null)}
-        title={modal === 'add' ? 'Add Promotional Banner' : 'Edit Banner'}
-        icon={<Sparkles size={16} color="#047857" strokeWidth={2.5} />}
+        title={modal === 'add' ? 'Add Banner' : 'Edit Banner'}
         maxHeight="92%"
-      >
-        {/* ─── 1. REALTIME BANNER PREVIEW (CLEAN PHOTO / GRADIENT ONLY - NO TEXT OVERLAY) ─── */}
-        <View className="mb-3.5">
+        footer={
           <View
-            className="h-36 rounded-2xl overflow-hidden relative shadow-sm border border-slate-300"
-            style={{ backgroundColor: form.topColor || '#02381A' }}
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'flex-end',
+              alignItems: 'center',
+              gap: 12,
+              paddingTop: 10,
+              borderTopWidth: 1,
+              borderTopColor: '#F1F5F9',
+            }}
+          >
+            <Pressable
+              onPress={() => setModal(null)}
+              style={({ pressed }) => ({
+                paddingVertical: 10,
+                paddingHorizontal: 22,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: '#CBD5E1',
+                backgroundColor: pressed ? '#F8FAFC' : '#FFFFFF',
+                alignItems: 'center',
+                justifyContent: 'center',
+              })}
+            >
+              <Text style={{ fontSize: 14, fontWeight: '700', color: '#334155' }}>Cancel</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={handleSave}
+              disabled={isSaving}
+              style={({ pressed }) => ({
+                paddingVertical: 10,
+                paddingHorizontal: 24,
+                borderRadius: 8,
+                backgroundColor: pressed ? '#15803D' : '#16A34A',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: isSaving ? 0.7 : 1,
+              })}
+            >
+              {isSaving ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF' }}>Saving...</Text>
+                </View>
+              ) : (
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF' }}>
+                  {editId ? 'Update Banner' : 'Apply & Save'}
+                </Text>
+              )}
+            </Pressable>
+          </View>
+        }
+      >
+        <View style={{ paddingBottom: 8 }}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E293B', marginBottom: 6 }}>
+            Banner Row
+          </Text>
+          <Pressable
+            onPress={() => setShowRowSelector(!showRowSelector)}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderWidth: 1,
+              borderColor: '#CBD5E1',
+              borderRadius: 8,
+              paddingHorizontal: 14,
+              height: 44,
+              backgroundColor: pressed ? '#F8FAFC' : '#FFFFFF',
+            })}
+          >
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#0F172A' }} numberOfLines={1}>
+              {currentRow.label}
+            </Text>
+            <ChevronDown size={18} color="#64748B" />
+          </Pressable>
+          <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 4, marginBottom: 12 }}>
+            {currentRow.description}
+          </Text>
+
+          {/* Row Options Dropdown */}
+          {showRowSelector && (
+            <View style={{ borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 8, backgroundColor: '#FFFFFF', marginBottom: 14, overflow: 'hidden' }}>
+              {BANNER_ROWS.map(r => (
+                <Pressable
+                  key={r.id}
+                  onPress={() => {
+                    setSelectedRowId(r.id);
+                    setForm(prev => ({ ...prev, targetType: r.targetType, targetId: r.id }));
+                    setShowRowSelector(false);
+                  }}
+                  style={({ pressed }) => ({
+                    paddingVertical: 10,
+                    paddingHorizontal: 14,
+                    borderBottomWidth: 1,
+                    borderBottomColor: '#F1F5F9',
+                    backgroundColor: r.id === selectedRowId ? '#F0FDF4' : pressed ? '#F8FAFC' : '#FFFFFF',
+                  })}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: r.id === selectedRowId ? '700' : '500', color: r.id === selectedRowId ? '#16A34A' : '#1E293B' }}>
+                    {r.label}
+                  </Text>
+                  <Text style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>
+                    {r.description}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+
+          {/* 2. Banner Type */}
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E293B', marginBottom: 6 }}>
+            Banner Type
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+            <Pressable
+              onPress={() => setForm(prev => ({ ...prev, bannerType: 'image' }))}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                paddingVertical: 8,
+                paddingHorizontal: 20,
+                borderRadius: 8,
+                borderWidth: 1.5,
+                borderColor: form.bannerType === 'image' ? '#16A34A' : '#CBD5E1',
+                backgroundColor: form.bannerType === 'image' ? '#F0FDF4' : '#FFFFFF',
+                opacity: pressed ? 0.75 : 1,
+              })}
+            >
+              <ImageIcon size={16} color={form.bannerType === 'image' ? '#16A34A' : '#64748B'} />
+              <Text style={{ fontSize: 13, fontWeight: '700', color: form.bannerType === 'image' ? '#16A34A' : '#475569' }}>
+                Image
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setForm(prev => ({ ...prev, bannerType: 'video' }))}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                paddingVertical: 8,
+                paddingHorizontal: 20,
+                borderRadius: 8,
+                borderWidth: 1.5,
+                borderColor: form.bannerType === 'video' ? '#7C3AED' : '#CBD5E1',
+                backgroundColor: form.bannerType === 'video' ? '#FAF5FF' : '#FFFFFF',
+                opacity: pressed ? 0.75 : 1,
+              })}
+            >
+              <VideoIcon size={16} color={form.bannerType === 'video' ? '#7C3AED' : '#64748B'} />
+              <Text style={{ fontSize: 13, fontWeight: '700', color: form.bannerType === 'video' ? '#7C3AED' : '#475569' }}>
+                Video
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* 3. Title */}
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E293B', marginBottom: 6 }}>
+            Title
+          </Text>
+          <TextInput
+            value={form.title}
+            onChangeText={text => setForm(prev => ({ ...prev, title: text }))}
+            placeholder="Sowmi makeup studio"
+            placeholderTextColor="#94A3B8"
+            style={{
+              borderWidth: 1,
+              borderColor: '#CBD5E1',
+              borderRadius: 8,
+              paddingHorizontal: 12,
+              height: 44,
+              fontSize: 14,
+              color: '#0F172A',
+              backgroundColor: '#FFFFFF',
+              marginBottom: 16,
+            }}
+          />
+
+          {/* 4. Sort Order */}
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E293B', marginBottom: 6 }}>
+            Sort Order
+          </Text>
+          <TextInput
+            value={form.displayOrder}
+            onChangeText={text => setForm(prev => ({ ...prev, displayOrder: text }))}
+            placeholder="0"
+            placeholderTextColor="#94A3B8"
+            keyboardType="numeric"
+            style={{
+              borderWidth: 1,
+              borderColor: '#CBD5E1',
+              borderRadius: 8,
+              paddingHorizontal: 12,
+              height: 44,
+              fontSize: 14,
+              color: '#0F172A',
+              backgroundColor: '#FFFFFF',
+              marginBottom: 16,
+            }}
+          />
+
+          {/* 5. Banner Image */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E293B' }}>
+              Banner Image
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Pressable onPress={handleImageCardPress} hitSlop={6}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#16A34A' }}>
+                  {form.imageUrl ? 'Change Photo' : '+ Add Photo'}
+                </Text>
+              </Pressable>
+              {form.imageUrl ? (
+                <Pressable onPress={() => setForm(prev => ({ ...prev, imageUrl: '' }))} hitSlop={6}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#DC2626' }}>✕ Remove</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          </View>
+
+          {/* Image Thumbnail Card */}
+          <Pressable
+            onPress={handleImageCardPress}
+            style={({ pressed }) => ({
+              height: 140,
+              borderRadius: 10,
+              overflow: 'hidden',
+              borderWidth: 1,
+              borderColor: '#CBD5E1',
+              backgroundColor: '#F8FAFC',
+              marginBottom: 16,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: pressed ? 0.85 : 1,
+            })}
           >
             {form.imageUrl ? (
               <Image
                 source={{ uri: form.imageUrl }}
-                className="w-full h-full"
+                style={{ width: '100%', height: '100%' }}
                 resizeMode="cover"
               />
             ) : (
-              <View className="absolute inset-0">
-                <Svg width="100%" height="100%">
-                  <Defs>
-                    <SvgLinearGradient id="neatLiveGrad" x1="0" y1="0" x2="1" y2="1">
-                      <Stop offset="0%" stopColor={form.topColor || '#02381A'} stopOpacity="1" />
-                      <Stop offset="100%" stopColor={form.bottomColor || '#15803D'} stopOpacity="1" />
-                    </SvgLinearGradient>
-                  </Defs>
-                  <Rect width="100%" height="100%" fill="url(#neatLiveGrad)" />
-                </Svg>
+              <View style={{ alignItems: 'center', gap: 6 }}>
+                <ImageIcon size={32} color="#94A3B8" />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#64748B' }}>
+                  Tap to Choose Image (Required)
+                </Text>
               </View>
             )}
-          </View>
-        </View>
+          </Pressable>
 
-        {/* ─── 2. TOP & BOTTOM COLOR (ONLY TOP & BOTTOM COLOR SELECTOR) ─── */}
-        <View className="mb-4">
-          {/* Realtime Gradient Flow Preview Strip */}
-          <View className="h-7 rounded-xl overflow-hidden mb-2.5 relative border border-slate-300 shadow-xs">
+          {/* 6. Header Gradient Colors */}
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E293B', marginBottom: 6 }}>
+            Header Gradient Colors
+          </Text>
+          <View
+            style={{
+              height: 38,
+              borderRadius: 8,
+              overflow: 'hidden',
+              borderWidth: 1,
+              borderColor: '#CBD5E1',
+              marginBottom: 16,
+            }}
+          >
             <Svg width="100%" height="100%">
               <Defs>
-                <SvgLinearGradient id="paletteBarGrad" x1="0" y1="0" x2="1" y2="0">
-                  <Stop offset="0%" stopColor={form.topColor || '#02381A'} stopOpacity="1" />
-                  <Stop offset="100%" stopColor={form.bottomColor || '#EA580C'} stopOpacity="1" />
+                <SvgLinearGradient id="headerGradBar" x1="0" y1="0" x2="1" y2="0">
+                  <Stop offset="0%" stopColor={form.topColor || '#16A34A'} stopOpacity="1" />
+                  <Stop offset="100%" stopColor={form.bottomColor || '#4ADE80'} stopOpacity="1" />
                 </SvgLinearGradient>
               </Defs>
-              <Rect width="100%" height="100%" fill="url(#paletteBarGrad)" />
+              <Rect width="100%" height="100%" fill="url(#headerGradBar)" />
             </Svg>
-            <View className="absolute inset-0 flex-row items-center justify-between px-3">
-              <Text className="text-2xs font-extrabold text-white shadow-sm">
-                TOP: {form.topColor || '#02381A'}
-              </Text>
-              <Text className="text-2xs font-black text-white/90">➔ GRADIENT FLOW ➔</Text>
-              <Text className="text-2xs font-extrabold text-white shadow-sm">
-                BOTTOM: {form.bottomColor || '#EA580C'}
-              </Text>
-            </View>
           </View>
 
-          {/* Side-by-Side Dual Color Cards: Top Color & Bottom Color + Swap Button */}
-          <View className="flex-row items-center gap-2.5">
-            {/* Top Color Button */}
+          {/* 7. Start Color */}
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E293B', marginBottom: 6 }}>
+            Start Color
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
             <Pressable
               onPress={() => setColorModalTarget('top')}
               style={({ pressed }) => ({
-                flex: 1,
-                padding: 12,
-                borderRadius: 16,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                backgroundColor: '#FFFFFF',
-                borderWidth: 1.5,
-                borderColor: '#E2E8F0',
-                opacity: pressed ? 0.75 : 1,
-              })}
-            >
-              <View className="flex-row items-center gap-2.5" pointerEvents="none">
-                <View
-                  className="w-10 h-10 rounded-xl border border-slate-200"
-                  style={{ backgroundColor: form.topColor || '#02381A' }}
-                />
-                <View>
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#1E293B' }}>Top Color</Text>
-                  <Text style={{ fontSize: 13, fontWeight: '900', color: '#0F172A' }}>{form.topColor || '#02381A'}</Text>
-                </View>
-              </View>
-              <Pencil size={15} color="#059669" pointerEvents="none" />
-            </Pressable>
-
-            {/* Swap Button */}
-            <Pressable
-              onPress={handleSwapColors}
-              hitSlop={8}
-              style={({ pressed }) => ({
-                width: 38,
-                height: 38,
-                borderRadius: 19,
-                backgroundColor: pressed ? '#E2E8F0' : '#F1F5F9',
+                width: 44,
+                height: 44,
+                borderRadius: 8,
+                backgroundColor: form.topColor || '#16A34A',
                 borderWidth: 1,
                 borderColor: '#CBD5E1',
-                alignItems: 'center',
-                justifyContent: 'center',
+                marginRight: 10,
+                opacity: pressed ? 0.8 : 1,
               })}
-            >
-              <Text style={{ color: '#047857', fontWeight: '900', fontSize: 16 }}>⇄</Text>
-            </Pressable>
+            />
+            <TextInput
+              value={form.topColor}
+              onChangeText={text => {
+                const clean = text.trim().startsWith('#') ? text.trim() : `#${text.trim()}`;
+                setForm(prev => ({
+                  ...prev,
+                  topColor: clean,
+                  backgroundColor: `${clean}|${prev.bottomColor || '#4ADE80'}`,
+                }));
+              }}
+              placeholder="#16A34A"
+              placeholderTextColor="#94A3B8"
+              autoCapitalize="characters"
+              style={{
+                flex: 1,
+                borderWidth: 1,
+                borderColor: '#CBD5E1',
+                borderRadius: 8,
+                paddingHorizontal: 12,
+                height: 44,
+                fontSize: 14,
+                fontWeight: '700',
+                color: '#0F172A',
+                backgroundColor: '#FFFFFF',
+              }}
+            />
+          </View>
 
-            {/* Bottom Color Button */}
+          {/* 8. End Color */}
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E293B', marginBottom: 6 }}>
+            End Color
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
             <Pressable
               onPress={() => setColorModalTarget('bottom')}
               style={({ pressed }) => ({
+                width: 44,
+                height: 44,
+                borderRadius: 8,
+                backgroundColor: form.bottomColor || '#4ADE80',
+                borderWidth: 1,
+                borderColor: '#CBD5E1',
+                marginRight: 10,
+                opacity: pressed ? 0.8 : 1,
+              })}
+            />
+            <TextInput
+              value={form.bottomColor}
+              onChangeText={text => {
+                const clean = text.trim().startsWith('#') ? text.trim() : `#${text.trim()}`;
+                setForm(prev => ({
+                  ...prev,
+                  bottomColor: clean,
+                  backgroundColor: `${prev.topColor || '#16A34A'}|${clean}`,
+                }));
+              }}
+              placeholder="#4ADE80"
+              placeholderTextColor="#94A3B8"
+              autoCapitalize="characters"
+              style={{
                 flex: 1,
-                padding: 12,
-                borderRadius: 16,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
+                borderWidth: 1,
+                borderColor: '#CBD5E1',
+                borderRadius: 8,
+                paddingHorizontal: 12,
+                height: 44,
+                fontSize: 14,
+                fontWeight: '700',
+                color: '#0F172A',
                 backgroundColor: '#FFFFFF',
-                borderWidth: 1.5,
-                borderColor: '#E2E8F0',
-                opacity: pressed ? 0.75 : 1,
-              })}
-            >
-              <View className="flex-row items-center gap-2.5" pointerEvents="none">
-                <View
-                  className="w-10 h-10 rounded-xl border border-slate-200"
-                  style={{ backgroundColor: form.bottomColor || '#EA580C' }}
-                />
-                <View>
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#1E293B' }}>Bottom Color</Text>
-                  <Text style={{ fontSize: 13, fontWeight: '900', color: '#0F172A' }}>{form.bottomColor || '#EA580C'}</Text>
-                </View>
-              </View>
-              <Pencil size={15} color="#059669" pointerEvents="none" />
-            </Pressable>
-          </View>
-        </View>
-
-        {/* ─── 3. BANNER PHOTO (MANDATORY) ─── */}
-        <View className="mb-4">
-          <View className="flex-row justify-between items-center mb-1.5">
-            <View className="flex-row items-center gap-1">
-              <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider">
-                Banner Photo
-              </Text>
-              <Text className="text-xs font-black text-red-500">* (Mandatory)</Text>
-            </View>
-            {isUploading ? (
-              <View className="flex-row items-center gap-1">
-                <ActivityIndicator size="small" color="#047857" />
-                <Text className="text-2xs font-bold text-emerald-700">Uploading...</Text>
-              </View>
-            ) : form.imageUrl ? (
-              <Pressable onPress={() => setForm(prev => ({ ...prev, imageUrl: '' }))} hitSlop={6}>
-                <Text className="text-2xs font-bold text-red-600">✕ Remove Photo</Text>
-              </Pressable>
-            ) : null}
+              }}
+            />
           </View>
 
-          {/* Gallery & Camera Buttons */}
-          <View className="flex-row gap-2 mb-2">
-            <Pressable
-              style={({ pressed }) => ({
-                flex: 1,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-                paddingVertical: 10,
-                borderRadius: 12,
-                backgroundColor: pressed ? '#D1FAE5' : '#ECFDF5',
-                borderWidth: 1,
-                borderColor: '#A7F3D0',
-              })}
-              onPress={handlePickFromGallery}
-              disabled={isUploading}
-            >
-              <Upload size={15} color="#047857" />
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#047857' }}>Choose from Gallery</Text>
-            </Pressable>
-
-            <Pressable
-              style={({ pressed }) => ({
-                flex: 1,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-                paddingVertical: 10,
-                borderRadius: 12,
-                backgroundColor: pressed ? '#E0F2FE' : '#F0F9FF',
-                borderWidth: 1,
-                borderColor: '#BAE6FD',
-              })}
-              onPress={handleTakePhoto}
-              disabled={isUploading}
-            >
-              <Camera size={15} color="#0284C7" />
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#0284C7' }}>Take Camera Photo</Text>
-            </Pressable>
-          </View>
-
-          {/* 4 Quick Sample Photos */}
-          <View className="flex-row gap-2">
-            {SAMPLE_PHOTOS.map(sample => {
-              const isSelected = form.imageUrl === sample.url;
-              return (
-                <Pressable
-                  key={sample.name}
-                  onPress={() => setForm(prev => ({ ...prev, imageUrl: sample.url }))}
-                  style={({ pressed }) => ({
-                    flex: 1,
-                    paddingVertical: 6,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    alignItems: 'center',
-                    backgroundColor: isSelected ? '#ECFDF5' : '#F8FAF8',
-                    borderColor: isSelected ? '#059669' : '#E2E8F0',
-                    opacity: pressed ? 0.75 : 1,
-                  })}
-                >
-                  <Text style={{ fontSize: 10, fontWeight: '700', color: isSelected ? '#065F46' : '#334155' }}>
-                    {sample.name}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* ─── 4. TARGET CATEGORY SELECTION ─── */}
-        <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider mb-1.5">
-          Target Category:
-        </Text>
-        <View className="flex-row flex-wrap gap-2 mb-4">
-          {[
-            { id: 'ALL_PRODUCTS', label: 'All Products 🛒' },
-            { id: 'Dairy & Pure Ghee', label: 'Dairy & Milk 🥛' },
-            { id: 'Fresh Vegetables', label: 'Vegetables 🥬' },
-            { id: 'Fresh Fruits', label: 'Fruits 🍎' },
-            { id: 'Groceries & Grains', label: 'Groceries 🌾' },
-            { id: 'Organic Oils', label: 'Oils 🫒' },
-            { id: 'Dry Fruits & Snacks', label: 'Dry Fruits 🥜' },
-            { id: 'SCREEN', label: 'Vendor Hub 🌾' },
-          ].map(t => {
-            const isSelected = form.targetId === t.id || (t.id === 'ALL_PRODUCTS' && form.targetType === 'ALL_PRODUCTS');
-            return (
-              <Pressable
-                key={t.id}
-                onPress={() => setForm({ ...form, targetType: t.id === 'ALL_PRODUCTS' ? 'ALL_PRODUCTS' : (t.id === 'SCREEN' ? 'SCREEN' : 'CATEGORY'), targetId: t.id })}
-                style={({ pressed }) => ({
-                  paddingVertical: 8,
-                  paddingHorizontal: 10,
-                  borderRadius: 12,
-                  borderWidth: 1.5,
-                  backgroundColor: isSelected ? '#047857' : '#F8FAF8',
-                  borderColor: isSelected ? '#047857' : '#E2E8F0',
-                  opacity: pressed ? 0.75 : 1,
-                })}
-              >
-                <Text
-                  style={{
-                    fontSize: 11,
-                    fontWeight: '800',
-                    color: isSelected ? '#FFFFFF' : '#334155',
-                  }}
-                >
-                  {t.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        {/* ─── 5. STATUS SWITCH ─── */}
-        <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider mb-1">
-          Banner Status
-        </Text>
-        <Pressable
-          onPress={() => setForm({ ...form, isActive: !form.isActive })}
-          style={({ pressed }) => ({
-            height: 44,
-            borderRadius: 12,
-            borderWidth: 2,
-            justifyContent: 'center',
-            alignItems: 'center',
-            flexDirection: 'row',
-            gap: 6,
-            marginBottom: 16,
-            backgroundColor: form.isActive ? '#ECFDF5' : '#FEF2F2',
-            borderColor: form.isActive ? '#34D399' : '#FCA5A5',
-            opacity: pressed ? 0.75 : 1,
-          })}
-        >
-          <Check size={15} color={form.isActive ? '#15803D' : '#DC2626'} strokeWidth={3} />
-          <Text
-            style={{
-              fontSize: 12,
-              fontWeight: '800',
-              color: form.isActive ? '#047857' : '#DC2626',
-            }}
-          >
-            {form.isActive ? 'ACTIVE IN CUSTOMER APP' : 'HIDDEN DRAFT'}
-          </Text>
-        </Pressable>
-
-        {/* ─── 6. SAVE & CANCEL ACTIONS ─── */}
-        <View className="flex-row gap-3 mt-2 mb-6">
-          <Pressable
-            onPress={() => setModal(null)}
-            style={({ pressed }) => ({
-              flex: 1,
-              paddingVertical: 14,
-              borderRadius: 16,
-              borderWidth: 2,
-              borderColor: '#CBD5E1',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: pressed ? '#F1F5F9' : '#FFFFFF',
-            })}
-          >
-            <Text style={{ fontSize: 14, fontWeight: '800', color: '#334155' }}>Cancel</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={handleSave}
-            disabled={isSaving}
-            style={({ pressed }) => ({
-              flex: 1.6,
-              paddingVertical: 14,
-              borderRadius: 16,
-              backgroundColor: pressed ? '#065F46' : '#047857',
-              alignItems: 'center',
-              justifyContent: 'center',
-              elevation: 2,
-            })}
-          >
-            {isSaving ? (
-              <View className="flex-row items-center gap-2">
-                <ActivityIndicator size="small" color="#FFFFFF" />
-                <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFFFFF' }}>Saving...</Text>
-              </View>
-            ) : (
-              <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFFFFF' }}>
-                {editId ? 'Update Banner' : 'Publish Banner'}
-              </Text>
-            )}
-          </Pressable>
         </View>
       </CommonModal>
 
