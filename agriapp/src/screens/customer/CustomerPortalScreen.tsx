@@ -45,6 +45,7 @@ import { ProfileScreen } from './ProfileScreen';
 import { CategoryProductListingScreen } from './CategoryProductListingScreen';
 import { CategoryVendorDiscoveryScreen } from './CategoryVendorDiscoveryScreen';
 import { VendorStoreScreen } from './VendorStoreScreen';
+import { VendorRegistrationScreen } from './VendorRegistrationScreen';
 
 // Modular API Services & Theme
 import {
@@ -1219,6 +1220,20 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
         />
       )}
 
+      {customerScreen === 'VENDOR_REGISTRATION' && (
+        <VendorRegistrationScreen
+          userPhone={userPhone}
+          customerName={profileName}
+          customerEmail={profileEmail}
+          customerLocation={profileLocation || selectedLocation?.address}
+          onBack={() => setCustomerScreen('PROFILE')}
+          onSuccess={() => {
+            if (onRefreshVendorStatus) onRefreshVendorStatus();
+            setCustomerScreen('PROFILE');
+          }}
+        />
+      )}
+
       {customerScreen === 'PROFILE' && (
         <ProfileScreen
           userPhone={userPhone}
@@ -1232,14 +1247,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
           onNavigateScreen={scr => setCustomerScreen(scr)}
           onOpenEditProfile={() => setShowEditProfileModal(true)}
           onOpenVendorModal={() => {
-            setVApplicantPhone(userPhone || '');
-            setVFarmName('');
-            setVFarmLocation('');
-            setVCropCategories('');
-            setVExperience('');
-            setVCertNo('');
-            setVApplyError(null);
-            setShowVendorModal(true);
+            setCustomerScreen('VENDOR_REGISTRATION');
           }}
           onRefreshVendorStatus={onRefreshVendorStatus || (() => {})}
           onSwitchToVendor={onSwitchToVendor}

@@ -18,7 +18,8 @@ export type CustomerScreenKey =
   | 'PROFILE'
   | 'WHATSAPP_AI'
   | 'AI_VOICE_CALL'
-  | 'DAILY_CONFIRMATION';
+  | 'DAILY_CONFIRMATION'
+  | 'VENDOR_REGISTRATION';
 
 export interface CartItem {
   product: Product;

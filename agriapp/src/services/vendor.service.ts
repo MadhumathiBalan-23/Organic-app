@@ -7,6 +7,7 @@ export interface VendorRequest {
   phoneNumber?: string;
   applicantPhone?: string;
   userName?: string;
+  email?: string;
   farmName?: string;
   farmLocation?: string;
   cropCategories?: string;
@@ -14,6 +15,12 @@ export interface VendorRequest {
   experienceYears?: string;
   certNo?: string;
   certificateNo?: string;
+  gstNumber?: string;
+  logoUrl?: string;
+  bankName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  accountHolderName?: string;
   status?: 'PENDING' | 'APPROVED' | 'REJECTED';
   createdAt?: string;
   [key: string]: any;

@@ -59,11 +59,18 @@ export interface VendorReqItem {
   id: string;
   userName: string;
   phoneNumber: string;
+  email?: string;
   farmName: string;
   farmLocation: string;
   cropCategories: string;
   experienceYears?: string;
   certificateNo?: string;
+  gstNumber?: string;
+  logoUrl?: string;
+  bankName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  accountHolderName?: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   note?: string;
   createdAt: string;

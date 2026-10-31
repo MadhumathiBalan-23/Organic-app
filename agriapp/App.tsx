@@ -906,7 +906,8 @@ export default function App() {
           currentScreen={role === 'admin' ? adminTab : role === 'vendor' ? vendorTab : customerScreen}
           onOpenMenu={() => setShowMenu(true)}
           onBack={() => {
-            if (customerScreen === 'PRODUCT_DETAILS') setCustomerScreen('ALL_PRODUCTS');
+            if (customerScreen === 'VENDOR_REGISTRATION') setCustomerScreen('PROFILE');
+            else if (customerScreen === 'PRODUCT_DETAILS') setCustomerScreen('ALL_PRODUCTS');
             else if (customerScreen === 'SUBSCRIPTION_SUMMARY') setCustomerScreen('SUBSCRIPTION_CREATE');
             else if (customerScreen === 'PAYMENT') setCustomerScreen('SUBSCRIPTION_SUMMARY');
             else if (customerScreen === 'SUBSCRIPTION_CREATE') {

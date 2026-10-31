@@ -102,6 +102,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           return 'Subscription Plans';
         case 'PROFILE':
           return 'My Profile';
+        case 'VENDOR_REGISTRATION':
+          return 'Vendor Registration';
         case 'CART':
           return 'Shopping Cart';
         case 'PRODUCT_DETAILS':
@@ -125,6 +127,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
     // Screens where header should be clean and uncluttered (no cart or dollar icons)
     const isFocusedCheckoutOrFlow =
+      currentScreen === 'VENDOR_REGISTRATION' ||
       currentScreen === 'SUBSCRIPTION_CREATE' ||
       currentScreen === 'SUBSCRIPTION_SUMMARY' ||
       currentScreen === 'PAYMENT' ||

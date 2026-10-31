@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { Sprout, MapPin, Award, Calendar, Check, X, CheckCircle2, Users } from 'lucide-react-native';
+import { Sprout, MapPin, Award, Calendar, Check, X, CheckCircle2, Users, Mail, CreditCard, FileText } from 'lucide-react-native';
 import { vendorService } from '../../services';
 import { PageLoader, ErrorState, AppButton, EmptyState } from '../../components/LoadingAndError';
 import { C, VendorReqItem, SectionHeader } from './types';
@@ -138,6 +138,11 @@ export const AdminVendorsScreen: React.FC = () => {
                       Applicant: <Text className="font-bold text-[#1a1a2e]">{req.userName}</Text> · +91{' '}
                       {req.phoneNumber}
                     </Text>
+                    {req.email ? (
+                      <Text className="text-xs text-slate-500 mt-0.5 font-medium">
+                        ✉️ {req.email}
+                      </Text>
+                    ) : null}
                   </View>
                   <View
                     className={`py-0.5 px-2 rounded-full border ${
@@ -178,6 +183,22 @@ export const AdminVendorsScreen: React.FC = () => {
                       Years · Cert: {req.certificateNo || 'Verified'}
                     </Text>
                   </View>
+                  {req.gstNumber ? (
+                    <View className="flex-row items-center gap-1.5">
+                      <FileText size={12} color={C.textSec} />
+                      <Text className="text-xs text-[#5a6a63]">
+                        <Text className="font-semibold">GSTIN:</Text> {req.gstNumber}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {req.accountNumber ? (
+                    <View className="flex-row items-center gap-1.5">
+                      <CreditCard size={12} color={C.textSec} />
+                      <Text className="text-xs text-[#5a6a63]">
+                        <Text className="font-semibold">Bank:</Text> {req.bankName || 'Bank'} · A/C: ••••{req.accountNumber.slice(-4)} ({req.ifscCode})
+                      </Text>
+                    </View>
+                  ) : null}
                   <View className="flex-row items-center gap-1.5">
                     <Calendar size={12} color={C.textMuted} />
                     <Text className="text-2xs text-[#9aada6]">

@@ -12,3 +12,4 @@ export * from './CategoryProductListingScreen';
 export * from './CategoryVendorDiscoveryScreen';
 export * from './VendorStoreScreen';
 export { CustomerPortalScreen, CustomerPortalScreen as CustomerScreens } from './CustomerPortalScreen';
+export * from './VendorRegistrationScreen';
