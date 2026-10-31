@@ -4,6 +4,7 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
+  Pressable,
   Image,
   Modal,
   Alert,
@@ -589,7 +590,7 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
   if (step === 'review') {
     return (
       <View className="flex-1 bg-[#FDFBF7]">
-        <ScrollView contentContainerClassName="p-4 pb-40" showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerClassName="p-4 pb-40" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="always" nestedScrollEnabled={true}>
           {/* Section Title & Quick Edit Pill */}
           <View className="flex-row items-center justify-between mb-3.5">
             <View className="flex-1 mr-2">
@@ -838,13 +839,21 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
 
           {/* Stepper Pill Container */}
           <View className="bg-[#F0FDF4] border border-emerald-300 rounded-2xl px-3 py-2 flex-row items-center justify-between mb-3">
-            <TouchableOpacity
-              className="w-10 h-10 rounded-xl bg-[#07843D] items-center justify-center shadow-sm active:opacity-75"
+            <Pressable
+              style={({ pressed }) => ({
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                backgroundColor: pressed ? '#046A31' : '#07843D',
+                alignItems: 'center',
+                justifyContent: 'center',
+                elevation: 2,
+              })}
               onPress={() => handleQtyStep(-1)}
-              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              hitSlop={8}
             >
               <Minus size={18} color="#FFFFFF" strokeWidth={3} />
-            </TouchableOpacity>
+            </Pressable>
 
             <View className="items-center">
               <Text className="text-2xl font-black text-slate-900">
@@ -855,13 +864,21 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
               </Text>
             </View>
 
-            <TouchableOpacity
-              className="w-10 h-10 rounded-xl bg-[#07843D] items-center justify-center shadow-sm active:opacity-75"
+            <Pressable
+              style={({ pressed }) => ({
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                backgroundColor: pressed ? '#046A31' : '#07843D',
+                alignItems: 'center',
+                justifyContent: 'center',
+                elevation: 2,
+              })}
               onPress={() => handleQtyStep(1)}
-              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              hitSlop={8}
             >
               <Plus size={18} color="#FFFFFF" strokeWidth={3} />
-            </TouchableOpacity>
+            </Pressable>
           </View>
 
           {/* Unit Preset Chips */}
@@ -869,21 +886,31 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
             {unitChips.map(chip => {
               const isActive = qty === chip.qty;
               return (
-                <TouchableOpacity
+                <Pressable
                   key={chip.label}
-                  className={`flex-1 py-2.5 rounded-xl border items-center justify-center transition-all ${
-                    isActive ? 'bg-[#07843D] border-[#07843D] shadow-sm' : 'bg-white border-slate-200 active:bg-slate-50'
-                  }`}
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    paddingVertical: 10,
+                    borderRadius: 12,
+                    borderWidth: 1.5,
+                    borderColor: isActive ? '#07843D' : '#E2E8F0',
+                    backgroundColor: isActive ? '#07843D' : pressed ? '#F8FAFC' : '#FFFFFF',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  })}
                   onPress={() => setQty(chip.qty)}
+                  hitSlop={6}
                 >
                   <Text
-                    className={`text-xs font-black ${
-                      isActive ? 'text-white' : 'text-slate-700'
-                    }`}
+                    style={{
+                      fontSize: 12,
+                      fontWeight: '800',
+                      color: isActive ? '#FFFFFF' : '#334155',
+                    }}
                   >
                     {chip.label}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               );
             })}
           </View>
@@ -909,12 +936,19 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
             ).map(item => {
               const isSelected = freq === item.key;
               return (
-                <TouchableOpacity
+                <Pressable
                   key={item.key}
-                  className={`flex-1 p-3 rounded-2xl border items-center text-center ${
-                    isSelected ? 'bg-[#F0FDF4] border-[#07843D] shadow-sm' : 'bg-white border-slate-200'
-                  }`}
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    padding: 12,
+                    borderRadius: 16,
+                    borderWidth: isSelected ? 2 : 1,
+                    borderColor: isSelected ? '#07843D' : '#E2E8F0',
+                    backgroundColor: isSelected ? '#F0FDF4' : pressed ? '#F8FAFC' : '#FFFFFF',
+                    alignItems: 'center',
+                  })}
                   onPress={() => setFreq(item.key)}
+                  hitSlop={6}
                 >
                   <View className="mb-1.5 items-center justify-center">
                     {React.cloneElement(item.icon, {
@@ -923,14 +957,18 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
                     })}
                   </View>
                   <Text
-                    className={`text-xs font-black ${
-                      isSelected ? 'text-[#07843D]' : 'text-slate-800'
-                    }`}
+                    style={{
+                      fontSize: 12,
+                      fontWeight: '800',
+                      color: isSelected ? '#07843D' : '#1E293B',
+                    }}
                   >
                     {item.label}
                   </Text>
-                  <Text className="text-[10px] text-slate-400 font-semibold mt-0.5">{item.sub}</Text>
-                </TouchableOpacity>
+                  <Text style={{ fontSize: 10, color: '#94A3B8', fontWeight: '600', marginTop: 2, textAlign: 'center' }}>
+                    {item.sub}
+                  </Text>
+                </Pressable>
               );
             })}
           </View>
@@ -1003,36 +1041,50 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
           </View>
 
           {/* Recommended vs Custom Time Tabs (As shown in screenshot) */}
-          <View className="flex-row bg-slate-100 p-1 rounded-xl mb-3">
-            <TouchableOpacity
-              className={`flex-1 py-1.5 rounded-lg items-center ${
-                timeMode === 'recommended' ? 'bg-white shadow-sm' : ''
-              }`}
+          <View style={{ flexDirection: 'row', backgroundColor: '#F1F5F9', padding: 4, borderRadius: 12, marginBottom: 12 }}>
+            <Pressable
+              style={({ pressed }) => ({
+                flex: 1,
+                paddingVertical: 8,
+                borderRadius: 8,
+                alignItems: 'center',
+                backgroundColor: timeMode === 'recommended' ? '#FFFFFF' : pressed ? '#E2E8F0' : 'transparent',
+                elevation: timeMode === 'recommended' ? 1 : 0,
+              })}
               onPress={() => setTimeMode('recommended')}
             >
               <Text
-                className={`text-xs font-bold ${
-                  timeMode === 'recommended' ? 'text-emerald-800' : 'text-slate-500'
-                }`}
+                style={{
+                  fontSize: 12,
+                  fontWeight: '700',
+                  color: timeMode === 'recommended' ? '#07843D' : '#64748B',
+                }}
               >
                 Recommended
               </Text>
-            </TouchableOpacity>
+            </Pressable>
 
-            <TouchableOpacity
-              className={`flex-1 py-1.5 rounded-lg items-center ${
-                timeMode === 'custom' ? 'bg-white shadow-sm' : ''
-              }`}
+            <Pressable
+              style={({ pressed }) => ({
+                flex: 1,
+                paddingVertical: 8,
+                borderRadius: 8,
+                alignItems: 'center',
+                backgroundColor: timeMode === 'custom' ? '#FFFFFF' : pressed ? '#E2E8F0' : 'transparent',
+                elevation: timeMode === 'custom' ? 1 : 0,
+              })}
               onPress={() => setTimeMode('custom')}
             >
               <Text
-                className={`text-xs font-bold ${
-                  timeMode === 'custom' ? 'text-emerald-800' : 'text-slate-500'
-                }`}
+                style={{
+                  fontSize: 12,
+                  fontWeight: '700',
+                  color: timeMode === 'custom' ? '#07843D' : '#64748B',
+                }}
               >
                 Custom Time
               </Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
 
           {/* Mode 1: Recommended Delivery Slot Cards */}
@@ -1151,13 +1203,23 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
           </Text>
         </View>
 
-        <TouchableOpacity
-          className="bg-[#07843D] px-6 py-3.5 rounded-2xl flex-row items-center gap-2 shadow-md active:opacity-90"
+        <Pressable
+          hitSlop={8}
           onPress={() => setStep('review')}
+          style={({ pressed }) => ({
+            backgroundColor: pressed ? '#046A31' : '#07843D',
+            paddingHorizontal: 24,
+            paddingVertical: 14,
+            borderRadius: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 8,
+            elevation: 4,
+          })}
         >
-          <Text className="text-white text-base font-extrabold">Review Plan</Text>
-          <Text className="text-white font-extrabold">→</Text>
-        </TouchableOpacity>
+          <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '800' }}>Review Plan</Text>
+          <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '800' }}>→</Text>
+        </Pressable>
       </View>
 
       {/* Start Date Calendar Modal */}
