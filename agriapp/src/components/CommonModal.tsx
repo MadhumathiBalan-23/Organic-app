@@ -4,6 +4,7 @@ import {
   View,
   Text,
   TouchableOpacity,
+  Pressable,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
@@ -40,7 +41,7 @@ export const CommonModal: React.FC<CommonModalProps> = ({
   showCloseButton = true,
   maxHeight = '92%',
   scrollable = true,
-  keyboardShouldPersistTaps = 'always',
+  keyboardShouldPersistTaps = 'handled',
   footer,
   children,
   type = 'bottom',
@@ -60,6 +61,7 @@ export const CommonModal: React.FC<CommonModalProps> = ({
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
+        pointerEvents="box-none"
       >
         <View
           style={{
@@ -69,11 +71,11 @@ export const CommonModal: React.FC<CommonModalProps> = ({
             alignItems: isBottom ? 'stretch' : 'center',
             padding: isBottom ? 0 : 20,
           }}
+          pointerEvents="box-none"
         >
           {/* Top Backdrop Touchable (Never overlaps modal content) */}
-          <TouchableOpacity
+          <Pressable
             style={isBottom ? { flex: 1 } : { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
-            activeOpacity={1}
             onPress={onClose}
           />
 
@@ -140,13 +142,13 @@ export const CommonModal: React.FC<CommonModalProps> = ({
                 <View className="flex-row items-center gap-2">
                   {headerRight}
                   {showCloseButton ? (
-                    <TouchableOpacity
+                    <Pressable
                       onPress={onClose}
+                      hitSlop={8}
                       className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center active:bg-slate-200"
-                      activeOpacity={0.7}
                     >
                       <X size={16} color="#64748B" />
-                    </TouchableOpacity>
+                    </Pressable>
                   ) : null}
                 </View>
               </View>
@@ -156,8 +158,10 @@ export const CommonModal: React.FC<CommonModalProps> = ({
             {scrollable ? (
               <ScrollView
                 showsVerticalScrollIndicator={false}
+                nestedScrollEnabled={true}
                 keyboardShouldPersistTaps={keyboardShouldPersistTaps}
-                contentContainerStyle={{ flexGrow: 1 }}
+                style={{ flexShrink: 1 }}
+                contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}
               >
                 {children}
               </ScrollView>
@@ -173,3 +177,4 @@ export const CommonModal: React.FC<CommonModalProps> = ({
     </Modal>
   );
 };
+

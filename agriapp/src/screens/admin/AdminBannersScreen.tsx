@@ -753,154 +753,197 @@ export const AdminBannersScreen: React.FC = () => {
                 {/* Side-by-Side Dual Color Cards: Top Color & Bottom Color + Swap Button */}
                 <View className="flex-row items-center gap-2.5 mb-3">
                   {/* Top Color Button */}
-                  <TouchableOpacity
+                  <Pressable
                     onPress={() => handleSelectTab('top')}
-                    activeOpacity={0.7}
-                    className={`flex-1 p-3 rounded-2xl border flex-row items-center justify-between ${
-                      activeColorTab === 'top'
-                        ? 'bg-emerald-50/60 border-2 border-emerald-600 shadow-sm'
-                        : 'bg-white border border-slate-200'
-                    }`}
+                    style={({ pressed }) => ({
+                      flex: 1,
+                      padding: 12,
+                      borderRadius: 16,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      backgroundColor: activeColorTab === 'top' ? '#ECFDF5' : '#FFFFFF',
+                      borderWidth: activeColorTab === 'top' ? 2 : 1,
+                      borderColor: activeColorTab === 'top' ? '#059669' : '#E2E8F0',
+                      opacity: pressed ? 0.75 : 1,
+                    })}
                   >
                     <View className="flex-row items-center gap-2.5" pointerEvents="none">
                       <View
-                        className="w-10 h-10 rounded-xl border border-slate-200 shadow-xs"
+                        className="w-10 h-10 rounded-xl border border-slate-200"
                         style={{ backgroundColor: form.topColor || '#02381A' }}
                       />
                       <View>
-                        <Text className="text-xs font-semibold text-slate-800">Top Color</Text>
-                        <Text className="text-sm font-black text-slate-900">{form.topColor || '#02381A'}</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: activeColorTab === 'top' ? '#065F46' : '#1E293B' }}>Top Color</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '900', color: activeColorTab === 'top' ? '#047857' : '#0F172A' }}>{form.topColor || '#02381A'}</Text>
                       </View>
                     </View>
                     <ChevronRight size={18} color={activeColorTab === 'top' ? '#059669' : '#94A3B8'} pointerEvents="none" />
-                  </TouchableOpacity>
+                  </Pressable>
 
                   {/* Swap Button */}
-                  <TouchableOpacity
+                  <Pressable
                     onPress={handleSwapColors}
-                    activeOpacity={0.7}
-                    className="w-9 h-9 rounded-full bg-slate-100 border border-slate-300 items-center justify-center active:bg-slate-200 shadow-xs"
+                    hitSlop={8}
+                    style={({ pressed }) => ({
+                      width: 38,
+                      height: 38,
+                      borderRadius: 19,
+                      backgroundColor: pressed ? '#E2E8F0' : '#F1F5F9',
+                      borderWidth: 1,
+                      borderColor: '#CBD5E1',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    })}
                   >
-                    <Text className="text-emerald-700 font-black text-sm">⇄</Text>
-                  </TouchableOpacity>
+                    <Text style={{ color: '#047857', fontWeight: '900', fontSize: 16 }}>⇄</Text>
+                  </Pressable>
 
                   {/* Bottom Color Button */}
-                  <TouchableOpacity
+                  <Pressable
                     onPress={() => handleSelectTab('bottom')}
-                    activeOpacity={0.7}
-                    className={`flex-1 p-3 rounded-2xl border flex-row items-center justify-between ${
-                      activeColorTab === 'bottom'
-                        ? 'bg-emerald-50/60 border-2 border-emerald-600 shadow-sm'
-                        : 'bg-white border border-slate-200'
-                    }`}
+                    style={({ pressed }) => ({
+                      flex: 1,
+                      padding: 12,
+                      borderRadius: 16,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      backgroundColor: activeColorTab === 'bottom' ? '#ECFDF5' : '#FFFFFF',
+                      borderWidth: activeColorTab === 'bottom' ? 2 : 1,
+                      borderColor: activeColorTab === 'bottom' ? '#059669' : '#E2E8F0',
+                      opacity: pressed ? 0.75 : 1,
+                    })}
                   >
                     <View className="flex-row items-center gap-2.5" pointerEvents="none">
                       <View
-                        className="w-10 h-10 rounded-xl border border-slate-200 shadow-xs"
+                        className="w-10 h-10 rounded-xl border border-slate-200"
                         style={{ backgroundColor: form.bottomColor || '#EA580C' }}
                       />
                       <View>
-                        <Text className="text-xs font-semibold text-slate-800">Bottom Color</Text>
-                        <Text className="text-sm font-black text-slate-900">{form.bottomColor || '#EA580C'}</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: activeColorTab === 'bottom' ? '#065F46' : '#1E293B' }}>Bottom Color</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '900', color: activeColorTab === 'bottom' ? '#047857' : '#0F172A' }}>{form.bottomColor || '#EA580C'}</Text>
                       </View>
                     </View>
                     <ChevronRight size={18} color={activeColorTab === 'bottom' ? '#059669' : '#94A3B8'} pointerEvents="none" />
-                  </TouchableOpacity>
+                  </Pressable>
                 </View>
 
                 {/* ─── COLOR PALETTE CARD (100% RELIABLE TAP-BASED) ─── */}
-                <View className="bg-white rounded-3xl border border-slate-200 p-4 shadow-sm mb-3">
+                <View className="bg-white rounded-3xl border border-slate-200 p-4 mb-3">
                   {/* Mode Tabs: Swatches / Presets */}
-                  <View className="flex-row items-center bg-[#E5EDE7] p-1 rounded-xl mb-3">
-                    <TouchableOpacity
+                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#E5EDE7', padding: 4, borderRadius: 12, marginBottom: 12 }}>
+                    <Pressable
                       onPress={() => setPaletteMode('swatches')}
-                      activeOpacity={0.8}
-                      className={`flex-1 py-1.5 rounded-lg items-center ${
-                        paletteMode === 'swatches' ? 'bg-white shadow-xs' : ''
-                      }`}
+                      style={({ pressed }) => ({
+                        flex: 1,
+                        paddingVertical: 7,
+                        borderRadius: 8,
+                        alignItems: 'center',
+                        backgroundColor: paletteMode === 'swatches' ? '#FFFFFF' : 'transparent',
+                        opacity: pressed ? 0.75 : 1,
+                      })}
                     >
                       <Text
-                        className={`text-xs font-extrabold ${
-                          paletteMode === 'swatches' ? 'text-emerald-800' : 'text-slate-600'
-                        }`}
+                        style={{
+                          fontSize: 12,
+                          fontWeight: '800',
+                          color: paletteMode === 'swatches' ? '#065F46' : '#475569',
+                        }}
                       >
                         🎨 Pick {activeColorTab === 'top' ? 'Top Color' : 'Bottom Color'}
                       </Text>
-                    </TouchableOpacity>
+                    </Pressable>
 
-                    <TouchableOpacity
+                    <Pressable
                       onPress={() => setPaletteMode('duos')}
-                      activeOpacity={0.8}
-                      className={`flex-1 py-1.5 rounded-lg items-center ${
-                        paletteMode === 'duos' ? 'bg-white shadow-xs' : ''
-                      }`}
+                      style={({ pressed }) => ({
+                        flex: 1,
+                        paddingVertical: 7,
+                        borderRadius: 8,
+                        alignItems: 'center',
+                        backgroundColor: paletteMode === 'duos' ? '#FFFFFF' : 'transparent',
+                        opacity: pressed ? 0.75 : 1,
+                      })}
                     >
                       <Text
-                        className={`text-xs font-extrabold ${
-                          paletteMode === 'duos' ? 'text-emerald-800' : 'text-slate-600'
-                        }`}
+                        style={{
+                          fontSize: 12,
+                          fontWeight: '800',
+                          color: paletteMode === 'duos' ? '#065F46' : '#475569',
+                        }}
                       >
                         🌈 Preset Duos (14)
                       </Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   </View>
 
                   {paletteMode === 'swatches' ? (
                     <>
                       {/* Category Chips Scroll: 5 Families */}
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
-                        <View className="flex-row gap-1.5">
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                        <View style={{ flexDirection: 'row', gap: 6 }}>
                           {COLOR_PALETTE_CATEGORIES.map((cat, idx) => {
                             const isCatActive = activeCategoryIndex === idx;
                             return (
-                              <TouchableOpacity
+                              <Pressable
                                 key={cat.name}
                                 onPress={() => setActiveCategoryIndex(idx)}
-                                activeOpacity={0.7}
-                                className={`px-2.5 py-1 rounded-lg border ${
-                                  isCatActive
-                                    ? 'bg-emerald-700 border-emerald-700'
-                                    : 'bg-[#F8FAF8] border-slate-200'
-                                }`}
+                                style={({ pressed }) => ({
+                                  paddingHorizontal: 10,
+                                  paddingVertical: 5,
+                                  borderRadius: 8,
+                                  borderWidth: 1,
+                                  backgroundColor: isCatActive ? '#047857' : '#F8FAF8',
+                                  borderColor: isCatActive ? '#047857' : '#CBD5E1',
+                                  opacity: pressed ? 0.75 : 1,
+                                })}
                               >
                                 <Text
-                                  className={`text-2xs font-extrabold ${
-                                    isCatActive ? 'text-white' : 'text-slate-700'
-                                  }`}
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: '800',
+                                    color: isCatActive ? '#FFFFFF' : '#334155',
+                                  }}
                                 >
                                   {cat.name}
                                 </Text>
-                              </TouchableOpacity>
+                              </Pressable>
                             );
                           })}
                         </View>
                       </ScrollView>
 
                       {/* 10 Color Circles for chosen category */}
-                      <View className="flex-row flex-wrap justify-between gap-y-2.5 mb-3.5">
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10, marginBottom: 14 }}>
                         {COLOR_PALETTE_CATEGORIES[activeCategoryIndex].colors.map(col => {
                           const currentActiveHex = activeColorTab === 'top' ? form.topColor : form.bottomColor;
                           const isMatch = (currentActiveHex || '').toUpperCase() === col.hex.toUpperCase();
                           return (
-                            <TouchableOpacity
+                            <Pressable
                               key={col.hex}
                               onPress={() => updateCurrentColor(col.hex)}
-                              activeOpacity={0.7}
-                              style={{ backgroundColor: col.hex }}
-                              className={`w-9 h-9 rounded-full items-center justify-center border shadow-xs ${
-                                isMatch
-                                  ? 'border-[3px] border-white ring-2 ring-emerald-600 scale-110'
-                                  : 'border-slate-300'
-                              }`}
+                              hitSlop={4}
+                              style={({ pressed }) => ({
+                                width: 36,
+                                height: 36,
+                                borderRadius: 18,
+                                backgroundColor: col.hex,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderWidth: isMatch ? 3 : 1,
+                                borderColor: isMatch ? '#047857' : '#CBD5E1',
+                                transform: [{ scale: isMatch ? 1.12 : (pressed ? 0.95 : 1) }],
+                              })}
                             >
                               {isMatch && (
                                 <Check
-                                  size={14}
+                                  size={15}
                                   color={col.hex === '#FFFFFF' || col.hex === '#E8F5E9' || col.hex === '#FEF9C3' || col.hex === '#E0F2FE' ? '#047857' : '#FFFFFF'}
                                   strokeWidth={3.5}
                                 />
                               )}
-                            </TouchableOpacity>
+                            </Pressable>
                           );
                         })}
                       </View>
@@ -908,7 +951,7 @@ export const AdminBannersScreen: React.FC = () => {
                       {/* HEX Input Row */}
                       <View className="flex-row items-center gap-2">
                         <View
-                          className="w-10 h-10 rounded-xl border border-slate-300 shadow-xs"
+                          className="w-10 h-10 rounded-xl border border-slate-300"
                           style={{
                             backgroundColor:
                               activeColorTab === 'top' ? form.topColor || '#02381A' : form.bottomColor || '#EA580C',
@@ -923,7 +966,7 @@ export const AdminBannersScreen: React.FC = () => {
                             placeholderTextColor="#94A3B8"
                             autoCapitalize="characters"
                           />
-                          <TouchableOpacity
+                          <Pressable
                             onPress={() => {
                               const favs = ['#02381A', '#07843D', '#10B981', '#0284C7', '#4F46E5', '#9333EA', '#EA580C', '#F59E0B'];
                               const cur = (activeColorTab === 'top' ? form.topColor : form.bottomColor) || '';
@@ -931,17 +974,20 @@ export const AdminBannersScreen: React.FC = () => {
                               const next = favs[(idx + 1) % favs.length];
                               updateCurrentColor(next);
                             }}
-                            className="p-1.5 rounded-lg bg-slate-100"
-                            activeOpacity={0.7}
+                            style={({ pressed }) => ({
+                              padding: 6,
+                              borderRadius: 8,
+                              backgroundColor: pressed ? '#CBD5E1' : '#F1F5F9',
+                            })}
                           >
                             <Pipette size={16} color="#64748B" />
-                          </TouchableOpacity>
+                          </Pressable>
                         </View>
                       </View>
 
                       {/* Quick Favorite Organic Shades */}
-                      <View className="flex-row items-center gap-1.5 mt-2.5 flex-wrap">
-                        <Text className="text-2xs font-bold text-slate-400 mr-1">Quick:</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#94A3B8', marginRight: 4 }}>Quick:</Text>
                         {[
                           { label: '🌿 Farm Green', hex: '#07843D' },
                           { label: '🌲 Deep Forest', hex: '#02381A' },
@@ -949,46 +995,61 @@ export const AdminBannersScreen: React.FC = () => {
                           { label: '🌾 Gold Sun', hex: '#F2C500' },
                           { label: '🍊 Sunset', hex: '#EA580C' },
                         ].map(quick => (
-                          <TouchableOpacity
+                          <Pressable
                             key={quick.hex}
                             onPress={() => updateCurrentColor(quick.hex)}
-                            activeOpacity={0.7}
-                            className="flex-row items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded-md"
+                            style={({ pressed }) => ({
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 4,
+                              backgroundColor: pressed ? '#F1F5F9' : '#FFFFFF',
+                              borderWidth: 1,
+                              borderColor: '#E2E8F0',
+                              paddingHorizontal: 8,
+                              paddingVertical: 3,
+                              borderRadius: 6,
+                            })}
                           >
-                            <View className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: quick.hex }} />
-                            <Text className="text-2xs font-bold text-slate-700">{quick.label}</Text>
-                          </TouchableOpacity>
+                            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: quick.hex }} />
+                            <Text style={{ fontSize: 10, fontWeight: '700', color: '#334155' }}>{quick.label}</Text>
+                          </Pressable>
                         ))}
                       </View>
                     </>
                   ) : (
                     /* Preset Duos Grid (14 Harmonious Pairs) */
-                    <View className="flex-row flex-wrap gap-2">
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                       {GRADIENT_PRESETS.map(item => {
                         const isMatch =
                           form.topColor?.toUpperCase() === item.top.toUpperCase() &&
                           form.bottomColor?.toUpperCase() === item.bottom.toUpperCase();
                         return (
-                          <TouchableOpacity
+                          <Pressable
                             key={item.name}
                             onPress={() => handleApplyDuo(item.top, item.bottom)}
-                            activeOpacity={0.7}
-                            className={`flex-row items-center gap-2 px-3 py-2 rounded-xl border ${
-                              isMatch
-                                ? 'bg-emerald-50 border-emerald-600'
-                                : 'bg-[#F8FAF8] border-slate-200'
-                            }`}
-                            style={{ width: '48%' }}
+                            style={({ pressed }) => ({
+                              width: '48%',
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 8,
+                              paddingHorizontal: 10,
+                              paddingVertical: 8,
+                              borderRadius: 12,
+                              borderWidth: 1.5,
+                              backgroundColor: isMatch ? '#ECFDF5' : '#F8FAF8',
+                              borderColor: isMatch ? '#059669' : '#E2E8F0',
+                              opacity: pressed ? 0.75 : 1,
+                            })}
                           >
-                            <View className="w-5 h-5 rounded-full overflow-hidden border border-slate-300 flex-row">
-                              <View className="flex-1" style={{ backgroundColor: item.top }} />
-                              <View className="flex-1" style={{ backgroundColor: item.bottom }} />
+                            <View style={{ width: 20, height: 20, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#CBD5E1', flexDirection: 'row' }}>
+                              <View style={{ flex: 1, backgroundColor: item.top }} />
+                              <View style={{ flex: 1, backgroundColor: item.bottom }} />
                             </View>
-                            <Text className="text-2xs font-extrabold text-slate-800 flex-1" numberOfLines={1}>
+                            <Text style={{ fontSize: 10, fontWeight: '800', color: '#1E293B', flex: 1 }} numberOfLines={1}>
                               {item.name}
                             </Text>
                             {isMatch && <Check size={12} color="#047857" strokeWidth={3} />}
-                          </TouchableOpacity>
+                          </Pressable>
                         );
                       })}
                     </View>
@@ -1008,33 +1069,53 @@ export const AdminBannersScreen: React.FC = () => {
                       <Text className="text-2xs font-bold text-emerald-700">Uploading...</Text>
                     </View>
                   ) : form.imageUrl ? (
-                    <TouchableOpacity onPress={() => setForm(prev => ({ ...prev, imageUrl: '' }))}>
+                    <Pressable onPress={() => setForm(prev => ({ ...prev, imageUrl: '' }))} hitSlop={6}>
                       <Text className="text-2xs font-bold text-red-600">✕ Remove Photo</Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   ) : null}
                 </View>
 
                 {/* Gallery & Camera Buttons */}
                 <View className="flex-row gap-2 mb-2">
-                  <TouchableOpacity
-                    className="flex-1 flex-row items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#ECFDF5] border border-[#A7F3D0]"
+                  <Pressable
+                    style={({ pressed }) => ({
+                      flex: 1,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      paddingVertical: 10,
+                      borderRadius: 12,
+                      backgroundColor: pressed ? '#D1FAE5' : '#ECFDF5',
+                      borderWidth: 1,
+                      borderColor: '#A7F3D0',
+                    })}
                     onPress={handlePickFromGallery}
                     disabled={isUploading}
-                    activeOpacity={0.8}
                   >
                     <Upload size={15} color="#047857" />
-                    <Text className="text-xs font-bold text-[#047857]">Choose from Gallery</Text>
-                  </TouchableOpacity>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#047857' }}>Choose from Gallery</Text>
+                  </Pressable>
 
-                  <TouchableOpacity
-                    className="flex-1 flex-row items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#F0F9FF] border border-[#BAE6FD]"
+                  <Pressable
+                    style={({ pressed }) => ({
+                      flex: 1,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      paddingVertical: 10,
+                      borderRadius: 12,
+                      backgroundColor: pressed ? '#E0F2FE' : '#F0F9FF',
+                      borderWidth: 1,
+                      borderColor: '#BAE6FD',
+                    })}
                     onPress={handleTakePhoto}
                     disabled={isUploading}
-                    activeOpacity={0.8}
                   >
                     <Camera size={15} color="#0284C7" />
-                    <Text className="text-xs font-bold text-[#0284C7]">Take Camera Photo</Text>
-                  </TouchableOpacity>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#0284C7' }}>Take Camera Photo</Text>
+                  </Pressable>
                 </View>
 
                 {/* 4 Quick Sample Photos */}
@@ -1042,18 +1123,24 @@ export const AdminBannersScreen: React.FC = () => {
                   {SAMPLE_PHOTOS.map(sample => {
                     const isSelected = form.imageUrl === sample.url;
                     return (
-                      <TouchableOpacity
+                      <Pressable
                         key={sample.name}
                         onPress={() => setForm(prev => ({ ...prev, imageUrl: sample.url }))}
-                        className={`flex-1 py-1.5 rounded-xl border items-center ${
-                          isSelected ? 'bg-emerald-50 border-emerald-600' : 'bg-[#F8FAF8] border-[#E2EBE6]'
-                        }`}
-                        activeOpacity={0.8}
+                        style={({ pressed }) => ({
+                          flex: 1,
+                          paddingVertical: 6,
+                          borderRadius: 12,
+                          borderWidth: 1,
+                          alignItems: 'center',
+                          backgroundColor: isSelected ? '#ECFDF5' : '#F8FAF8',
+                          borderColor: isSelected ? '#059669' : '#E2E8F0',
+                          opacity: pressed ? 0.75 : 1,
+                        })}
                       >
-                        <Text className={`text-2xs font-bold ${isSelected ? 'text-emerald-800' : 'text-slate-700'}`}>
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: isSelected ? '#065F46' : '#334155' }}>
                           {sample.name}
                         </Text>
-                      </TouchableOpacity>
+                      </Pressable>
                     );
                   })}
                 </View>
@@ -1072,23 +1159,34 @@ export const AdminBannersScreen: React.FC = () => {
                 ].map(t => {
                   const isTypeSelected = form.targetType === t.id;
                   return (
-                    <TouchableOpacity
+                    <Pressable
                       key={t.id}
                       onPress={() => setForm({ ...form, targetType: t.id, targetId: t.id })}
-                      className={`flex-1 py-2 px-1 rounded-xl border items-center justify-center ${
-                        isTypeSelected ? 'bg-emerald-700 border-emerald-700' : 'bg-[#F7FAF8] border-[#E2EBE6]'
-                      }`}
-                      activeOpacity={0.7}
+                      style={({ pressed }) => ({
+                        flex: 1,
+                        paddingVertical: 8,
+                        paddingHorizontal: 4,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: isTypeSelected ? '#047857' : '#F8FAF8',
+                        borderColor: isTypeSelected ? '#047857' : '#E2E8F0',
+                        opacity: pressed ? 0.75 : 1,
+                      })}
                     >
                       <Text
-                        className={`text-2xs text-center font-bold ${
-                          isTypeSelected ? 'text-white' : 'text-slate-700'
-                        }`}
+                        style={{
+                          fontSize: 10,
+                          textAlign: 'center',
+                          fontWeight: '700',
+                          color: isTypeSelected ? '#FFFFFF' : '#334155',
+                        }}
                         numberOfLines={1}
                       >
                         {t.label}
                       </Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   );
                 })}
               </View>
@@ -1097,52 +1195,76 @@ export const AdminBannersScreen: React.FC = () => {
               <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider mb-1">
                 Banner Status
               </Text>
-              <TouchableOpacity
+              <Pressable
                 onPress={() => setForm({ ...form, isActive: !form.isActive })}
-                className={`h-11 rounded-xl border-2 justify-center items-center flex-row gap-1.5 mb-4 ${
-                  form.isActive
-                    ? 'bg-emerald-50 border-emerald-400'
-                    : 'bg-red-50 border-red-300'
-                }`}
-                activeOpacity={0.8}
+                style={({ pressed }) => ({
+                  height: 44,
+                  borderRadius: 12,
+                  borderWidth: 2,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  flexDirection: 'row',
+                  gap: 6,
+                  marginBottom: 16,
+                  backgroundColor: form.isActive ? '#ECFDF5' : '#FEF2F2',
+                  borderColor: form.isActive ? '#34D399' : '#FCA5A5',
+                  opacity: pressed ? 0.75 : 1,
+                })}
               >
                 <Check size={15} color={form.isActive ? '#15803D' : '#DC2626'} strokeWidth={3} />
                 <Text
-                  className={`text-xs font-extrabold ${
-                    form.isActive ? 'text-emerald-700' : 'text-red-600'
-                  }`}
+                  style={{
+                    fontSize: 12,
+                    fontWeight: '800',
+                    color: form.isActive ? '#047857' : '#DC2626',
+                  }}
                 >
                   {form.isActive ? 'ACTIVE IN CUSTOMER APP' : 'HIDDEN DRAFT'}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
 
               {/* ─── 9. SAVE & CANCEL ACTIONS ─── */}
               <View className="flex-row gap-3 mt-2 mb-6">
-                <TouchableOpacity
+                <Pressable
                   onPress={() => setModal(null)}
-                  activeOpacity={0.7}
-                  className="flex-1 py-3.5 rounded-2xl border-2 border-slate-300 items-center justify-center bg-white"
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    paddingVertical: 14,
+                    borderRadius: 16,
+                    borderWidth: 2,
+                    borderColor: '#CBD5E1',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: pressed ? '#F1F5F9' : '#FFFFFF',
+                  })}
                 >
-                  <Text className="text-sm font-extrabold text-slate-700">Cancel</Text>
-                </TouchableOpacity>
+                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#334155' }}>Cancel</Text>
+                </Pressable>
 
-                <TouchableOpacity
+                <Pressable
                   onPress={handleSave}
                   disabled={isSaving}
-                  activeOpacity={0.8}
-                  className="flex-[1.6] py-3.5 rounded-2xl bg-emerald-700 items-center justify-center shadow-md active:bg-emerald-800"
+                  style={({ pressed }) => ({
+                    flex: 1.6,
+                    paddingVertical: 14,
+                    borderRadius: 16,
+                    backgroundColor: pressed ? '#065F46' : '#047857',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    elevation: 2,
+                  })}
                 >
                   {isSaving ? (
                     <View className="flex-row items-center gap-2">
                       <ActivityIndicator size="small" color="#FFFFFF" />
-                      <Text className="text-sm font-black text-white">Saving...</Text>
+                      <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFFFFF' }}>Saving...</Text>
                     </View>
                   ) : (
-                    <Text className="text-sm font-black text-white">
+                    <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFFFFF' }}>
                       {editId ? 'Update Banner' : 'Publish Banner'}
                     </Text>
                   )}
-                </TouchableOpacity>
+                </Pressable>
               </View>
       </CommonModal>
     </View>
