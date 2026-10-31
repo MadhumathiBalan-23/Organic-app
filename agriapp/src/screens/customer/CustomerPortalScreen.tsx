@@ -507,6 +507,11 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
         certificateNo: vCertNo.trim(),
       });
       if (data.success) {
+        try {
+          const g = globalThis as any;
+          if (g.localStorage) g.localStorage.setItem('agriflow_vendor_applied_' + cleanPhone, 'true');
+          else if (g.window?.localStorage) g.window.localStorage.setItem('agriflow_vendor_applied_' + cleanPhone, 'true');
+        } catch {}
         setShowVendorModal(false);
         if (onRefreshVendorStatus) onRefreshVendorStatus();
         Alert.alert(
@@ -517,6 +522,11 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
         setVApplyError(data.message || 'Submission failed. Please try again.');
       }
     } catch {
+      try {
+        const g = globalThis as any;
+        if (g.localStorage) g.localStorage.setItem('agriflow_vendor_applied_' + cleanPhone, 'true');
+        else if (g.window?.localStorage) g.window.localStorage.setItem('agriflow_vendor_applied_' + cleanPhone, 'true');
+      } catch {}
       setShowVendorModal(false);
       if (onRefreshVendorStatus) onRefreshVendorStatus();
       Alert.alert('Request Recorded', 'Your request has been saved. Admin will review and verify your farm.');

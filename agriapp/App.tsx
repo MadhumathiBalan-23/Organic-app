@@ -262,7 +262,20 @@ export default function App() {
 
   const checkVendorStatus = async (overridePhone?: string) => {
     const cleanPhone = (overridePhone || phone || '').replace(/[^0-9]/g, '');
-    if (!cleanPhone || cleanPhone.length !== 10) return;
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      setVendorStatus('NONE');
+      return;
+    }
+
+    // Vendor icon must ONLY show if the user explicitly registered as a vendor or has vendor role
+    const hasApplied = safeStorage.getItem('agriflow_vendor_applied_' + cleanPhone) === 'true';
+    const isVendorRole = role === 'vendor' || loginRole === 'vendor' || safeStorage.getItem('agriflow_user_role') === 'vendor';
+
+    if (!hasApplied && !isVendorRole) {
+      setVendorStatus('NONE');
+      return;
+    }
+
     try {
       const res = await fetch(API_ENDPOINTS.vendorStatus(cleanPhone));
       const data = await res.json();
@@ -337,12 +350,17 @@ export default function App() {
     } else {
       setIsAdminUser(false);
       try {
-        const vRes = await fetch(API_ENDPOINTS.vendorStatus(cleanPhone));
-        const vData = await vRes.json();
-        if (vData.success && (vData.isApproved || vData.status === 'APPROVED')) {
-          setVendorStatus('APPROVED');
+        const hasApplied = safeStorage.getItem('agriflow_vendor_applied_' + cleanPhone) === 'true';
+        if (hasApplied) {
+          const vRes = await fetch(API_ENDPOINTS.vendorStatus(cleanPhone));
+          const vData = await vRes.json();
+          if (vData.success && (vData.isApproved || vData.status === 'APPROVED')) {
+            setVendorStatus('APPROVED');
+          } else {
+            setVendorStatus(vData.status || 'NONE');
+          }
         } else {
-          setVendorStatus(vData.status || 'NONE');
+          setVendorStatus('NONE');
         }
       } catch {
         setVendorStatus('NONE');
@@ -426,17 +444,22 @@ export default function App() {
         } else {
           setIsAdminUser(false);
           let isApproved = data.user.role === 'vendor';
-          try {
-            const vRes = await fetch(API_ENDPOINTS.vendorStatus(cleanPhone));
-            const vData = await vRes.json();
-            if (vData.success && (vData.isApproved || vData.status === 'APPROVED')) {
-              isApproved = true;
-              setVendorStatus('APPROVED');
-            } else {
-              setVendorStatus(vData.status || 'NONE');
+          const hasApplied = safeStorage.getItem('agriflow_vendor_applied_' + cleanPhone) === 'true';
+          if (isApproved || hasApplied) {
+            try {
+              const vRes = await fetch(API_ENDPOINTS.vendorStatus(cleanPhone));
+              const vData = await vRes.json();
+              if (vData.success && (vData.isApproved || vData.status === 'APPROVED')) {
+                isApproved = true;
+                setVendorStatus('APPROVED');
+              } else {
+                setVendorStatus(vData.status || 'NONE');
+              }
+            } catch {
+              setVendorStatus(isApproved ? 'APPROVED' : 'NONE');
             }
-          } catch {
-            setVendorStatus(isApproved ? 'APPROVED' : 'NONE');
+          } else {
+            setVendorStatus('NONE');
           }
 
           setRole('customer');
@@ -497,17 +520,12 @@ export default function App() {
     setIsSwitchingToVendor(true);
 
     try {
-      const res = await fetch(API_ENDPOINTS.vendorToken, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber: cleanPhone })
-      });
-      const data = await res.json();
+      // 1. Verify vendor accreditation via vendorStatus API
+      const statusRes = await fetch(API_ENDPOINTS.vendorStatus(cleanPhone));
+      const statusData = await statusRes.json();
 
-      if (res.ok && data.success && data.token) {
-        setVendorToken(data.token);
+      if (statusData.success && (statusData.isApproved || statusData.status === 'APPROVED')) {
         setVendorStatus('APPROVED');
-        // Smooth brief animation pause so user sees the loading state cleanly
         setTimeout(() => {
           setRole('vendor');
           setVendorTab('dashboard');
@@ -515,10 +533,10 @@ export default function App() {
         }, 300);
       } else {
         setIsSwitchingToVendor(false);
-        setVendorStatus(data.status || 'PENDING');
+        setVendorStatus(statusData?.status || 'PENDING');
         Alert.alert(
           'Vendor Access Restricted',
-          data.message || `Mobile number +91 ${cleanPhone} has not been approved by Admin as a Vendor yet. Please submit your application in your Profile or wait for Admin approval.`
+          statusData?.message || `Mobile number +91 ${cleanPhone} has not been approved by Admin as a Vendor yet. Please submit your application in your Profile or wait for Admin approval.`
         );
       }
     } catch {
@@ -530,7 +548,6 @@ export default function App() {
     }
   };
 
-  // Switch back to Customer Market
   const handleSwitchToCustomer = () => {
     setRole('customer');
     setCustomerScreen('HOME');
