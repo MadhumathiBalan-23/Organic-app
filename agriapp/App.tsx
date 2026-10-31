@@ -964,6 +964,7 @@ export default function App() {
           onSwitchToVendor={handleSwitchToVendor}
           isSwitchingToVendor={isSwitchingToVendor}
           isApprovedVendor={vendorStatus === 'APPROVED'}
+          themeColor={headerThemeColor}
           vendorTab={vendorTab}
           onSelectVendorTab={(tab) => setVendorTab(tab)}
           adminTab={adminTab}

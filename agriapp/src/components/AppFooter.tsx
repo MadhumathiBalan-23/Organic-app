@@ -10,6 +10,7 @@ export interface AppFooterProps {
   onSwitchToVendor?: () => void;
   isSwitchingToVendor?: boolean;
   isApprovedVendor?: boolean;
+  themeColor?: string;
   // Vendor-specific props
   vendorTab?: string;
   onSelectVendorTab?: (tab: string) => void;
@@ -29,6 +30,7 @@ export const AppFooter: React.FC<AppFooterProps> = ({
   onSwitchToVendor,
   isSwitchingToVendor = false,
   isApprovedVendor = false,
+  themeColor,
   vendorTab = 'dashboard',
   onSelectVendorTab,
   onOpenAddProduct,
@@ -72,6 +74,7 @@ export const AppFooter: React.FC<AppFooterProps> = ({
         onSwitchToVendor={onSwitchToVendor}
         isSwitchingToVendor={isSwitchingToVendor}
         isApprovedVendor={isApprovedVendor}
+        themeColor={themeColor}
       />
     </View>
   );
