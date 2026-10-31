@@ -24,6 +24,7 @@ export interface Product {
   organicCertified: boolean;
   brand?: string;
   originalPrice?: number;
+  mrp?: number;
   discountBadge?: string;
   discountPercentage?: number;
   isAvailable?: boolean;

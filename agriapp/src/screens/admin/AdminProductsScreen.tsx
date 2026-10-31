@@ -23,6 +23,7 @@ export const AdminProductsScreen: React.FC = () => {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [form, setForm] = useState({
     name: '',
+    mrp: '',
     price: '',
     stock: '',
     category: 'Dairy & Pure Ghee',
@@ -118,6 +119,7 @@ export const AdminProductsScreen: React.FC = () => {
   const openAdd = () => {
     setForm({
       name: '',
+      mrp: '',
       price: '',
       stock: '',
       category: 'Dairy & Pure Ghee',
@@ -138,6 +140,7 @@ export const AdminProductsScreen: React.FC = () => {
         : String(p.category || 'Dairy & Pure Ghee');
     setForm({
       name: p.name,
+      mrp: String(p.mrp || p.originalPrice || ''),
       price: String(p.price),
       stock: String(p.stock),
       category: catName,
@@ -164,6 +167,11 @@ export const AdminProductsScreen: React.FC = () => {
       try {
         await productService.updateProduct(editId, {
           name: form.name,
+          mrp: form.mrp ? parseFloat(form.mrp) : undefined,
+          originalPrice: form.mrp ? parseFloat(form.mrp) : undefined,
+          discountPercentage: form.mrp && parseFloat(form.mrp) > parseFloat(form.price)
+            ? Math.round(((parseFloat(form.mrp) - parseFloat(form.price)) / parseFloat(form.mrp)) * 100)
+            : 0,
           price: parseFloat(form.price),
           stock: parseInt(form.stock || '0'),
           category: form.category,
@@ -176,6 +184,11 @@ export const AdminProductsScreen: React.FC = () => {
         await productService.createProduct({
           name: form.name,
           category: form.category,
+          mrp: form.mrp ? parseFloat(form.mrp) : undefined,
+          originalPrice: form.mrp ? parseFloat(form.mrp) : undefined,
+          discountPercentage: form.mrp && parseFloat(form.mrp) > parseFloat(form.price)
+            ? Math.round(((parseFloat(form.mrp) - parseFloat(form.price)) / parseFloat(form.mrp)) * 100)
+            : 0,
           price: parseFloat(form.price),
           stock: parseInt(form.stock || '0'),
           unit: form.unit,
@@ -313,7 +326,20 @@ export const AdminProductsScreen: React.FC = () => {
               <View className="flex-row gap-2.5">
                 <View className="flex-1">
                   <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider mb-1 mt-2.5">
-                    Price (₹) *
+                    MRP (₹)
+                  </Text>
+                  <TextInput
+                    className="border border-[#E2EBE6] rounded-xl px-3 h-11 text-sm text-[#1a1a2e] bg-[#F7FAF8]"
+                    value={form.mrp}
+                    onChangeText={v => setForm({ ...form, mrp: v })}
+                    keyboardType="numeric"
+                    placeholder="150"
+                    placeholderTextColor={C.textMuted}
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider mb-1 mt-2.5">
+                    Selling Price (₹) *
                   </Text>
                   <TextInput
                     className="border border-[#E2EBE6] rounded-xl px-3 h-11 text-sm text-[#1a1a2e] bg-[#F7FAF8]"

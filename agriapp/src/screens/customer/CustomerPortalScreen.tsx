@@ -22,6 +22,7 @@ import {
   Wheat,
   Droplets,
   Sparkles,
+  Star,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -256,6 +257,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [newProdName, setNewProdName] = useState('');
   const [newProdCategory, setNewProdCategory] = useState('Fresh Vegetables');
+  const [newProdMrp, setNewProdMrp] = useState('');
   const [newProdPrice, setNewProdPrice] = useState('');
   const [newProdUnit, setNewProdUnit] = useState('Kg');
   const [newProdStock, setNewProdStock] = useState('');
@@ -748,9 +750,18 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
       setAddProdError('Please enter a valid crop or product name (at least 2 characters).');
       return;
     }
+    const mrpNum = parseFloat(newProdMrp);
     const priceNum = parseFloat(newProdPrice);
     if (isNaN(priceNum) || priceNum <= 0) {
-      setAddProdError('Please enter a valid price greater than ₹0.');
+      setAddProdError('Please enter a valid selling price greater than ₹0.');
+      return;
+    }
+    if (newProdMrp.trim() && (isNaN(mrpNum) || mrpNum <= 0)) {
+      setAddProdError('Please enter a valid MRP greater than ₹0.');
+      return;
+    }
+    if (!isNaN(mrpNum) && mrpNum > 0 && priceNum > mrpNum) {
+      setAddProdError('Selling price cannot be greater than MRP.');
       return;
     }
     const stockNum = parseInt(newProdStock, 10);
@@ -765,10 +776,16 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
 
     setIsSubmittingProduct(true);
     try {
+      const finalMrp = !isNaN(mrpNum) && mrpNum > 0 ? mrpNum : priceNum;
+      const discountPct = finalMrp > priceNum ? Math.round(((finalMrp - priceNum) / finalMrp) * 100) : 0;
       const payload = {
         name: newProdName.trim(),
         category: newProdCategory,
         price: priceNum,
+        mrp: finalMrp,
+        originalPrice: finalMrp,
+        discountPercentage: discountPct,
+        rating: 4.8,
         unit: newProdUnit.trim() || 'Kg',
         stock: stockNum,
         description: newProdDesc.trim() || `${newProdName.trim()} direct from certified organic farms.`,
@@ -790,6 +807,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
         setProductsList(prev => [created, ...prev.filter(p => p.id !== created.id)]);
         setShowAddProductModal(false);
         setNewProdName('');
+        setNewProdMrp('');
         setNewProdPrice('');
         setNewProdStock('');
         setNewProdDesc('');
@@ -825,10 +843,11 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
         }}
         activeOpacity={0.88}
       >
+        {/* Top Header: Category Tag & Favorite Heart */}
         <View className="flex-row items-center justify-between mb-1.5">
-          <View className="bg-emerald-50 px-2 py-0.5 rounded-md">
-            <Text className="text-2xs font-black uppercase text-emerald-800">
-              {p.organicCertified ? 'ORGANIC' : 'FRESH'}
+          <View className="bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md max-w-[80%]">
+            <Text className="text-[10px] font-bold uppercase text-emerald-800" numberOfLines={1}>
+              {safeCategory(p.category) || 'Harvest'}
             </Text>
           </View>
           <TouchableOpacity
@@ -844,7 +863,8 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
           </TouchableOpacity>
         </View>
 
-        <View className="w-full h-28 rounded-xl overflow-hidden bg-slate-50 items-center justify-center mb-2">
+        {/* Product Image with Discount Badge */}
+        <View className="w-full h-28 rounded-xl overflow-hidden bg-slate-50 items-center justify-center mb-2 relative">
           <Image
             source={{
               uri:
@@ -854,8 +874,21 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
             className="w-full h-full"
             resizeMode="cover"
           />
+          {(() => {
+            const mrpVal = p.mrp || p.originalPrice || 0;
+            const discountPct = p.discountPercentage || (mrpVal > p.price ? Math.round(((mrpVal - p.price) / mrpVal) * 100) : 0);
+            if (discountPct > 0) {
+              return (
+                <View className="absolute top-1.5 left-1.5 bg-amber-400 px-1.5 py-0.5 rounded shadow-sm">
+                  <Text className="text-[10px] font-black text-slate-900">{discountPct}% OFF</Text>
+                </View>
+              );
+            }
+            return null;
+          })()}
         </View>
 
+        {/* Product Name & Unit */}
         <Text className="text-sm font-bold text-slate-900 tracking-tight" numberOfLines={1}>
           {p.name}
         </Text>
@@ -863,14 +896,33 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
           {p.unit || '1 kg'}
         </Text>
 
-        <View className="flex-row items-center mt-1">
-          <Text className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100" numberOfLines={1}>
+        {/* Vendor & Rating Star Row */}
+        <View className="flex-row items-center justify-between mt-1.5">
+          <Text className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 flex-1 mr-1" numberOfLines={1}>
             🌱 {p.vendorName || p.vendor?.businessName || p.brand || 'Local Farm'}
           </Text>
+          <View className="flex-row items-center bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+            <Star size={10} color="#D97706" fill="#D97706" />
+            <Text className="text-[10px] font-bold text-amber-900 ml-0.5">
+              {(p.rating || 4.8).toFixed(1)}
+            </Text>
+          </View>
         </View>
 
-        <View className="flex-row items-center justify-between mt-2 pt-1">
-          <Text className="text-base font-black text-slate-900">₹{p.price}</Text>
+        {/* Pricing Row: Selling Price, Strikethrough MRP */}
+        <View className="flex-row items-center justify-between mt-2 pt-1 border-t border-slate-100">
+          <View>
+            <Text className="text-base font-black text-slate-900">₹{p.price}</Text>
+            {(() => {
+              const mrpVal = p.mrp || p.originalPrice;
+              if (mrpVal && mrpVal > p.price) {
+                return (
+                  <Text className="text-[11px] text-slate-400 line-through">₹{mrpVal}</Text>
+                );
+              }
+              return null;
+            })()}
+          </View>
 
           {isOutOfStock ? (
             <View className="bg-slate-400 px-3 py-1.5 rounded-lg">
@@ -1448,7 +1500,18 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
 
                 <View className="flex-row gap-2.5">
                   <View className="flex-1">
-                    <Text className="text-xs font-bold text-slate-700 mb-1.5 mt-2">Price (₹) *</Text>
+                    <Text className="text-xs font-bold text-slate-700 mb-1.5 mt-2">MRP (₹)</Text>
+                    <TextInput
+                      className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 mb-2"
+                      placeholder="e.g. 100"
+                      keyboardType="numeric"
+                      placeholderTextColor="#94A3B8"
+                      value={newProdMrp}
+                      onChangeText={setNewProdMrp}
+                    />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-xs font-bold text-slate-700 mb-1.5 mt-2">Selling Price (₹) *</Text>
                     <TextInput
                       className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 mb-2"
                       placeholder="e.g. 75"

@@ -136,9 +136,9 @@ export const VendorStoreScreen: React.FC<VendorStoreScreenProps> = ({
         activeOpacity={0.88}
       >
         <View className="flex-row items-center justify-between mb-1.5">
-          <View className="bg-[#E7F5EB] px-2 py-0.5 rounded-md">
-            <Text className="text-2xs font-extrabold uppercase text-[#07843D]">
-              {item.organicCertified ? '🌿 ORGANIC' : 'FRESH'}
+          <View className="bg-[#E7F5EB] border border-[#D5E8DC] px-2 py-0.5 rounded-md max-w-[80%]">
+            <Text className="text-[10px] font-extrabold uppercase text-[#07843D]" numberOfLines={1}>
+              {item.category || 'Harvest'}
             </Text>
           </View>
           <TouchableOpacity

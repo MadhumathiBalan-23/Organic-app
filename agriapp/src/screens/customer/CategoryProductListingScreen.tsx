@@ -294,7 +294,7 @@ export const CategoryProductListingScreen: React.FC<CategoryProductListingScreen
         <View className="flex-row items-center justify-between mb-1.5">
           <View className="bg-[#E7F5EB] px-2 py-0.5 rounded-md">
             <Text className="text-2xs font-extrabold uppercase text-[#07843D]">
-              {item.organicCertified ? '🌿 100% ORGANIC' : 'FRESH HARVEST'}
+              {item.category || initialCategoryName || 'Harvest'}
             </Text>
           </View>
           <TouchableOpacity
