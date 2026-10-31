@@ -216,4 +216,25 @@ export class AuthController {
     req.body.role = 'admin';
     return AuthController.refreshToken(req, res);
   }
+
+  /**
+   * Vendor Token - Check if phone is an approved vendor and issue token
+   */
+  public static async vendorToken(req: Request, res: Response) {
+    try {
+      const { phoneNumber } = req.body;
+      const result = await AuthService.getVendorToken(phoneNumber);
+
+      if (!result.success) {
+        return res.status(403).json(result);
+      }
+
+      return res.json(result);
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to verify vendor status.'
+      });
+    }
+  }
 }

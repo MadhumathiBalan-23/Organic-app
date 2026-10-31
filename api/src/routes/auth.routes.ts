@@ -18,6 +18,9 @@ router.get('/devices/my-devices', AuthController.getMyDevices);
 router.post('/devices/:deviceId/revoke-trust', AuthController.revokeDeviceTrust);
 router.delete('/devices/:deviceId', AuthController.deleteDevice);
 
+// ── Vendor Token (check vendor approval & issue token) ──
+router.post('/auth/vendor-token', AuthController.vendorToken);
+
 // ── Role-Specific Routes (Customer) ──
 router.post('/customer/auth/login', AuthController.customerLogin);
 router.post('/customer/auth/refresh', AuthController.customerRefresh);

@@ -666,4 +666,90 @@ export class AuthService {
     });
     return { success: true, message: 'All active sessions revoked across all devices.' };
   }
+
+  /**
+   * Check if a phone number is an approved vendor and return a vendor token
+   */
+  public static async getVendorToken(phoneNumber: string): Promise<{
+    success: boolean;
+    token?: string;
+    status?: string;
+    message?: string;
+    vendor?: any;
+  }> {
+    const cleanPhone = (phoneNumber || '').replace(/[^0-9]/g, '');
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      return { success: false, status: 'INVALID', message: 'Valid 10-digit phone number required.' };
+    }
+
+    // Check user table for vendor role
+    let user: any = null;
+    try {
+      user = await prisma.user.findUnique({ where: { phoneNumber: cleanPhone } });
+    } catch {}
+
+    let isApprovedVendor = user?.role === 'vendor' || user?.vendorStatus === 'APPROVED';
+
+    // Check vendor requests table
+    let vendorRequest: any = null;
+    if (!isApprovedVendor) {
+      try {
+        vendorRequest = await prisma.vendorRequest.findFirst({
+          where: { phoneNumber: cleanPhone, status: 'APPROVED' }
+        });
+        if (vendorRequest) isApprovedVendor = true;
+      } catch {}
+    }
+
+    // Hardcoded approved vendor phones (same as sendOtp logic)
+    const hardcodedVendors = ['9025255639', '9876500003', '9344193569'];
+    if (!isApprovedVendor && hardcodedVendors.includes(cleanPhone)) {
+      isApprovedVendor = true;
+    }
+
+    if (!isApprovedVendor) {
+      // Check if there's a pending request
+      let pendingRequest: any = null;
+      try {
+        pendingRequest = await prisma.vendorRequest.findFirst({
+          where: { phoneNumber: cleanPhone },
+          orderBy: { createdAt: 'desc' }
+        });
+      } catch {}
+
+      const status = pendingRequest?.status || 'NOT_FOUND';
+      return {
+        success: false,
+        status,
+        message: status === 'PENDING'
+          ? `Your vendor application is pending Admin approval. Please wait for confirmation.`
+          : status === 'REJECTED'
+          ? `Your vendor application was rejected. Please contact the Admin for details.`
+          : `Mobile number +91 ${cleanPhone} has not been approved by Admin as a Vendor yet. Please submit your application in your Profile or wait for Admin approval.`
+      };
+    }
+
+    // Generate vendor access token
+    const vendorPayload: JwtUserPayload = {
+      id: user?.id || cleanPhone,
+      phoneNumber: cleanPhone,
+      role: 'vendor',
+      type: 'VENDOR_TOKEN'
+    };
+
+    const token = jwt.sign(vendorPayload, config.jwtSecret, { expiresIn: '24h' });
+
+    return {
+      success: true,
+      token,
+      status: 'APPROVED',
+      message: 'Vendor access granted.',
+      vendor: {
+        id: user?.id || vendorRequest?.id,
+        phoneNumber: cleanPhone,
+        name: user?.name || vendorRequest?.farmName || 'Vendor',
+        role: 'vendor'
+      }
+    };
+  }
 }
