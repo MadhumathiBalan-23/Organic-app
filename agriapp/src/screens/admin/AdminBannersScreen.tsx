@@ -205,18 +205,19 @@ export const AdminBannersScreen: React.FC = () => {
 
   // Active Color Tab: 'top' | 'bottom'
   const [activeColorTab, setActiveColorTab] = useState<'top' | 'bottom'>('top');
-  const [paletteMode, setPaletteMode] = useState<'swatches' | 'duos'>('swatches');
-  const [activeCategoryIndex, setActiveCategoryIndex] = useState<number>(0);
+  const [colorModalTarget, setColorModalTarget] = useState<'top' | 'bottom' | null>(null);
 
   // Switch between Top and Bottom color tabs reliably
   const handleSelectTab = (tab: 'top' | 'bottom') => {
     setActiveColorTab(tab);
+    setColorModalTarget(tab);
   };
 
-  // Update current active color (top or bottom) in real time
-  const updateCurrentColor = (hex: string) => {
+  // Update color for active or targeted tab in real time
+  const handlePickColorForTarget = (hex: string) => {
     const clean = hex.trim().startsWith('#') ? hex.trim() : `#${hex.trim()}`;
-    if (activeColorTab === 'top') {
+    const target = colorModalTarget || activeColorTab;
+    if (target === 'top') {
       setForm(prev => ({
         ...prev,
         topColor: clean,
@@ -398,8 +399,7 @@ export const AdminBannersScreen: React.FC = () => {
       isActive: true,
     });
     setActiveColorTab('top');
-    setPaletteMode('swatches');
-    setActiveCategoryIndex(0);
+    setColorModalTarget(null);
     setEditId(null);
     setModal('add');
   };
@@ -437,20 +437,25 @@ export const AdminBannersScreen: React.FC = () => {
       isActive: b.isActive !== undefined ? b.isActive : true,
     });
     setActiveColorTab('top');
-    setPaletteMode('swatches');
-    setActiveCategoryIndex(0);
+    setColorModalTarget(null);
     setEditId(b.id);
     setModal('edit');
   };
 
   // Save banner
   const handleSave = async () => {
+    // 1. Mandatory Banner Photo Validation
+    if (!form.imageUrl || !form.imageUrl.trim()) {
+      Alert.alert('Banner Photo Required', 'Banner photo is mandatory. Please choose from gallery, take a photo, or select a sample photo.');
+      return;
+    }
+
     const finalBg =
       form.topColor && form.bottomColor
         ? `${form.topColor.trim()}|${form.bottomColor.trim()}`
         : form.backgroundColor || '#02381A|#EA580C';
 
-    const bannerTitle = form.title?.trim() || 'Organic Promotional Banner';
+    const bannerTitle = form.title?.trim() || form.targetId || 'Organic Promotional Banner';
 
     const payload = {
       title: bannerTitle,
@@ -659,613 +664,466 @@ export const AdminBannersScreen: React.FC = () => {
         icon={<Sparkles size={16} color="#047857" strokeWidth={2.5} />}
         maxHeight="92%"
       >
-              {/* ─── 1. REALTIME LIVE PREVIEW CARD (Visible Color & Photo) ─── */}
-              <View className="mb-4">
-                <View className="flex-row items-center justify-between mb-1.5">
-                  <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider">
-                    Live Banner Preview
-                  </Text>
-                  <View className="flex-row items-center gap-1 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                    <View className="w-2 h-2 rounded-full bg-emerald-600" />
-                    <Text className="text-2xs font-extrabold text-emerald-800">REALTIME COLOR & PHOTO</Text>
-                  </View>
-                </View>
+        {/* ─── 1. REALTIME BANNER PREVIEW (CLEAN PHOTO / GRADIENT ONLY - NO TEXT OVERLAY) ─── */}
+        <View className="mb-3.5">
+          <View
+            className="h-36 rounded-2xl overflow-hidden relative shadow-sm border border-slate-300"
+            style={{ backgroundColor: form.topColor || '#02381A' }}
+          >
+            {form.imageUrl ? (
+              <Image
+                source={{ uri: form.imageUrl }}
+                className="w-full h-full"
+                resizeMode="cover"
+              />
+            ) : (
+              <View className="absolute inset-0">
+                <Svg width="100%" height="100%">
+                  <Defs>
+                    <SvgLinearGradient id="neatLiveGrad" x1="0" y1="0" x2="1" y2="1">
+                      <Stop offset="0%" stopColor={form.topColor || '#02381A'} stopOpacity="1" />
+                      <Stop offset="100%" stopColor={form.bottomColor || '#15803D'} stopOpacity="1" />
+                    </SvgLinearGradient>
+                  </Defs>
+                  <Rect width="100%" height="100%" fill="url(#neatLiveGrad)" />
+                </Svg>
+              </View>
+            )}
+          </View>
+        </View>
 
-                {/* Banner Container with Dynamic Background Color */}
+        {/* ─── 2. TOP & BOTTOM COLOR (ONLY TOP & BOTTOM COLOR SELECTOR) ─── */}
+        <View className="mb-4">
+          {/* Realtime Gradient Flow Preview Strip */}
+          <View className="h-7 rounded-xl overflow-hidden mb-2.5 relative border border-slate-300 shadow-xs">
+            <Svg width="100%" height="100%">
+              <Defs>
+                <SvgLinearGradient id="paletteBarGrad" x1="0" y1="0" x2="1" y2="0">
+                  <Stop offset="0%" stopColor={form.topColor || '#02381A'} stopOpacity="1" />
+                  <Stop offset="100%" stopColor={form.bottomColor || '#EA580C'} stopOpacity="1" />
+                </SvgLinearGradient>
+              </Defs>
+              <Rect width="100%" height="100%" fill="url(#paletteBarGrad)" />
+            </Svg>
+            <View className="absolute inset-0 flex-row items-center justify-between px-3">
+              <Text className="text-2xs font-extrabold text-white shadow-sm">
+                TOP: {form.topColor || '#02381A'}
+              </Text>
+              <Text className="text-2xs font-black text-white/90">➔ GRADIENT FLOW ➔</Text>
+              <Text className="text-2xs font-extrabold text-white shadow-sm">
+                BOTTOM: {form.bottomColor || '#EA580C'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Side-by-Side Dual Color Cards: Top Color & Bottom Color + Swap Button */}
+          <View className="flex-row items-center gap-2.5">
+            {/* Top Color Button */}
+            <Pressable
+              onPress={() => setColorModalTarget('top')}
+              style={({ pressed }) => ({
+                flex: 1,
+                padding: 12,
+                borderRadius: 16,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: '#FFFFFF',
+                borderWidth: 1.5,
+                borderColor: '#E2E8F0',
+                opacity: pressed ? 0.75 : 1,
+              })}
+            >
+              <View className="flex-row items-center gap-2.5" pointerEvents="none">
                 <View
-                  className="h-36 rounded-2xl overflow-hidden relative shadow-sm border border-slate-300"
+                  className="w-10 h-10 rounded-xl border border-slate-200"
                   style={{ backgroundColor: form.topColor || '#02381A' }}
-                >
-                  {form.imageUrl ? (
-                    <Image
-                      source={{ uri: form.imageUrl }}
-                      className="w-full h-full"
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <>
-                      {/* SVG Gradient Background Layer */}
-                      <View className="absolute inset-0" pointerEvents="none">
-                        <Svg width="100%" height="100%">
-                          <Defs>
-                            <SvgLinearGradient id="neatLiveGrad" x1="0" y1="0" x2="1" y2="1">
-                              <Stop offset="0%" stopColor={form.topColor || '#02381A'} stopOpacity="1" />
-                              <Stop offset="100%" stopColor={form.bottomColor || '#15803D'} stopOpacity="1" />
-                            </SvgLinearGradient>
-                          </Defs>
-                          <Rect width="100%" height="100%" fill="url(#neatLiveGrad)" />
-                        </Svg>
-                      </View>
-
-                      {/* Headline & Button */}
-                      <View className="flex-1 p-3.5 justify-between z-10">
-                        <View>
-                          <View className="self-start bg-white/20 px-2 py-0.5 rounded mb-1">
-                            <Text className="text-2xs font-black text-white uppercase tracking-wider">
-                              {form.isActive ? '🌿 CERTIFIED ORGANIC' : 'HIDDEN DRAFT'}
-                            </Text>
-                          </View>
-                          <Text className="text-base font-black text-white shadow-sm" numberOfLines={1}>
-                            {form.title || 'Banner Title Goes Here 🌿'}
-                          </Text>
-                          {form.subtitle ? (
-                            <Text className="text-xs text-white/90 font-medium mt-0.5" numberOfLines={1}>
-                              {form.subtitle}
-                            </Text>
-                          ) : null}
-                        </View>
-
-                        <View className="self-start px-3 py-1.5 rounded-lg bg-[#FDE047] shadow-sm">
-                          <Text className="text-xs font-black text-[#78350F]">
-                            {form.buttonText || 'Shop Now →'}
-                          </Text>
-                        </View>
-                      </View>
-                    </>
-                  )}
+                />
+                <View>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#1E293B' }}>Top Color</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '900', color: '#0F172A' }}>{form.topColor || '#02381A'}</Text>
                 </View>
               </View>
+              <Pencil size={15} color="#059669" pointerEvents="none" />
+            </Pressable>
 
-              {/* ─── 2. TOP & BOTTOM COLOR SELECTOR ─── */}
-              <View className="mb-4">
-                {/* Realtime Gradient Flow Preview Strip */}
-                <View className="h-7 rounded-xl overflow-hidden mb-2.5 relative border border-slate-300 shadow-xs">
-                  <Svg width="100%" height="100%">
-                    <Defs>
-                      <SvgLinearGradient id="paletteBarGrad" x1="0" y1="0" x2="1" y2="0">
-                        <Stop offset="0%" stopColor={form.topColor || '#02381A'} stopOpacity="1" />
-                        <Stop offset="100%" stopColor={form.bottomColor || '#EA580C'} stopOpacity="1" />
-                      </SvgLinearGradient>
-                    </Defs>
-                    <Rect width="100%" height="100%" fill="url(#paletteBarGrad)" />
-                  </Svg>
-                  <View className="absolute inset-0 flex-row items-center justify-between px-3">
-                    <Text className="text-2xs font-extrabold text-white shadow-sm">
-                      TOP: {form.topColor || '#02381A'}
-                    </Text>
-                    <Text className="text-2xs font-black text-white/90">➔ GRADIENT FLOW ➔</Text>
-                    <Text className="text-2xs font-extrabold text-white shadow-sm">
-                      BOTTOM: {form.bottomColor || '#EA580C'}
-                    </Text>
-                  </View>
-                </View>
+            {/* Swap Button */}
+            <Pressable
+              onPress={handleSwapColors}
+              hitSlop={8}
+              style={({ pressed }) => ({
+                width: 38,
+                height: 38,
+                borderRadius: 19,
+                backgroundColor: pressed ? '#E2E8F0' : '#F1F5F9',
+                borderWidth: 1,
+                borderColor: '#CBD5E1',
+                alignItems: 'center',
+                justifyContent: 'center',
+              })}
+            >
+              <Text style={{ color: '#047857', fontWeight: '900', fontSize: 16 }}>⇄</Text>
+            </Pressable>
 
-                {/* Side-by-Side Dual Color Cards: Top Color & Bottom Color + Swap Button */}
-                <View className="flex-row items-center gap-2.5 mb-3">
-                  {/* Top Color Button */}
-                  <Pressable
-                    onPress={() => handleSelectTab('top')}
-                    style={({ pressed }) => ({
-                      flex: 1,
-                      padding: 12,
-                      borderRadius: 16,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      backgroundColor: activeColorTab === 'top' ? '#ECFDF5' : '#FFFFFF',
-                      borderWidth: activeColorTab === 'top' ? 2 : 1,
-                      borderColor: activeColorTab === 'top' ? '#059669' : '#E2E8F0',
-                      opacity: pressed ? 0.75 : 1,
-                    })}
-                  >
-                    <View className="flex-row items-center gap-2.5" pointerEvents="none">
-                      <View
-                        className="w-10 h-10 rounded-xl border border-slate-200"
-                        style={{ backgroundColor: form.topColor || '#02381A' }}
-                      />
-                      <View>
-                        <Text style={{ fontSize: 12, fontWeight: '600', color: activeColorTab === 'top' ? '#065F46' : '#1E293B' }}>Top Color</Text>
-                        <Text style={{ fontSize: 14, fontWeight: '900', color: activeColorTab === 'top' ? '#047857' : '#0F172A' }}>{form.topColor || '#02381A'}</Text>
-                      </View>
-                    </View>
-                    <ChevronRight size={18} color={activeColorTab === 'top' ? '#059669' : '#94A3B8'} pointerEvents="none" />
-                  </Pressable>
-
-                  {/* Swap Button */}
-                  <Pressable
-                    onPress={handleSwapColors}
-                    hitSlop={8}
-                    style={({ pressed }) => ({
-                      width: 38,
-                      height: 38,
-                      borderRadius: 19,
-                      backgroundColor: pressed ? '#E2E8F0' : '#F1F5F9',
-                      borderWidth: 1,
-                      borderColor: '#CBD5E1',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    })}
-                  >
-                    <Text style={{ color: '#047857', fontWeight: '900', fontSize: 16 }}>⇄</Text>
-                  </Pressable>
-
-                  {/* Bottom Color Button */}
-                  <Pressable
-                    onPress={() => handleSelectTab('bottom')}
-                    style={({ pressed }) => ({
-                      flex: 1,
-                      padding: 12,
-                      borderRadius: 16,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      backgroundColor: activeColorTab === 'bottom' ? '#ECFDF5' : '#FFFFFF',
-                      borderWidth: activeColorTab === 'bottom' ? 2 : 1,
-                      borderColor: activeColorTab === 'bottom' ? '#059669' : '#E2E8F0',
-                      opacity: pressed ? 0.75 : 1,
-                    })}
-                  >
-                    <View className="flex-row items-center gap-2.5" pointerEvents="none">
-                      <View
-                        className="w-10 h-10 rounded-xl border border-slate-200"
-                        style={{ backgroundColor: form.bottomColor || '#EA580C' }}
-                      />
-                      <View>
-                        <Text style={{ fontSize: 12, fontWeight: '600', color: activeColorTab === 'bottom' ? '#065F46' : '#1E293B' }}>Bottom Color</Text>
-                        <Text style={{ fontSize: 14, fontWeight: '900', color: activeColorTab === 'bottom' ? '#047857' : '#0F172A' }}>{form.bottomColor || '#EA580C'}</Text>
-                      </View>
-                    </View>
-                    <ChevronRight size={18} color={activeColorTab === 'bottom' ? '#059669' : '#94A3B8'} pointerEvents="none" />
-                  </Pressable>
-                </View>
-
-                {/* ─── COLOR PALETTE CARD (100% RELIABLE TAP-BASED) ─── */}
-                <View className="bg-white rounded-3xl border border-slate-200 p-4 mb-3">
-                  {/* Mode Tabs: Swatches / Presets */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#E5EDE7', padding: 4, borderRadius: 12, marginBottom: 12 }}>
-                    <Pressable
-                      onPress={() => setPaletteMode('swatches')}
-                      style={({ pressed }) => ({
-                        flex: 1,
-                        paddingVertical: 7,
-                        borderRadius: 8,
-                        alignItems: 'center',
-                        backgroundColor: paletteMode === 'swatches' ? '#FFFFFF' : 'transparent',
-                        opacity: pressed ? 0.75 : 1,
-                      })}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          fontWeight: '800',
-                          color: paletteMode === 'swatches' ? '#065F46' : '#475569',
-                        }}
-                      >
-                        🎨 Pick {activeColorTab === 'top' ? 'Top Color' : 'Bottom Color'}
-                      </Text>
-                    </Pressable>
-
-                    <Pressable
-                      onPress={() => setPaletteMode('duos')}
-                      style={({ pressed }) => ({
-                        flex: 1,
-                        paddingVertical: 7,
-                        borderRadius: 8,
-                        alignItems: 'center',
-                        backgroundColor: paletteMode === 'duos' ? '#FFFFFF' : 'transparent',
-                        opacity: pressed ? 0.75 : 1,
-                      })}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          fontWeight: '800',
-                          color: paletteMode === 'duos' ? '#065F46' : '#475569',
-                        }}
-                      >
-                        🌈 Preset Duos (14)
-                      </Text>
-                    </Pressable>
-                  </View>
-
-                  {paletteMode === 'swatches' ? (
-                    <>
-                      {/* Category Chips Scroll: 5 Families */}
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-                        <View style={{ flexDirection: 'row', gap: 6 }}>
-                          {COLOR_PALETTE_CATEGORIES.map((cat, idx) => {
-                            const isCatActive = activeCategoryIndex === idx;
-                            return (
-                              <Pressable
-                                key={cat.name}
-                                onPress={() => setActiveCategoryIndex(idx)}
-                                style={({ pressed }) => ({
-                                  paddingHorizontal: 10,
-                                  paddingVertical: 5,
-                                  borderRadius: 8,
-                                  borderWidth: 1,
-                                  backgroundColor: isCatActive ? '#047857' : '#F8FAF8',
-                                  borderColor: isCatActive ? '#047857' : '#CBD5E1',
-                                  opacity: pressed ? 0.75 : 1,
-                                })}
-                              >
-                                <Text
-                                  style={{
-                                    fontSize: 11,
-                                    fontWeight: '800',
-                                    color: isCatActive ? '#FFFFFF' : '#334155',
-                                  }}
-                                >
-                                  {cat.name}
-                                </Text>
-                              </Pressable>
-                            );
-                          })}
-                        </View>
-                      </ScrollView>
-
-                      {/* 10 Color Circles for chosen category */}
-                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10, marginBottom: 14 }}>
-                        {COLOR_PALETTE_CATEGORIES[activeCategoryIndex].colors.map(col => {
-                          const currentActiveHex = activeColorTab === 'top' ? form.topColor : form.bottomColor;
-                          const isMatch = (currentActiveHex || '').toUpperCase() === col.hex.toUpperCase();
-                          return (
-                            <Pressable
-                              key={col.hex}
-                              onPress={() => updateCurrentColor(col.hex)}
-                              hitSlop={4}
-                              style={({ pressed }) => ({
-                                width: 36,
-                                height: 36,
-                                borderRadius: 18,
-                                backgroundColor: col.hex,
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                borderWidth: isMatch ? 3 : 1,
-                                borderColor: isMatch ? '#047857' : '#CBD5E1',
-                                transform: [{ scale: isMatch ? 1.12 : (pressed ? 0.95 : 1) }],
-                              })}
-                            >
-                              {isMatch && (
-                                <Check
-                                  size={15}
-                                  color={col.hex === '#FFFFFF' || col.hex === '#E8F5E9' || col.hex === '#FEF9C3' || col.hex === '#E0F2FE' ? '#047857' : '#FFFFFF'}
-                                  strokeWidth={3.5}
-                                />
-                              )}
-                            </Pressable>
-                          );
-                        })}
-                      </View>
-
-                      {/* HEX Input Row */}
-                      <View className="flex-row items-center gap-2">
-                        <View
-                          className="w-10 h-10 rounded-xl border border-slate-300"
-                          style={{
-                            backgroundColor:
-                              activeColorTab === 'top' ? form.topColor || '#02381A' : form.bottomColor || '#EA580C',
-                          }}
-                        />
-                        <View className="flex-1 flex-row items-center bg-[#F8FAF8] border border-slate-200 rounded-xl px-3 h-11">
-                          <TextInput
-                            className="flex-1 text-sm font-black text-slate-800 py-0"
-                            value={activeColorTab === 'top' ? form.topColor : form.bottomColor}
-                            onChangeText={updateCurrentColor}
-                            placeholder="#02381A"
-                            placeholderTextColor="#94A3B8"
-                            autoCapitalize="characters"
-                          />
-                          <Pressable
-                            onPress={() => {
-                              const favs = ['#02381A', '#07843D', '#10B981', '#0284C7', '#4F46E5', '#9333EA', '#EA580C', '#F59E0B'];
-                              const cur = (activeColorTab === 'top' ? form.topColor : form.bottomColor) || '';
-                              const idx = favs.indexOf(cur.toUpperCase());
-                              const next = favs[(idx + 1) % favs.length];
-                              updateCurrentColor(next);
-                            }}
-                            style={({ pressed }) => ({
-                              padding: 6,
-                              borderRadius: 8,
-                              backgroundColor: pressed ? '#CBD5E1' : '#F1F5F9',
-                            })}
-                          >
-                            <Pipette size={16} color="#64748B" />
-                          </Pressable>
-                        </View>
-                      </View>
-
-                      {/* Quick Favorite Organic Shades */}
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
-                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#94A3B8', marginRight: 4 }}>Quick:</Text>
-                        {[
-                          { label: '🌿 Farm Green', hex: '#07843D' },
-                          { label: '🌲 Deep Forest', hex: '#02381A' },
-                          { label: '🍃 Sage Green', hex: '#9AADA6' },
-                          { label: '🌾 Gold Sun', hex: '#F2C500' },
-                          { label: '🍊 Sunset', hex: '#EA580C' },
-                        ].map(quick => (
-                          <Pressable
-                            key={quick.hex}
-                            onPress={() => updateCurrentColor(quick.hex)}
-                            style={({ pressed }) => ({
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              gap: 4,
-                              backgroundColor: pressed ? '#F1F5F9' : '#FFFFFF',
-                              borderWidth: 1,
-                              borderColor: '#E2E8F0',
-                              paddingHorizontal: 8,
-                              paddingVertical: 3,
-                              borderRadius: 6,
-                            })}
-                          >
-                            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: quick.hex }} />
-                            <Text style={{ fontSize: 10, fontWeight: '700', color: '#334155' }}>{quick.label}</Text>
-                          </Pressable>
-                        ))}
-                      </View>
-                    </>
-                  ) : (
-                    /* Preset Duos Grid (14 Harmonious Pairs) */
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                      {GRADIENT_PRESETS.map(item => {
-                        const isMatch =
-                          form.topColor?.toUpperCase() === item.top.toUpperCase() &&
-                          form.bottomColor?.toUpperCase() === item.bottom.toUpperCase();
-                        return (
-                          <Pressable
-                            key={item.name}
-                            onPress={() => handleApplyDuo(item.top, item.bottom)}
-                            style={({ pressed }) => ({
-                              width: '48%',
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              gap: 8,
-                              paddingHorizontal: 10,
-                              paddingVertical: 8,
-                              borderRadius: 12,
-                              borderWidth: 1.5,
-                              backgroundColor: isMatch ? '#ECFDF5' : '#F8FAF8',
-                              borderColor: isMatch ? '#059669' : '#E2E8F0',
-                              opacity: pressed ? 0.75 : 1,
-                            })}
-                          >
-                            <View style={{ width: 20, height: 20, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#CBD5E1', flexDirection: 'row' }}>
-                              <View style={{ flex: 1, backgroundColor: item.top }} />
-                              <View style={{ flex: 1, backgroundColor: item.bottom }} />
-                            </View>
-                            <Text style={{ fontSize: 10, fontWeight: '800', color: '#1E293B', flex: 1 }} numberOfLines={1}>
-                              {item.name}
-                            </Text>
-                            {isMatch && <Check size={12} color="#047857" strokeWidth={3} />}
-                          </Pressable>
-                        );
-                      })}
-                    </View>
-                  )}
+            {/* Bottom Color Button */}
+            <Pressable
+              onPress={() => setColorModalTarget('bottom')}
+              style={({ pressed }) => ({
+                flex: 1,
+                padding: 12,
+                borderRadius: 16,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: '#FFFFFF',
+                borderWidth: 1.5,
+                borderColor: '#E2E8F0',
+                opacity: pressed ? 0.75 : 1,
+              })}
+            >
+              <View className="flex-row items-center gap-2.5" pointerEvents="none">
+                <View
+                  className="w-10 h-10 rounded-xl border border-slate-200"
+                  style={{ backgroundColor: form.bottomColor || '#EA580C' }}
+                />
+                <View>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#1E293B' }}>Bottom Color</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '900', color: '#0F172A' }}>{form.bottomColor || '#EA580C'}</Text>
                 </View>
               </View>
+              <Pencil size={15} color="#059669" pointerEvents="none" />
+            </Pressable>
+          </View>
+        </View>
 
-              {/* ─── 3. BANNER PHOTO (GALLERY, CAMERA, SAMPLE PHOTOS) ─── */}
-              <View className="mb-4">
-                <View className="flex-row justify-between items-center mb-1.5">
-                  <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider">
-                    Banner Photo (Optional)
-                  </Text>
-                  {isUploading ? (
-                    <View className="flex-row items-center gap-1">
-                      <ActivityIndicator size="small" color="#047857" />
-                      <Text className="text-2xs font-bold text-emerald-700">Uploading...</Text>
-                    </View>
-                  ) : form.imageUrl ? (
-                    <Pressable onPress={() => setForm(prev => ({ ...prev, imageUrl: '' }))} hitSlop={6}>
-                      <Text className="text-2xs font-bold text-red-600">✕ Remove Photo</Text>
-                    </Pressable>
-                  ) : null}
-                </View>
+        {/* ─── 3. BANNER PHOTO (MANDATORY) ─── */}
+        <View className="mb-4">
+          <View className="flex-row justify-between items-center mb-1.5">
+            <View className="flex-row items-center gap-1">
+              <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider">
+                Banner Photo
+              </Text>
+              <Text className="text-xs font-black text-red-500">* (Mandatory)</Text>
+            </View>
+            {isUploading ? (
+              <View className="flex-row items-center gap-1">
+                <ActivityIndicator size="small" color="#047857" />
+                <Text className="text-2xs font-bold text-emerald-700">Uploading...</Text>
+              </View>
+            ) : form.imageUrl ? (
+              <Pressable onPress={() => setForm(prev => ({ ...prev, imageUrl: '' }))} hitSlop={6}>
+                <Text className="text-2xs font-bold text-red-600">✕ Remove Photo</Text>
+              </Pressable>
+            ) : null}
+          </View>
 
-                {/* Gallery & Camera Buttons */}
-                <View className="flex-row gap-2 mb-2">
-                  <Pressable
-                    style={({ pressed }) => ({
-                      flex: 1,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 6,
-                      paddingVertical: 10,
-                      borderRadius: 12,
-                      backgroundColor: pressed ? '#D1FAE5' : '#ECFDF5',
-                      borderWidth: 1,
-                      borderColor: '#A7F3D0',
-                    })}
-                    onPress={handlePickFromGallery}
-                    disabled={isUploading}
-                  >
-                    <Upload size={15} color="#047857" />
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#047857' }}>Choose from Gallery</Text>
-                  </Pressable>
+          {/* Gallery & Camera Buttons */}
+          <View className="flex-row gap-2 mb-2">
+            <Pressable
+              style={({ pressed }) => ({
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                paddingVertical: 10,
+                borderRadius: 12,
+                backgroundColor: pressed ? '#D1FAE5' : '#ECFDF5',
+                borderWidth: 1,
+                borderColor: '#A7F3D0',
+              })}
+              onPress={handlePickFromGallery}
+              disabled={isUploading}
+            >
+              <Upload size={15} color="#047857" />
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#047857' }}>Choose from Gallery</Text>
+            </Pressable>
 
-                  <Pressable
-                    style={({ pressed }) => ({
-                      flex: 1,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 6,
-                      paddingVertical: 10,
-                      borderRadius: 12,
-                      backgroundColor: pressed ? '#E0F2FE' : '#F0F9FF',
-                      borderWidth: 1,
-                      borderColor: '#BAE6FD',
-                    })}
-                    onPress={handleTakePhoto}
-                    disabled={isUploading}
-                  >
-                    <Camera size={15} color="#0284C7" />
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#0284C7' }}>Take Camera Photo</Text>
-                  </Pressable>
-                </View>
+            <Pressable
+              style={({ pressed }) => ({
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                paddingVertical: 10,
+                borderRadius: 12,
+                backgroundColor: pressed ? '#E0F2FE' : '#F0F9FF',
+                borderWidth: 1,
+                borderColor: '#BAE6FD',
+              })}
+              onPress={handleTakePhoto}
+              disabled={isUploading}
+            >
+              <Camera size={15} color="#0284C7" />
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#0284C7' }}>Take Camera Photo</Text>
+            </Pressable>
+          </View>
 
-                {/* 4 Quick Sample Photos */}
-                <View className="flex-row gap-2">
-                  {SAMPLE_PHOTOS.map(sample => {
-                    const isSelected = form.imageUrl === sample.url;
-                    return (
-                      <Pressable
-                        key={sample.name}
-                        onPress={() => setForm(prev => ({ ...prev, imageUrl: sample.url }))}
-                        style={({ pressed }) => ({
-                          flex: 1,
-                          paddingVertical: 6,
-                          borderRadius: 12,
-                          borderWidth: 1,
-                          alignItems: 'center',
-                          backgroundColor: isSelected ? '#ECFDF5' : '#F8FAF8',
-                          borderColor: isSelected ? '#059669' : '#E2E8F0',
-                          opacity: pressed ? 0.75 : 1,
-                        })}
-                      >
-                        <Text style={{ fontSize: 10, fontWeight: '700', color: isSelected ? '#065F46' : '#334155' }}>
-                          {sample.name}
-                        </Text>
-                      </Pressable>
-                    );
+          {/* 4 Quick Sample Photos */}
+          <View className="flex-row gap-2">
+            {SAMPLE_PHOTOS.map(sample => {
+              const isSelected = form.imageUrl === sample.url;
+              return (
+                <Pressable
+                  key={sample.name}
+                  onPress={() => setForm(prev => ({ ...prev, imageUrl: sample.url }))}
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    paddingVertical: 6,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    alignItems: 'center',
+                    backgroundColor: isSelected ? '#ECFDF5' : '#F8FAF8',
+                    borderColor: isSelected ? '#059669' : '#E2E8F0',
+                    opacity: pressed ? 0.75 : 1,
                   })}
-                </View>
-              </View>
+                >
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: isSelected ? '#065F46' : '#334155' }}>
+                    {sample.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
 
-              {/* ─── 4. CUSTOMER TABS (WHEN CUSTOMER TAPS BANNER) ─── */}
-              <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider mb-1">
-                When Customer Taps Banner:
-              </Text>
-              <View className="flex-row gap-2 mb-3.5">
-                {[
-                  { id: 'ALL_PRODUCTS', label: 'All Products 🛒' },
-                  { id: 'CATEGORY', label: 'Categories 📦' },
-                  { id: 'SUBSCRIPTION', label: 'Daily Milk 🥛' },
-                  { id: 'SCREEN', label: 'Vendor Hub 🌾' },
-                ].map(t => {
-                  const isTypeSelected = form.targetType === t.id;
-                  return (
-                    <Pressable
-                      key={t.id}
-                      onPress={() => setForm({ ...form, targetType: t.id, targetId: t.id })}
-                      style={({ pressed }) => ({
-                        flex: 1,
-                        paddingVertical: 8,
-                        paddingHorizontal: 4,
-                        borderRadius: 12,
-                        borderWidth: 1,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: isTypeSelected ? '#047857' : '#F8FAF8',
-                        borderColor: isTypeSelected ? '#047857' : '#E2E8F0',
-                        opacity: pressed ? 0.75 : 1,
-                      })}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 10,
-                          textAlign: 'center',
-                          fontWeight: '700',
-                          color: isTypeSelected ? '#FFFFFF' : '#334155',
-                        }}
-                        numberOfLines={1}
-                      >
-                        {t.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              {/* ─── 8. STATUS SWITCH ─── */}
-              <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider mb-1">
-                Banner Status
-              </Text>
+        {/* ─── 4. TARGET CATEGORY SELECTION ─── */}
+        <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider mb-1.5">
+          Target Category:
+        </Text>
+        <View className="flex-row flex-wrap gap-2 mb-4">
+          {[
+            { id: 'ALL_PRODUCTS', label: 'All Products 🛒' },
+            { id: 'Dairy & Pure Ghee', label: 'Dairy & Milk 🥛' },
+            { id: 'Fresh Vegetables', label: 'Vegetables 🥬' },
+            { id: 'Fresh Fruits', label: 'Fruits 🍎' },
+            { id: 'Groceries & Grains', label: 'Groceries 🌾' },
+            { id: 'Organic Oils', label: 'Oils 🫒' },
+            { id: 'Dry Fruits & Snacks', label: 'Dry Fruits 🥜' },
+            { id: 'SCREEN', label: 'Vendor Hub 🌾' },
+          ].map(t => {
+            const isSelected = form.targetId === t.id || (t.id === 'ALL_PRODUCTS' && form.targetType === 'ALL_PRODUCTS');
+            return (
               <Pressable
-                onPress={() => setForm({ ...form, isActive: !form.isActive })}
+                key={t.id}
+                onPress={() => setForm({ ...form, targetType: t.id === 'ALL_PRODUCTS' ? 'ALL_PRODUCTS' : (t.id === 'SCREEN' ? 'SCREEN' : 'CATEGORY'), targetId: t.id })}
                 style={({ pressed }) => ({
-                  height: 44,
+                  paddingVertical: 8,
+                  paddingHorizontal: 10,
                   borderRadius: 12,
-                  borderWidth: 2,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  flexDirection: 'row',
-                  gap: 6,
-                  marginBottom: 16,
-                  backgroundColor: form.isActive ? '#ECFDF5' : '#FEF2F2',
-                  borderColor: form.isActive ? '#34D399' : '#FCA5A5',
+                  borderWidth: 1.5,
+                  backgroundColor: isSelected ? '#047857' : '#F8FAF8',
+                  borderColor: isSelected ? '#047857' : '#E2E8F0',
                   opacity: pressed ? 0.75 : 1,
                 })}
               >
-                <Check size={15} color={form.isActive ? '#15803D' : '#DC2626'} strokeWidth={3} />
                 <Text
                   style={{
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: '800',
-                    color: form.isActive ? '#047857' : '#DC2626',
+                    color: isSelected ? '#FFFFFF' : '#334155',
                   }}
                 >
-                  {form.isActive ? 'ACTIVE IN CUSTOMER APP' : 'HIDDEN DRAFT'}
+                  {t.label}
                 </Text>
               </Pressable>
+            );
+          })}
+        </View>
 
-              {/* ─── 9. SAVE & CANCEL ACTIONS ─── */}
-              <View className="flex-row gap-3 mt-2 mb-6">
-                <Pressable
-                  onPress={() => setModal(null)}
-                  style={({ pressed }) => ({
-                    flex: 1,
-                    paddingVertical: 14,
-                    borderRadius: 16,
-                    borderWidth: 2,
-                    borderColor: '#CBD5E1',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: pressed ? '#F1F5F9' : '#FFFFFF',
-                  })}
-                >
-                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#334155' }}>Cancel</Text>
-                </Pressable>
+        {/* ─── 5. STATUS SWITCH ─── */}
+        <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider mb-1">
+          Banner Status
+        </Text>
+        <Pressable
+          onPress={() => setForm({ ...form, isActive: !form.isActive })}
+          style={({ pressed }) => ({
+            height: 44,
+            borderRadius: 12,
+            borderWidth: 2,
+            justifyContent: 'center',
+            alignItems: 'center',
+            flexDirection: 'row',
+            gap: 6,
+            marginBottom: 16,
+            backgroundColor: form.isActive ? '#ECFDF5' : '#FEF2F2',
+            borderColor: form.isActive ? '#34D399' : '#FCA5A5',
+            opacity: pressed ? 0.75 : 1,
+          })}
+        >
+          <Check size={15} color={form.isActive ? '#15803D' : '#DC2626'} strokeWidth={3} />
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: '800',
+              color: form.isActive ? '#047857' : '#DC2626',
+            }}
+          >
+            {form.isActive ? 'ACTIVE IN CUSTOMER APP' : 'HIDDEN DRAFT'}
+          </Text>
+        </Pressable>
 
-                <Pressable
-                  onPress={handleSave}
-                  disabled={isSaving}
-                  style={({ pressed }) => ({
-                    flex: 1.6,
-                    paddingVertical: 14,
-                    borderRadius: 16,
-                    backgroundColor: pressed ? '#065F46' : '#047857',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    elevation: 2,
-                  })}
-                >
-                  {isSaving ? (
-                    <View className="flex-row items-center gap-2">
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                      <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFFFFF' }}>Saving...</Text>
-                    </View>
-                  ) : (
-                    <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFFFFF' }}>
-                      {editId ? 'Update Banner' : 'Publish Banner'}
-                    </Text>
-                  )}
-                </Pressable>
+        {/* ─── 6. SAVE & CANCEL ACTIONS ─── */}
+        <View className="flex-row gap-3 mt-2 mb-6">
+          <Pressable
+            onPress={() => setModal(null)}
+            style={({ pressed }) => ({
+              flex: 1,
+              paddingVertical: 14,
+              borderRadius: 16,
+              borderWidth: 2,
+              borderColor: '#CBD5E1',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: pressed ? '#F1F5F9' : '#FFFFFF',
+            })}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '800', color: '#334155' }}>Cancel</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={handleSave}
+            disabled={isSaving}
+            style={({ pressed }) => ({
+              flex: 1.6,
+              paddingVertical: 14,
+              borderRadius: 16,
+              backgroundColor: pressed ? '#065F46' : '#047857',
+              alignItems: 'center',
+              justifyContent: 'center',
+              elevation: 2,
+            })}
+          >
+            {isSaving ? (
+              <View className="flex-row items-center gap-2">
+                <ActivityIndicator size="small" color="#FFFFFF" />
+                <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFFFFF' }}>Saving...</Text>
               </View>
+            ) : (
+              <Text style={{ fontSize: 14, fontWeight: '900', color: '#FFFFFF' }}>
+                {editId ? 'Update Banner' : 'Publish Banner'}
+              </Text>
+            )}
+          </Pressable>
+        </View>
+      </CommonModal>
+
+      {/* ─── COLOR SELECTOR MODAL (When tapping Top Color or Bottom Color) ─── */}
+      <CommonModal
+        visible={!!colorModalTarget}
+        onClose={() => setColorModalTarget(null)}
+        title={colorModalTarget === 'top' ? 'Select Top Color' : 'Select Bottom Color'}
+        subtitle="Tap any swatch or enter HEX"
+        icon={<Palette size={16} color="#047857" />}
+        maxHeight="75%"
+      >
+        <View className="p-1">
+          {/* Active Color Preview & Hex input */}
+          <View className="flex-row items-center gap-2 mb-4">
+            <View
+              className="w-12 h-12 rounded-xl border border-slate-300"
+              style={{
+                backgroundColor:
+                  colorModalTarget === 'top' ? form.topColor || '#02381A' : form.bottomColor || '#EA580C',
+              }}
+            />
+            <View className="flex-1 flex-row items-center bg-[#F8FAF8] border border-slate-200 rounded-xl px-3 h-12">
+              <TextInput
+                className="flex-1 text-base font-black text-slate-800 py-0"
+                value={colorModalTarget === 'top' ? form.topColor : form.bottomColor}
+                onChangeText={handlePickColorForTarget}
+                placeholder="#02381A"
+                placeholderTextColor="#94A3B8"
+                autoCapitalize="characters"
+              />
+            </View>
+          </View>
+
+          {/* Curated Swatches Grid */}
+          <Text className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+            Curated Swatches
+          </Text>
+          <View className="flex-row flex-wrap gap-2.5 mb-4">
+            {[
+              '#02381A', '#045A29', '#07843D', '#059669', '#10B981', '#16A34A',
+              '#451A03', '#78350F', '#B45309', '#D97706', '#F59E0B', '#F2C500',
+              '#7C2D12', '#C2410C', '#EA580C', '#F97316', '#DC2626', '#E11D48',
+              '#042F2E', '#0F766E', '#0284C7', '#38BDF8', '#4F46E5', '#0F172A',
+            ].map(hex => {
+              const currentHex = colorModalTarget === 'top' ? form.topColor : form.bottomColor;
+              const isMatch = (currentHex || '').toUpperCase() === hex.toUpperCase();
+              return (
+                <Pressable
+                  key={hex}
+                  onPress={() => handlePickColorForTarget(hex)}
+                  hitSlop={4}
+                  style={({ pressed }) => ({
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    backgroundColor: hex,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderWidth: isMatch ? 3.5 : 1,
+                    borderColor: isMatch ? '#047857' : '#CBD5E1',
+                    transform: [{ scale: isMatch ? 1.1 : (pressed ? 0.95 : 1) }],
+                  })}
+                >
+                  {isMatch && <Check size={18} color="#FFFFFF" strokeWidth={3.5} />}
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Quick Presets */}
+          <Text className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+            Quick Shades
+          </Text>
+          <View className="flex-row flex-wrap gap-1.5 mb-5">
+            {[
+              { label: '🌿 Farm Green', hex: '#07843D' },
+              { label: '🌲 Deep Forest', hex: '#02381A' },
+              { label: '🍃 Sage Green', hex: '#9AADA6' },
+              { label: '🌾 Gold Sun', hex: '#F2C500' },
+              { label: '🍊 Sunset', hex: '#EA580C' },
+              { label: '🌊 Deep Ocean', hex: '#0284C7' },
+            ].map(quick => (
+              <Pressable
+                key={quick.hex}
+                onPress={() => handlePickColorForTarget(quick.hex)}
+                style={({ pressed }) => ({
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                  backgroundColor: pressed ? '#F1F5F9' : '#FFFFFF',
+                  borderWidth: 1,
+                  borderColor: '#E2E8F0',
+                  paddingHorizontal: 10,
+                  paddingVertical: 5,
+                  borderRadius: 8,
+                })}
+              >
+                <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: quick.hex }} />
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#334155' }}>{quick.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {/* Done Button */}
+          <Pressable
+            onPress={() => setColorModalTarget(null)}
+            style={({ pressed }) => ({
+              backgroundColor: pressed ? '#065F46' : '#047857',
+              paddingVertical: 12,
+              borderRadius: 14,
+              alignItems: 'center',
+              justifyContent: 'center',
+            })}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '800' }}>Done ✓</Text>
+          </Pressable>
+        </View>
       </CommonModal>
     </View>
   );
