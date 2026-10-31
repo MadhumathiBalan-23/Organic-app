@@ -53,6 +53,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   placeholder = 'Search milk, vegetables, fruits, ghee...',
   cartCount = 0,
   onOpenCart,
+  onOpenSearch,
   onOpenPlans,
   headerThemeColor,
   scrollY,
@@ -71,6 +72,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         cartCount={0}
         searchQuery={searchQuery}
         onSearchChange={onSearchChange}
+        onPressSearch={onOpenSearch}
         placeholder={placeholder}
         headerThemeColor={headerThemeColor}
         scrollY={scrollY}
@@ -84,7 +86,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     (currentScreen === 'CATEGORY_PRODUCTS' ||
       currentScreen === 'ALL_PRODUCTS' ||
       currentScreen === 'CATEGORY_VENDOR_DISCOVERY' ||
-      currentScreen === 'VENDOR_STORE')
+      currentScreen === 'VENDOR_STORE' ||
+      currentScreen === 'SEARCH')
   ) {
     return null;
   }
@@ -127,6 +130,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
     // Screens where header should be clean and uncluttered (no cart or dollar icons)
     const isFocusedCheckoutOrFlow =
+      currentScreen === 'PROFILE' ||
+      currentScreen === 'PRODUCT_DETAILS' ||
       currentScreen === 'VENDOR_REGISTRATION' ||
       currentScreen === 'SUBSCRIPTION_CREATE' ||
       currentScreen === 'SUBSCRIPTION_SUMMARY' ||

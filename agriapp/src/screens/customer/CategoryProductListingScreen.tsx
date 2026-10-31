@@ -28,6 +28,8 @@ import {
   Store,
   Layers,
   ShoppingBag,
+  LayoutGrid,
+  Sprout,
 } from 'lucide-react-native';
 import { Product } from '../../constants/mockData';
 import { customerService, ProductQueryParams, PaginationMetadata, CustomerCategoryItem } from '../../services/customer.service';
@@ -290,24 +292,13 @@ export const CategoryProductListingScreen: React.FC<CategoryProductListingScreen
         onPress={() => onOpenDetails(item)}
         activeOpacity={0.88}
       >
-        {/* Top Badges: Organic + Heart Favorite */}
+        {/* Top Badges: Category Name (Heart icon cleanly removed) */}
         <View className="flex-row items-center justify-between mb-1.5">
-          <View className="bg-[#E7F5EB] px-2 py-0.5 rounded-md">
-            <Text className="text-2xs font-extrabold uppercase text-[#07843D]">
+          <View className="bg-[#E7F5EB] px-2 py-0.5 rounded-md max-w-[90%]">
+            <Text className="text-2xs font-extrabold uppercase text-[#07843D]" numberOfLines={1}>
               {item.category || initialCategoryName || 'Harvest'}
             </Text>
           </View>
-          <TouchableOpacity
-            className="w-7 h-7 rounded-full bg-slate-50 items-center justify-center"
-            onPress={() => toggleFavorite(item.id)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Heart
-              size={15}
-              color={isFav ? '#EF4444' : '#94A3B8'}
-              fill={isFav ? '#EF4444' : 'transparent'}
-            />
-          </TouchableOpacity>
         </View>
 
         {/* Product Image */}
@@ -487,50 +478,121 @@ export const CategoryProductListingScreen: React.FC<CategoryProductListingScreen
         </ScrollView>
       </View>
 
-      {/* 4. Products Grid */}
-      {isLoading ? (
-        <View className="flex-1 items-center justify-center p-8">
-          <ActivityIndicator size="large" color="#07843D" />
-          <Text className="text-sm font-bold text-slate-600 mt-3">Loading fresh organic crops...</Text>
-        </View>
-      ) : products.length === 0 ? (
-        <View className="flex-1 items-center justify-center p-8">
-          <View className="w-20 h-20 rounded-full bg-[#E7F5EB] items-center justify-center mb-3">
-            <ShoppingBag size={36} color="#07843D" />
-          </View>
-          <Text className="text-base font-black text-slate-900">No Products Found</Text>
-          <Text className="text-xs font-semibold text-slate-500 text-center mt-1">
-            We couldn't find any products matching your selected filters or search query.
-          </Text>
-          <TouchableOpacity
-            className="mt-4 bg-[#07843D] px-5 py-2.5 rounded-xl shadow-sm"
-            onPress={handleClearFilters}
-          >
-            <Text className="text-white text-xs font-black">Clear All Filters</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <FlatList
-          data={products}
-          renderItem={renderProductItem}
-          keyExtractor={(item) => item.id}
-          numColumns={2}
-          columnWrapperStyle={{ justifyContent: 'space-between' }}
-          contentContainerStyle={{ padding: 12, paddingBottom: 110 }}
-          showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={['#07843D']} />}
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.3}
-          ListFooterComponent={
-            isLoadingMore ? (
-              <View className="py-4 items-center">
-                <ActivityIndicator size="small" color="#07843D" />
-                <Text className="text-2xs font-bold text-slate-500 mt-1">Loading more products...</Text>
+      {/* 3. Split-Pane Layout: Vertical Category Sidebar on Left + Products Grid on Right */}
+      <View className="flex-1 flex-row">
+        {/* Left Vertical Category Navigation Menu */}
+        <View className="w-24 bg-white border-r border-[#DFE9E1]">
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 6 }}>
+            {/* "All" Category Pill */}
+            <TouchableOpacity
+              className={`p-2.5 items-center justify-center border-b border-slate-100 ${
+                !activeCategoryId || activeCategoryId === 'All'
+                  ? 'bg-emerald-50 border-l-4 border-l-[#07843D]'
+                  : 'bg-white'
+              }`}
+              onPress={() => {
+                setActiveCategoryId(undefined);
+                setActiveCategoryName('All Products');
+              }}
+            >
+              <View className="w-10 h-10 rounded-xl bg-emerald-100 items-center justify-center mb-1">
+                <LayoutGrid size={18} color="#07843D" />
               </View>
-            ) : null
-          }
-        />
-      )}
+              <Text
+                className={`text-[10px] text-center leading-3 ${
+                  !activeCategoryId || activeCategoryId === 'All'
+                    ? 'font-black text-[#07843D]'
+                    : 'font-bold text-slate-600'
+                }`}
+                numberOfLines={2}
+              >
+                All
+              </Text>
+            </TouchableOpacity>
+
+            {/* Dynamic Admin Categories */}
+            {categories.map((cat) => {
+              const isSelected = activeCategoryId === cat.id || activeCategoryName === cat.name;
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  className={`p-2 items-center justify-center border-b border-slate-100 ${
+                    isSelected
+                      ? 'bg-emerald-50 border-l-4 border-l-[#07843D]'
+                      : 'bg-white'
+                  }`}
+                  onPress={() => {
+                    setActiveCategoryId(cat.id);
+                    setActiveCategoryName(cat.name);
+                  }}
+                >
+                  <View className="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 items-center justify-center mb-1 border border-slate-200">
+                    {cat.imageUrl ? (
+                      <Image source={{ uri: cat.imageUrl }} className="w-full h-full" resizeMode="cover" />
+                    ) : (
+                      <Sprout size={18} color={isSelected ? '#07843D' : '#64748B'} />
+                    )}
+                  </View>
+                  <Text
+                    className={`text-[9.5px] text-center leading-3 ${
+                      isSelected ? 'font-black text-[#07843D]' : 'font-semibold text-slate-600'
+                    }`}
+                    numberOfLines={2}
+                  >
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Right Product Grid Area */}
+        <View className="flex-1">
+          {isLoading ? (
+            <View className="flex-1 items-center justify-center p-8">
+              <ActivityIndicator size="large" color="#07843D" />
+              <Text className="text-xs font-bold text-slate-600 mt-2">Loading fresh harvest...</Text>
+            </View>
+          ) : products.length === 0 ? (
+            <View className="flex-1 items-center justify-center p-6">
+              <View className="w-16 h-16 rounded-full bg-[#E7F5EB] items-center justify-center mb-2.5">
+                <ShoppingBag size={28} color="#07843D" />
+              </View>
+              <Text className="text-sm font-black text-slate-900">No Products in Category</Text>
+              <Text className="text-[11px] font-medium text-slate-500 text-center mt-1">
+                No crops listed under "{activeCategoryName}".
+              </Text>
+              <TouchableOpacity
+                className="mt-3 bg-[#07843D] px-4 py-2 rounded-xl shadow-xs"
+                onPress={handleClearFilters}
+              >
+                <Text className="text-white text-xs font-bold">Clear Filters</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <FlatList
+              data={products}
+              renderItem={renderProductItem}
+              keyExtractor={(item) => item.id}
+              numColumns={2}
+              columnWrapperStyle={{ justifyContent: 'space-between' }}
+              contentContainerStyle={{ padding: 8, paddingBottom: 110 }}
+              showsVerticalScrollIndicator={false}
+              refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={['#07843D']} />}
+              onEndReached={handleLoadMore}
+              onEndReachedThreshold={0.3}
+              ListFooterComponent={
+                isLoadingMore ? (
+                  <View className="py-3 items-center">
+                    <ActivityIndicator size="small" color="#07843D" />
+                  </View>
+                ) : null
+              }
+            />
+          )}
+        </View>
+      </View>
 
       {/* ── 5. SORT BOTTOM SHEET MODAL ── */}
       <CommonModal

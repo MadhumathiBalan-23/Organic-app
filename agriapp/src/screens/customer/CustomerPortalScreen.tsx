@@ -46,6 +46,7 @@ import { CategoryProductListingScreen } from './CategoryProductListingScreen';
 import { CategoryVendorDiscoveryScreen } from './CategoryVendorDiscoveryScreen';
 import { VendorStoreScreen } from './VendorStoreScreen';
 import { VendorRegistrationScreen } from './VendorRegistrationScreen';
+import { DedicatedSearchScreen } from './DedicatedSearchScreen';
 
 // Modular API Services & Theme
 import {
@@ -144,13 +145,12 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
   }, [cleanUserPhone]);
 
   const addToCart = (p: Product, qty = 1) => {
-    // Optimistic UI update
+    // Optimistic UI update (immediate count & total update without disruptive popup)
     setCart(prev => {
       const existing = prev.find(i => i.product.id === p.id);
       if (existing) return prev.map(i => (i.product.id === p.id ? { ...i, qty: i.qty + qty } : i));
       return [...prev, { product: p, qty }];
     });
-    Alert.alert('Added to Cart', `${p.name} added to cart!`);
 
     // Persist to PostgreSQL database
     if (cleanUserPhone) {
@@ -844,24 +844,13 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
         }}
         activeOpacity={0.88}
       >
-        {/* Top Header: Category Tag & Favorite Heart */}
+        {/* Top Header: Category Tag (Heart icon cleanly removed from product cards) */}
         <View className="flex-row items-center justify-between mb-1.5">
-          <View className="bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md max-w-[80%]">
+          <View className="bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md max-w-[90%]">
             <Text className="text-[10px] font-bold uppercase text-emerald-800" numberOfLines={1}>
               {safeCategory(p.category) || 'Harvest'}
             </Text>
           </View>
-          <TouchableOpacity
-            className="w-7 h-7 rounded-full bg-slate-50 items-center justify-center"
-            onPress={() => toggleFavorite(p.id)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Heart
-              size={16}
-              color={isFav ? '#EF4444' : '#94A3B8'}
-              fill={isFav ? '#EF4444' : 'transparent'}
-            />
-          </TouchableOpacity>
         </View>
 
         {/* Product Image with Discount Badge */}
@@ -1070,6 +1059,20 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
           isApprovedVendor={isApprovedVendor}
           setShowAddProductModal={setShowAddProductModal}
           renderProductCard={renderProductCard}
+        />
+      )}
+
+      {customerScreen === 'SEARCH' && (
+        <DedicatedSearchScreen
+          onBack={() => setCustomerScreen('HOME')}
+          onSelectProduct={(p: Product) => {
+            setSelectedProduct(p);
+            setCustomerScreen('PRODUCT_DETAILS');
+          }}
+          onSelectCategory={(catId: string, catName: string) => {
+            handleOpenCategory(catId, catName);
+          }}
+          onAddToCart={addToCart}
         />
       )}
 

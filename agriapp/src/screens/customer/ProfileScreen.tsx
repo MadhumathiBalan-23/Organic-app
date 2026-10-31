@@ -280,7 +280,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <Repeat size={17} color="#047857" />
           </View>
           <View className="flex-1 mr-2">
-            <Text className="text-sm font-semibold text-slate-800">Morning Subscriptions</Text>
+            <Text className="text-sm font-semibold text-slate-800">Subscriptions</Text>
             <Text className="text-slate-500 mt-0.5" style={{ fontSize: 11 }}>
               Pause, skip, or change milk & veggie plans
             </Text>

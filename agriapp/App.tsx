@@ -194,30 +194,54 @@ export default function App() {
         }
 
         const creds = await deviceService.getStoredCredentials();
-        if (creds.refreshToken && creds.deviceId && creds.isTrusted) {
+        if (creds.refreshToken && creds.deviceId) {
           console.log('📱 [App] Validating device-bound refresh token on startup...');
-          const res = await authService.refreshToken(creds.role || undefined);
-          if (res.success && res.user) {
-            console.log(`✅ [App] Automatic login successful for ${res.role} on trusted device!`);
-            setPhone(res.user.phoneNumber || creds.phone || '');
-            setCurrentUserId(res.user.id || '');
-            const effectiveRole = (res.role as UserRole) || 'customer';
-            setRole(effectiveRole);
-            if (effectiveRole === 'admin') {
-              setIsAdminUser(true);
-              setAdminTab('dashboard');
-            } else if (effectiveRole === 'vendor') {
-              setVendorStatus('APPROVED');
-              setVendorTab('dashboard');
-            } else {
-              setCustomerScreen('HOME');
+          try {
+            const res = await authService.refreshToken(creds.role || undefined);
+            if (res.success && res.user) {
+              console.log(`✅ [App] Automatic login successful for ${res.role} on trusted device!`);
+              setPhone(res.user.phoneNumber || creds.phone || '');
+              setCurrentUserId(res.user.id || '');
+              const effectiveRole = (res.role as UserRole) || 'customer';
+              setRole(effectiveRole);
+              if (effectiveRole === 'admin') {
+                setIsAdminUser(true);
+                setAdminTab('dashboard');
+              } else if (effectiveRole === 'vendor') {
+                setVendorStatus('APPROVED');
+                setVendorTab('dashboard');
+              } else {
+                setCustomerScreen('HOME');
+              }
+              setIsCheckingSession(false);
+              return;
             }
-            setIsCheckingSession(false);
-            return;
+          } catch (tokErr) {
+            console.log('ℹ️ [App] Token refresh attempt failed:', tokErr);
           }
         }
+
+        // Secondary Session Persistence: Restore active user session from local secure storage
+        const savedPhone = safeStorage.getItem('agriflow_customer_phone');
+        const savedRole = (safeStorage.getItem('agriflow_user_role') as UserRole) || null;
+        if (savedPhone && savedRole) {
+          console.log(`📱 [App] Restored persisted session for ${savedRole}: ${savedPhone}`);
+          setPhone(savedPhone);
+          setRole(savedRole);
+          if (savedRole === 'admin') {
+            setIsAdminUser(true);
+            setAdminTab('dashboard');
+          } else if (savedRole === 'vendor') {
+            setVendorStatus('APPROVED');
+            setVendorTab('dashboard');
+          } else {
+            setCustomerScreen('HOME');
+          }
+          setIsCheckingSession(false);
+          return;
+        }
       } catch (err) {
-        console.log('ℹ️ [App] No active trusted session or refresh expired:', err);
+        console.log('ℹ️ [App] Session check error:', err);
       }
       setIsCheckingSession(false);
     };
@@ -926,7 +950,7 @@ export default function App() {
           onSearchChange={setSearchQuery}
           cartCount={cartCount}
           onOpenCart={() => setCustomerScreen('CART')}
-          onOpenSearch={() => setCustomerScreen('ALL_PRODUCTS')}
+          onOpenSearch={() => setCustomerScreen('SEARCH')}
           onOpenPlans={() => setCustomerScreen('MY_SUBSCRIPTIONS')}
           headerThemeColor={headerThemeColor}
           scrollY={homeScrollY}

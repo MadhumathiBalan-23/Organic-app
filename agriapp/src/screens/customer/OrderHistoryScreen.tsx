@@ -156,6 +156,7 @@ export const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({
                     {order.products}
                   </Text>
 
+                  {/* Single Line: Date & Farmer/Vendor on the same line */}
                   <View className="flex-row items-center gap-2 mt-1">
                     <View className="flex-row items-center gap-1">
                       <Calendar size={11} color="#64748B" />
@@ -164,21 +165,10 @@ export const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({
                       </Text>
                     </View>
                     <Text className="text-slate-300">·</Text>
-                    <View className="flex-row items-center gap-1">
-                      <CreditCard size={11} color="#64748B" />
-                      <Text className="text-slate-500 font-medium" style={{ fontSize: 11 }}>
-                        {order.paymentStatus}
-                      </Text>
-                    </View>
+                    <Text className="text-emerald-800 font-bold" style={{ fontSize: 11 }} numberOfLines={1}>
+                      🌱 {order.vendorName || 'Organic Farm'}
+                    </Text>
                   </View>
-
-                  {order.vendorName ? (
-                    <View className="flex-row items-center gap-1 mt-1 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 self-start">
-                      <Text className="text-3xs font-bold text-emerald-800">
-                        🌱 Farm: {order.vendorName}
-                      </Text>
-                    </View>
-                  ) : null}
 
                   <Text className="font-extrabold text-slate-900 mt-1" style={{ fontSize: 14 }}>
                     ₹{order.amount}

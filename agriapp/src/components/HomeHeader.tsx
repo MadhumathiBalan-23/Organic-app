@@ -27,6 +27,7 @@ export interface HomeHeaderProps {
   cartCount?: number;
   searchQuery?: string;
   onSearchChange?: (text: string) => void;
+  onPressSearch?: () => void;
   placeholder?: string;
   headerThemeColor?: string;
   scrollY?: Animated.Value;
@@ -101,6 +102,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
   cartCount = 0,
   searchQuery = '',
   onSearchChange,
+  onPressSearch,
   placeholder = 'Search milk, vegetables, fruits, ghee...',
   headerThemeColor = '#07843D',
   scrollY,
@@ -277,19 +279,9 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Right: Subscription ($) & Cart */}
+        {/* Right: Cart (Dollar icon cleanly removed from landing header) */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
-          {/* Subscription Dollar Icon ($) - Stays visible on scroll and aligns with Search Bar */}
-          <TouchableOpacity
-            className="w-9 h-9 rounded-full bg-[#F2C500] items-center justify-center shadow-sm"
-            onPress={onOpenPlans}
-            activeOpacity={0.8}
-            accessibilityLabel="Subscription Plans"
-          >
-            <Text className="text-lg font-black text-[#18352B] leading-5 text-center">$</Text>
-          </TouchableOpacity>
-
-          {/* White Shopping Cart Icon - Collapses smoothly on scroll leaving only ($) */}
+          {/* White Shopping Cart Icon */}
           {Boolean(onOpenCart) && (
             <Animated.View
               style={{
@@ -330,7 +322,9 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
             transform: [{ translateY: animSearchTranslateY }],
           }}
         >
-          <View
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={onPressSearch}
             style={{
               backgroundColor: '#FFFFFF',
               borderRadius: 16,
@@ -346,23 +340,29 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
             }}
           >
             <Search size={18} color="#52645B" style={{ marginRight: 10 }} />
-            <TextInput
-              style={{
-                flex: 1,
-                fontSize: 14,
-                color: '#18352B',
-                paddingVertical: 0,
-                paddingHorizontal: 0,
-              }}
-              placeholder={placeholder}
-              placeholderTextColor="#718078"
-              value={searchQuery}
-              onChangeText={onSearchChange}
-              autoCapitalize="none"
-              autoCorrect={false}
-              returnKeyType="search"
-            />
-            {searchQuery.length > 0 && (
+            {onPressSearch ? (
+              <Text style={{ flex: 1, fontSize: 14, color: '#718078' }}>
+                {placeholder}
+              </Text>
+            ) : (
+              <TextInput
+                style={{
+                  flex: 1,
+                  fontSize: 14,
+                  color: '#18352B',
+                  paddingVertical: 0,
+                  paddingHorizontal: 0,
+                }}
+                placeholder={placeholder}
+                placeholderTextColor="#718078"
+                value={searchQuery}
+                onChangeText={onSearchChange}
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="search"
+              />
+            )}
+            {searchQuery.length > 0 && !onPressSearch && (
               <TouchableOpacity
                 onPress={() => onSearchChange && onSearchChange('')}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -374,11 +374,12 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
             <TouchableOpacity
               style={{ padding: 4, marginLeft: 6 }}
               activeOpacity={0.7}
+              onPress={onPressSearch}
               accessibilityLabel="Voice Search"
             >
               <Mic size={18} color="#18352B" />
             </TouchableOpacity>
-          </View>
+          </TouchableOpacity>
         </Animated.View>
 
         {/* Dynamic spacer: 0px at rest (Search Bar is 100% full width, ZERO gap), expands to 48px on scroll so Search Bar sits right next to ($) */}

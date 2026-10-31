@@ -141,13 +141,6 @@ export const VendorStoreScreen: React.FC<VendorStoreScreenProps> = ({
               {item.category || 'Harvest'}
             </Text>
           </View>
-          <TouchableOpacity
-            className="w-7 h-7 rounded-full bg-slate-50 items-center justify-center"
-            onPress={() => toggleFavorite(item.id)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Heart size={15} color={isFav ? '#EF4444' : '#94A3B8'} fill={isFav ? '#EF4444' : 'transparent'} />
-          </TouchableOpacity>
         </View>
 
         <View className="w-full h-28 rounded-xl overflow-hidden bg-slate-50 items-center justify-center mb-2">

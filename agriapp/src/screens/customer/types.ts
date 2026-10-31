@@ -3,6 +3,7 @@ import { Product } from '../../constants/mockData';
 
 export type CustomerScreenKey =
   | 'HOME'
+  | 'SEARCH'
   | 'ALL_PRODUCTS'
   | 'CATEGORY_PRODUCTS'
   | 'CATEGORY_VENDOR_DISCOVERY'

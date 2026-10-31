@@ -152,19 +152,8 @@ export const CommonHeader: React.FC<CommonHeaderProps> = ({
           </View>
         )}
 
-        {/* Right Side: $ Dollar icon and Shopping Cart */}
+        {/* Right Side: Shopping Cart (Dollar icon cleanly removed) */}
         <View className="flex-row items-center gap-2 shrink-0">
-          {onOpenPlans && (
-            <TouchableOpacity
-              className="w-9 h-9 rounded-full bg-[#F2C500] items-center justify-center shadow-sm"
-              onPress={onOpenPlans}
-              activeOpacity={0.8}
-              accessibilityLabel="Subscription Plans"
-            >
-              <Text className="text-lg font-black text-[#18352B] leading-5 text-center">$</Text>
-            </TouchableOpacity>
-          )}
-
           {onOpenCart && (
             <TouchableOpacity
               className="w-9 h-9 items-center justify-center relative"

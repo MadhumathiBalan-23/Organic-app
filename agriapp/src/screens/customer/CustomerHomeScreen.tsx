@@ -384,49 +384,49 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
             pointerEvents="none" 
           />
 
-          <View className="p-4 relative z-10">
+          <View className="p-3.5 relative z-10">
             {/* Header Badge Row */}
-            <View className="flex-row items-center justify-between mb-2">
-              <View className="flex-row items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 border border-white/20">
-                <Sunrise size={14} color="#FDE047" strokeWidth={2.4} />
-                <Text className="text-[11px] font-black text-amber-300 tracking-wider uppercase">
-                  MORNING DELIVERY HUB
+            <View className="flex-row items-center justify-between mb-1.5">
+              <View className="flex-row items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/15 border border-white/20">
+                <Sunrise size={12} color="#FDE047" strokeWidth={2.4} />
+                <Text className="text-[10px] font-black text-amber-300 tracking-wider uppercase">
+                  Daily Delivery Hub
                 </Text>
               </View>
 
               {/* Status Indicator Pill */}
-              <View className="flex-row items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/60 border border-emerald-400/30">
-                <View className="w-2 h-2 rounded-full bg-emerald-400" />
-                <Text className="text-[11px] font-extrabold text-emerald-200">
+              <View className="flex-row items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-950/60 border border-emerald-400/30">
+                <View className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                <Text className="text-[10px] font-extrabold text-emerald-200">
                   6:30 AM Drop
                 </Text>
               </View>
             </View>
 
             {/* Headline and Description */}
-            <Text className="text-base font-black text-white leading-tight">
+            <Text className="text-sm font-black text-white leading-tight">
               Fresh Harvest Ready for Tomorrow
             </Text>
-            <Text className="text-xs text-emerald-100/90 font-medium mt-1 leading-4">
+            <Text className="text-[11px] text-emerald-100/90 font-medium mt-0.5 leading-3.5">
               Punctual morning farm drop at your doorstep • Pause or skip anytime with 1-click
             </Text>
 
             {/* Bottom Row: Feature Badges & High-Contrast Golden Action Button */}
-            <View className="flex-row items-center justify-between mt-3 pt-2.5 border-t border-white/15">
+            <View className="flex-row items-center justify-between mt-2.5 pt-2 border-t border-white/15">
               <View className="flex-row items-center gap-2">
                 <View className="flex-row items-center gap-1">
-                  <CheckCircle2 size={13} color="#6EE7B7" strokeWidth={2.5} />
-                  <Text className="text-[11px] font-bold text-emerald-100">100% Organic</Text>
+                  <CheckCircle2 size={12} color="#6EE7B7" strokeWidth={2.5} />
+                  <Text className="text-[10px] font-bold text-emerald-100">100% Organic</Text>
                 </View>
                 <Text className="text-white/30">•</Text>
                 <View className="flex-row items-center gap-1">
-                  <Clock size={13} color="#FDE047" strokeWidth={2.5} />
-                  <Text className="text-[11px] font-bold text-amber-200">Daily Punctual</Text>
+                  <Clock size={12} color="#FDE047" strokeWidth={2.5} />
+                  <Text className="text-[10px] font-bold text-amber-200">Daily Punctual</Text>
                 </View>
               </View>
 
               <TouchableOpacity
-                className="bg-[#F2C500] px-3.5 py-2 rounded-xl flex-row items-center gap-1.5 shadow-md active:bg-[#D9B200]"
+                className="bg-[#F2C500] px-3 py-1.5 rounded-xl flex-row items-center gap-1.5 shadow-md active:bg-[#D9B200]"
                 onPress={() => setCustomerScreen('MY_SUBSCRIPTIONS')}
                 activeOpacity={0.85}
               >

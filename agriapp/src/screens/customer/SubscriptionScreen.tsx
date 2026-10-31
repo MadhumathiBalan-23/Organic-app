@@ -41,6 +41,7 @@ import {
   DeliverySlotOption,
   UnitMultiplierOption,
 } from '../../services/subscription.service';
+import { productService } from '../../services/product.service';
 
 export interface SubscriptionConfig {
   product: Product;
@@ -96,8 +97,13 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
 
   // Configuration fields
   const [qty, setQty] = useState(initialQty);
-  const [freq, setFreq] = useState<'Daily' | 'Alternate' | 'Weekly'>('Daily');
+  const [freq, setFreq] = useState<'Daily' | 'Weekly' | 'Monthly'>('Daily');
   const [selectedDays, setSelectedDays] = useState<string[]>(['Mon', 'Wed', 'Fri']);
+
+  // Alternative product for weekly delivery
+  const [availableAlternatives, setAvailableAlternatives] = useState<Product[]>([]);
+  const [selectedAlternative, setSelectedAlternative] = useState<Product | null>(null);
+  const [showAlternativeModal, setShowAlternativeModal] = useState(false);
 
   // Delivery Time slot states
   const [timeMode, setTimeMode] = useState<'recommended' | 'custom'>('recommended');
@@ -107,6 +113,16 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
 
   // Plan Duration is unified to 30 Days Monthly Billing Cycle
   const duration = 30;
+
+  // Fetch available alternatives from database
+  useEffect(() => {
+    productService.getProducts().then((list) => {
+      if (Array.isArray(list)) {
+        const others = list.filter(p => p.id !== product.id && p.subscriptionAllowed);
+        setAvailableAlternatives(others.slice(0, 10));
+      }
+    }).catch(() => {});
+  }, [product.id]);
 
   // Start Date
   const [startDateStr, setStartDateStr] = useState<string>(() => {
@@ -266,11 +282,11 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
       let match = false;
       if (freq === 'Daily') {
         match = true;
-      } else if (freq === 'Alternate') {
-        const diffDays = Math.round((curr.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-        match = diffDays % 2 === 0;
       } else if (freq === 'Weekly') {
         match = dayIndices.includes(curr.getDay());
+      } else if (freq === 'Monthly') {
+        // Once per month on start day
+        match = curr.getDate() === start.getDate();
       }
 
       if (match) {
@@ -645,7 +661,7 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
               <View className="flex-row justify-between py-1 border-b border-slate-100">
                 <Text className="text-xs text-slate-500 font-medium">Delivery Frequency</Text>
                 <Text className="text-xs font-bold text-slate-900">
-                  {freq === 'Daily' ? 'Daily (Every day)' : freq === 'Alternate' ? 'Alternate Days' : 'Custom Days'}
+                  {freq === 'Daily' ? 'Daily' : freq === 'Weekly' ? 'Weekly' : 'Monthly'}
                 </Text>
               </View>
 
@@ -654,6 +670,15 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
                   <Text className="text-xs text-slate-500 font-medium">Selected Days</Text>
                   <Text className="text-xs font-bold text-emerald-800">
                     {selectedDays.join(', ')}
+                  </Text>
+                </View>
+              )}
+
+              {selectedAlternative && (
+                <View className="flex-row justify-between py-1 border-b border-slate-100">
+                  <Text className="text-xs text-slate-500 font-medium">Weekly Alternative Product</Text>
+                  <Text className="text-xs font-bold text-emerald-800">
+                    {selectedAlternative.name}
                   </Text>
                 </View>
               )}
@@ -916,7 +941,7 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
           </View>
         </View>
 
-        {/* Section 2: Delivery Frequency */}
+        {/* Section 2: Delivery Frequency (Daily, Weekly, Monthly) */}
         <View className="bg-white rounded-2xl p-4 border border-slate-200/90 mb-3.5 shadow-sm">
           <View className="flex-row items-center gap-2 mb-3">
             <View className="w-5 h-5 rounded-full bg-[#07843D] items-center justify-center">
@@ -925,13 +950,13 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
             <Text className="text-sm font-black text-slate-900">2. Delivery Frequency</Text>
           </View>
 
-          {/* Frequency Cards (Daily, Alternate Days, Custom Days) */}
+          {/* 3 Simple Options: Daily, Weekly, Monthly */}
           <View className="flex-row gap-2.5 mb-3">
             {(
               [
                 { key: 'Daily', label: 'Daily', sub: 'Every day (30 drops)', icon: <Calendar size={18} /> },
-                { key: 'Alternate', label: 'Alternate Days', sub: 'Every 2nd day (15 drops)', icon: <CalendarDays size={18} /> },
-                { key: 'Weekly', label: 'Custom Days', sub: 'Select days', icon: <CalendarCheck size={18} /> },
+                { key: 'Weekly', label: 'Weekly', sub: 'Select days / week', icon: <CalendarDays size={18} /> },
+                { key: 'Monthly', label: 'Monthly', sub: 'Once a month', icon: <CalendarCheck size={18} /> },
               ] as const
             ).map(item => {
               const isSelected = freq === item.key;
@@ -973,21 +998,12 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
             })}
           </View>
 
-          {/* Frequency Specific Settings (Shown dynamically) */}
+          {/* Only relevant configuration for selected frequency */}
           {freq === 'Daily' && (
             <View className="bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-200/80 flex-row items-center gap-2">
               <CheckCircle2 size={16} color="#07843D" />
               <Text className="text-xs text-emerald-950 font-bold flex-1">
-                Delivered every single morning (30 drops in 1-month cycle)
-              </Text>
-            </View>
-          )}
-
-          {freq === 'Alternate' && (
-            <View className="bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-200/80 flex-row items-center gap-2">
-              <CheckCircle2 size={16} color="#07843D" />
-              <Text className="text-xs text-emerald-950 font-bold flex-1">
-                Delivered on alternate days starting {formatDateDisplay(scheduleCalculation.firstDeliveryDate)} (15 drops/month)
+                Delivered every morning at door step (30 drops in monthly cycle)
               </Text>
             </View>
           )}
@@ -1021,8 +1037,38 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
                   );
                 })}
               </View>
-              <Text className="text-2xs text-emerald-800 font-bold">
-                ✓ Delivering on {selectedDays.join(', ')} ({scheduleCalculation.totalDeliveries} drops in 1 month)
+
+              {/* Weekly Alternative Product Selector */}
+              <View className="mt-2 pt-2 border-t border-slate-200">
+                <Text className="text-xs font-bold text-slate-700 mb-1.5">
+                  Weekly Alternative Product (Optional):
+                </Text>
+                <TouchableOpacity
+                  className="flex-row items-center justify-between bg-white border border-slate-200 rounded-xl px-3 py-2"
+                  onPress={() => setShowAlternativeModal(true)}
+                >
+                  <Text className={`text-xs ${selectedAlternative ? 'font-bold text-emerald-800' : 'text-slate-500'}`}>
+                    {selectedAlternative ? `Alternative: ${selectedAlternative.name}` : 'Select alternative crop for weekly drops'}
+                  </Text>
+                  <Text className="text-xs text-slate-400">⌵</Text>
+                </TouchableOpacity>
+                {selectedAlternative && (
+                  <TouchableOpacity
+                    onPress={() => setSelectedAlternative(null)}
+                    className="self-end mt-1"
+                  >
+                    <Text className="text-[10px] text-red-600 font-bold">Remove Alternative</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          )}
+
+          {freq === 'Monthly' && (
+            <View className="bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-200/80 flex-row items-center gap-2">
+              <CheckCircle2 size={16} color="#07843D" />
+              <Text className="text-xs text-emerald-950 font-bold flex-1">
+                Delivered monthly on selected date ({formatDateDisplay(startDateStr)})
               </Text>
             </View>
           )}
@@ -1231,6 +1277,57 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
             () => setShowStartDateModal(false),
             'Select Start Date'
           )}
+        </View>
+      </Modal>
+
+      {/* Alternative Product Selection Modal */}
+      <Modal visible={showAlternativeModal} transparent animationType="slide">
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-t-3xl p-5 max-h-[70%]">
+            <View className="flex-row items-center justify-between pb-3 border-b border-slate-100 mb-3">
+              <View>
+                <Text className="text-base font-extrabold text-slate-900">Choose Weekly Alternative</Text>
+                <Text className="text-xs text-slate-500">Delivered when primary crop is paused</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowAlternativeModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center"
+              >
+                <X size={16} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {availableAlternatives.map((alt) => {
+                const isSelected = selectedAlternative?.id === alt.id;
+                return (
+                  <TouchableOpacity
+                    key={alt.id}
+                    className={`flex-row items-center justify-between p-3.5 rounded-xl mb-2.5 border ${
+                      isSelected ? 'bg-emerald-50 border-emerald-400' : 'bg-slate-50 border-slate-200'
+                    }`}
+                    onPress={() => {
+                      setSelectedAlternative(alt);
+                      setShowAlternativeModal(false);
+                    }}
+                  >
+                    <View className="flex-row items-center gap-3">
+                      <Image
+                        source={{ uri: alt.imageUrl }}
+                        className="w-10 h-10 rounded-lg bg-slate-100"
+                        resizeMode="cover"
+                      />
+                      <View>
+                        <Text className="text-sm font-bold text-slate-900">{alt.name}</Text>
+                        <Text className="text-xs text-emerald-800 font-semibold">₹{alt.price} / {alt.unit || 'Kg'}</Text>
+                      </View>
+                    </View>
+                    {isSelected && <Check size={18} color="#07843D" />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
         </View>
       </Modal>
     </View>

@@ -75,19 +75,18 @@ export const CartScreen: React.FC<CartScreenProps> = ({
   return (
     <View className="flex-1 bg-[#FDFBF7]">
       <ScrollView contentContainerClassName="p-4 pb-12" showsVerticalScrollIndicator={false}>
-        <View className="flex-row items-center justify-between mb-3">
-          <View className="flex-row items-center gap-2">
-            <ShoppingCart size={22} color={theme.colors.textPrimary} />
-            <Text className="text-xl font-extrabold text-slate-900">My Cart</Text>
-          </View>
-          {cartCount > 0 && (
-            <View className="bg-emerald-100 px-2.5 py-1 rounded-full">
+        {cartCount > 0 && (
+          <View className="flex-row items-center justify-between mb-3">
+            <View className="bg-emerald-100 px-3 py-1 rounded-full">
               <Text className="text-xs font-bold text-emerald-800">
-                {vendorGroups.length} {vendorGroups.length === 1 ? 'Farm' : 'Farms'}
+                {cartCount} {cartCount === 1 ? 'Item' : 'Items'} · {vendorGroups.length} {vendorGroups.length === 1 ? 'Farm' : 'Farms'}
               </Text>
             </View>
-          )}
-        </View>
+            <TouchableOpacity onPress={onBrowseProducts}>
+              <Text className="text-xs font-bold text-emerald-700">+ Add More Items</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {cart.length === 0 ? (
           <EmptyState

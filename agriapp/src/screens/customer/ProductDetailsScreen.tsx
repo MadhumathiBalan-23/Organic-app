@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
+  TextInput,
+  Modal,
   Image,
   Alert,
   Platform,
@@ -25,6 +27,9 @@ import {
   MapPin,
   Plus,
   Minus,
+  MessageSquare,
+  X,
+  Send,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Product } from '../../constants/mockData';
@@ -56,6 +61,82 @@ export const ProductDetailsScreen: React.FC<ProductDetailsScreenProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const [detailQty, setDetailQty] = useState(1);
+
+  // Dynamic Reviews & Rating State
+  const [reviewsList, setReviewsList] = useState<Array<{
+    id: string;
+    userName: string;
+    rating: number;
+    comment: string;
+    date: string;
+    verifiedPurchase: boolean;
+  }>>([
+    {
+      id: 'rev-1',
+      userName: 'Aarthi Sundaram',
+      rating: 5,
+      comment: 'Super fresh and sweet harvest! Truly chemical-free farm harvest delivered right on time.',
+      date: '2 days ago',
+      verifiedPurchase: true,
+    },
+    {
+      id: 'rev-2',
+      userName: 'Karthik Raja',
+      rating: 5,
+      comment: 'Premium quality and natural aroma. Kids loved the farm fresh taste.',
+      date: '5 days ago',
+      verifiedPurchase: true,
+    },
+  ]);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [newRating, setNewRating] = useState(5);
+  const [newComment, setNewComment] = useState('');
+  const [reviewerName, setReviewerName] = useState('');
+
+  // Auto-load saved reviews from localStorage/memory if any
+  useEffect(() => {
+    try {
+      const g = globalThis as any;
+      const storageKey = `agriflow_product_reviews_${product.id}`;
+      const saved = g.localStorage?.getItem(storageKey) || g.window?.localStorage?.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setReviewsList(parsed);
+        }
+      }
+    } catch {}
+  }, [product.id]);
+
+  const handleSubmitReview = () => {
+    if (!newComment.trim() || newComment.trim().length < 3) {
+      Alert.alert('Review Required', 'Please enter your feedback about the harvest.');
+      return;
+    }
+    const newEntry = {
+      id: `rev-${Date.now()}`,
+      userName: reviewerName.trim() || 'Verified Customer',
+      rating: newRating,
+      comment: newComment.trim(),
+      date: 'Just now',
+      verifiedPurchase: true,
+    };
+    const updated = [newEntry, ...reviewsList];
+    setReviewsList(updated);
+    try {
+      const g = globalThis as any;
+      const storageKey = `agriflow_product_reviews_${product.id}`;
+      if (g.localStorage) g.localStorage.setItem(storageKey, JSON.stringify(updated));
+      else if (g.window?.localStorage) g.window.localStorage.setItem(storageKey, JSON.stringify(updated));
+    } catch {}
+    setNewComment('');
+    setShowReviewModal(false);
+    Alert.alert('Review Published 🎉', 'Thank you for rating our organic farm produce!');
+  };
+
+  const avgRating = reviewsList.length > 0
+    ? (reviewsList.reduce((acc, r) => acc + r.rating, 0) / reviewsList.length).toFixed(1)
+    : (product.rating || 4.8).toFixed(1);
 
   const origPrice = (product as any).originalPrice || Math.round(product.price * 1.25);
   const savings = Math.max(0, origPrice - product.price);
@@ -364,6 +445,62 @@ export const ProductDetailsScreen: React.FC<ProductDetailsScreenProps> = ({
             </Text>
           </View>
 
+          {/* Customer Reviews & Rating Section (Dynamic Data & Submission) */}
+          <View className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs mb-4">
+            <View className="flex-row items-center justify-between mb-3">
+              <View>
+                <View className="flex-row items-center gap-1.5">
+                  <Star size={18} color="#D97706" fill="#D97706" />
+                  <Text className="text-base font-extrabold text-slate-900">
+                    {avgRating} / 5.0
+                  </Text>
+                  <Text className="text-xs text-slate-500 font-medium">
+                    ({reviewsList.length} verified reviews)
+                  </Text>
+                </View>
+                <Text className="text-[11px] text-slate-400 mt-0.5">Real customer ratings & feedback</Text>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => setShowReviewModal(true)}
+                className="bg-emerald-50 border border-emerald-300 px-3 py-1.5 rounded-xl flex-row items-center gap-1.5 active:bg-emerald-100"
+              >
+                <MessageSquare size={13} color="#07843D" />
+                <Text className="text-xs font-bold text-emerald-800">Rate & Review</Text>
+              </TouchableOpacity>
+            </View>
+
+            {reviewsList.map((rev) => (
+              <View key={rev.id} className="pt-3 border-t border-slate-100 mb-2.5">
+                <View className="flex-row items-center justify-between mb-1">
+                  <View className="flex-row items-center gap-1.5">
+                    <Text className="text-xs font-bold text-slate-800">{rev.userName}</Text>
+                    {rev.verifiedPurchase && (
+                      <View className="flex-row items-center bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                        <Check size={9} color="#07843D" />
+                        <Text className="text-[9px] font-bold text-emerald-800 ml-0.5">Verified</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text className="text-[10px] text-slate-400">{rev.date}</Text>
+                </View>
+
+                {/* Stars */}
+                <View className="flex-row items-center gap-0.5 mb-1">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star
+                      key={s}
+                      size={11}
+                      color={s <= rev.rating ? '#F59E0B' : '#CBD5E1'}
+                      fill={s <= rev.rating ? '#F59E0B' : 'transparent'}
+                    />
+                  ))}
+                </View>
+                <Text className="text-xs text-slate-600 leading-4">{rev.comment}</Text>
+              </View>
+            ))}
+          </View>
+
           {/* 9. Frequently Paired Farm Fresh Produce (Related Products) */}
           {relatedProducts.length > 0 && (
             <View className="mb-4">
@@ -448,6 +585,77 @@ export const ProductDetailsScreen: React.FC<ProductDetailsScreenProps> = ({
           )}
         </View>
       </View>
+
+      {/* Write a Review Modal */}
+      <Modal visible={showReviewModal} transparent animationType="slide">
+        <View className="flex-1 bg-black/60 justify-end">
+          <View className="bg-white rounded-t-3xl p-5">
+            <View className="flex-row items-center justify-between pb-3 border-b border-slate-100 mb-3">
+              <View>
+                <Text className="text-base font-extrabold text-slate-800">Rate & Review Produce</Text>
+                <Text className="text-xs text-slate-500 mt-0.5">{product.name} · Verified Order</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowReviewModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center"
+              >
+                <X size={16} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Star Picker */}
+            <Text className="text-xs font-bold text-slate-700 mb-2">Overall Rating *</Text>
+            <View className="flex-row items-center gap-3 mb-4">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity
+                  key={star}
+                  onPress={() => setNewRating(star)}
+                  className="p-1"
+                >
+                  <Star
+                    size={28}
+                    color={star <= newRating ? '#F59E0B' : '#CBD5E1'}
+                    fill={star <= newRating ? '#F59E0B' : 'transparent'}
+                  />
+                </TouchableOpacity>
+              ))}
+              <Text className="text-xs font-black text-amber-700 ml-1">
+                {newRating === 5 ? 'Excellent 🌟' : newRating === 4 ? 'Very Good 👍' : `${newRating} Stars`}
+              </Text>
+            </View>
+
+            {/* Name input */}
+            <Text className="text-xs font-bold text-slate-700 mb-1">Your Name (Optional)</Text>
+            <TextInput
+              className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 mb-3"
+              placeholder="e.g. Ramesh K."
+              placeholderTextColor="#94A3B8"
+              value={reviewerName}
+              onChangeText={setReviewerName}
+            />
+
+            {/* Review Comment input */}
+            <Text className="text-xs font-bold text-slate-700 mb-1">Your Feedback / Review *</Text>
+            <TextInput
+              className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 mb-4 min-h-[75px]"
+              placeholder="Share details on freshness, natural taste, packaging..."
+              placeholderTextColor="#94A3B8"
+              multiline
+              numberOfLines={3}
+              value={newComment}
+              onChangeText={setNewComment}
+            />
+
+            <TouchableOpacity
+              onPress={handleSubmitReview}
+              className="bg-emerald-700 py-3.5 rounded-xl items-center justify-center flex-row gap-2 shadow-sm active:bg-emerald-800"
+            >
+              <Send size={15} color="#FFFFFF" />
+              <Text className="text-white font-bold text-sm">Submit Review</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };

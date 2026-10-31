@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  Modal,
 } from 'react-native';
 import {
   Store,
@@ -25,12 +26,16 @@ import {
   Image as ImageIcon,
   CheckCircle2,
   ChevronRight,
+  ChevronDown,
   ArrowLeft,
   X,
   Upload,
+  Navigation,
+  Check,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { vendorService, bannerService } from '../../services';
+import { vendorService, bannerService, customerService } from '../../services';
+import { getDeviceCurrentLocation } from '../../services/location.service';
 
 export interface VendorRegistrationScreenProps {
   userPhone?: string;
@@ -58,9 +63,49 @@ export const VendorRegistrationScreen: React.FC<VendorRegistrationScreenProps> =
   const [applicantEmail, setApplicantEmail] = useState(customerEmail || '');
   const [farmName, setFarmName] = useState('');
   const [farmLocation, setFarmLocation] = useState(customerLocation || '');
+  const [isLocatingGPS, setIsLocatingGPS] = useState(false);
+  const [gpsVerified, setGpsVerified] = useState(false);
   const [cropCategories, setCropCategories] = useState('');
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [experienceYears, setExperienceYears] = useState('');
-  const [certificateNo, setCertificateNo] = useState('');
+
+  // Dynamic Categories from database
+  useEffect(() => {
+    customerService.getCategories().then((cats) => {
+      if (Array.isArray(cats) && cats.length > 0) {
+        const names = cats.map(c => c.name).filter(Boolean);
+        setAvailableCategories(names);
+        if (!cropCategories && names.length > 0) {
+          setCropCategories(names[0]);
+        }
+      } else {
+        setAvailableCategories(['Vegetables', 'Fruits', 'Dairy & Pure Ghee', 'Groceries & Cold-pressed Oils']);
+      }
+    }).catch(() => {
+      setAvailableCategories(['Vegetables', 'Fruits', 'Dairy & Pure Ghee', 'Groceries & Cold-pressed Oils']);
+    });
+  }, []);
+
+  // GPS Location Handler
+  const handleFetchGPSLocation = async () => {
+    setIsLocatingGPS(true);
+    setErrorMsg(null);
+    try {
+      const res = await getDeviceCurrentLocation();
+      const detectedAddress = res.areaLabel || (res.city ? `${res.city}, ${res.state || ''}` : '');
+      if (res.success && detectedAddress) {
+        setFarmLocation(detectedAddress);
+        setGpsVerified(true);
+      } else {
+        Alert.alert('GPS Location', res.error || 'Could not fetch GPS location. Please enter your location manually.');
+      }
+    } catch {
+      Alert.alert('GPS Error', 'Failed to retrieve location. Please type manually.');
+    } finally {
+      setIsLocatingGPS(false);
+    }
+  };
 
   // ── Step 2 Form: GST & Farm Logo / Photo (Optional) ──
   const [gstNumber, setGstNumber] = useState('');
@@ -207,7 +252,6 @@ export const VendorRegistrationScreen: React.FC<VendorRegistrationScreenProps> =
         farmLocation: farmLocation.trim(),
         cropCategories: cropCategories.trim() || 'Organic Vegetables & Dairy',
         experienceYears: experienceYears.trim() || '3',
-        certificateNo: certificateNo.trim(),
         gstNumber: gstNumber.trim().toUpperCase() || undefined,
         logoUrl: logoUrl.trim() || undefined,
         accountHolderName: accountHolderName.trim(),
@@ -252,13 +296,17 @@ export const VendorRegistrationScreen: React.FC<VendorRegistrationScreenProps> =
       {/* ── Top Progress Header ── */}
       <View className="bg-[#07843D] px-4 pt-3 pb-4 shadow-sm">
         <View className="flex-row items-center justify-between mb-2">
-          <TouchableOpacity
-            onPress={currentStep === 1 ? onBack : () => setCurrentStep((currentStep - 1) as any)}
-            className="w-9 h-9 rounded-full bg-white/15 items-center justify-center active:bg-white/25"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <ArrowLeft size={18} color="#FFFFFF" />
-          </TouchableOpacity>
+          {currentStep > 1 ? (
+            <TouchableOpacity
+              onPress={() => setCurrentStep((currentStep - 1) as any)}
+              className="w-9 h-9 rounded-full bg-white/15 items-center justify-center active:bg-white/25"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <ArrowLeft size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+          ) : (
+            <View className="w-9 h-9" />
+          )}
           <View className="items-center flex-1 mx-2">
             <Text className="text-white text-base font-black">Vendor Registration</Text>
             <Text className="text-emerald-100 text-[11px] font-semibold">Step {currentStep} of 3</Text>
@@ -393,55 +441,87 @@ export const VendorRegistrationScreen: React.FC<VendorRegistrationScreenProps> =
                 />
               </View>
 
-              {/* Farm Location / District */}
-              <Text className="text-xs font-bold text-slate-700 mb-1">Farm Location & District *</Text>
-              <View className="flex-row items-center bg-[#F8FAF8] border border-slate-200 rounded-xl px-3 h-11 mb-3">
-                <MapPin size={16} color="#64748B" />
-                <TextInput
-                  className="flex-1 text-sm text-slate-800 ml-2 font-medium"
-                  placeholder="e.g. Pollachi, Coimbatore, Tamil Nadu"
-                  placeholderTextColor="#94A3B8"
-                  value={farmLocation}
-                  onChangeText={setFarmLocation}
-                />
+              {/* Farm Location / District (Increased height & width + GPS Location fetch + Manual Entry) */}
+              <View className="flex-row items-center justify-between mb-1.5">
+                <Text className="text-xs font-bold text-slate-700">Farm Location & District *</Text>
+                <TouchableOpacity
+                  onPress={handleFetchGPSLocation}
+                  disabled={isLocatingGPS}
+                  className="flex-row items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-300 active:bg-emerald-100"
+                >
+                  {isLocatingGPS ? (
+                    <ActivityIndicator size="small" color="#07843D" />
+                  ) : (
+                    <Navigation size={12} color="#07843D" />
+                  )}
+                  <Text className="text-[11px] font-bold text-emerald-800">
+                    {isLocatingGPS ? 'Detecting GPS...' : 'Use My GPS'}
+                  </Text>
+                </TouchableOpacity>
               </View>
-
-              {/* Crop Types / Harvest Categories */}
-              <Text className="text-xs font-bold text-slate-700 mb-1">Crops / Harvest Categories</Text>
-              <View className="flex-row items-center bg-[#F8FAF8] border border-slate-200 rounded-xl px-3 h-11 mb-3">
-                <Sprout size={16} color="#64748B" />
-                <TextInput
-                  className="flex-1 text-sm text-slate-800 ml-2 font-medium"
-                  placeholder="e.g. Vegetables, A2 Milk, Country Ghee, Cold-pressed Oils"
-                  placeholderTextColor="#94A3B8"
-                  value={cropCategories}
-                  onChangeText={setCropCategories}
-                />
+              <View className="bg-[#F8FAF8] border border-slate-200 rounded-2xl px-3.5 py-3 mb-2 min-h-[72px] justify-center">
+                <View className="flex-row items-start">
+                  <MapPin size={18} color={gpsVerified ? '#07843D' : '#64748B'} style={{ marginTop: 2 }} />
+                  <TextInput
+                    className="flex-1 text-sm text-slate-800 ml-2.5 font-medium leading-5"
+                    placeholder="Enter or detect your farm address, district, state..."
+                    placeholderTextColor="#94A3B8"
+                    multiline
+                    value={farmLocation}
+                    onChangeText={(val) => {
+                      setFarmLocation(val);
+                      setGpsVerified(false);
+                    }}
+                  />
+                  {farmLocation ? (
+                    <TouchableOpacity
+                      onPress={() => setFarmLocation('')}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      className="p-1"
+                    >
+                      <X size={15} color="#94A3B8" />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
               </View>
+              {gpsVerified ? (
+                <View className="flex-row items-center gap-1.5 mb-3 px-1">
+                  <CheckCircle2 size={13} color="#07843D" />
+                  <Text className="text-[11px] font-bold text-emerald-700">GPS Verified Coordinates Attached</Text>
+                </View>
+              ) : (
+                <Text className="text-[10px] text-slate-400 font-medium mb-3 px-1">
+                  Tap 'Use My GPS' to auto-detect farm coordinates or type manual address above.
+                </Text>
+              )}
 
-              {/* Experience & Certification */}
-              <View className="flex-row gap-2.5">
-                <View className="flex-1">
-                  <Text className="text-xs font-bold text-slate-700 mb-1">Farming Exp (Yrs)</Text>
-                  <TextInput
-                    className="bg-[#F8FAF8] border border-slate-200 rounded-xl px-3 h-11 text-sm text-slate-800 font-medium"
-                    placeholder="e.g. 5"
-                    keyboardType="numeric"
-                    placeholderTextColor="#94A3B8"
-                    value={experienceYears}
-                    onChangeText={setExperienceYears}
-                  />
+              {/* Crop / Harvest Category (Dynamic Admin Category Dropdown) */}
+              <Text className="text-xs font-bold text-slate-700 mb-1">Crop / Harvest Category *</Text>
+              <TouchableOpacity
+                className="flex-row items-center justify-between bg-[#F8FAF8] border border-slate-200 rounded-xl px-3 h-12 mb-3.5"
+                onPress={() => setShowCategoryPicker(true)}
+                activeOpacity={0.8}
+              >
+                <View className="flex-row items-center flex-1 mr-2">
+                  <Sprout size={16} color="#07843D" />
+                  <Text className={`text-sm ml-2.5 ${cropCategories ? 'text-slate-800 font-bold' : 'text-slate-400 font-medium'}`}>
+                    {cropCategories || 'Select crop category'}
+                  </Text>
                 </View>
-                <View className="flex-[1.5]">
-                  <Text className="text-xs font-bold text-slate-700 mb-1">Cert No / Accreditation</Text>
-                  <TextInput
-                    className="bg-[#F8FAF8] border border-slate-200 rounded-xl px-3 h-11 text-sm text-slate-800 font-medium"
-                    placeholder="PGS-India / NPOP (optional)"
-                    placeholderTextColor="#94A3B8"
-                    value={certificateNo}
-                    onChangeText={setCertificateNo}
-                  />
-                </View>
+                <ChevronDown size={18} color="#64748B" />
+              </TouchableOpacity>
+
+              {/* Farming Experience (Certificate field cleanly removed as requested) */}
+              <View className="mb-2">
+                <Text className="text-xs font-bold text-slate-700 mb-1">Farming Experience (Years) *</Text>
+                <TextInput
+                  className="bg-[#F8FAF8] border border-slate-200 rounded-xl px-3.5 h-11 text-sm text-slate-800 font-medium"
+                  placeholder="e.g. 5"
+                  keyboardType="numeric"
+                  placeholderTextColor="#94A3B8"
+                  value={experienceYears}
+                  onChangeText={setExperienceYears}
+                />
               </View>
             </View>
 
@@ -737,6 +817,52 @@ export const VendorRegistrationScreen: React.FC<VendorRegistrationScreenProps> =
           </View>
         )}
       </ScrollView>
+
+      {/* Category Dropdown Selection Modal */}
+      <Modal visible={showCategoryPicker} transparent animationType="fade">
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-t-3xl p-5 max-h-[70%]">
+            <View className="flex-row items-center justify-between pb-3 border-b border-slate-100 mb-3">
+              <View>
+                <Text className="text-base font-extrabold text-slate-800">Select Crop Category</Text>
+                <Text className="text-xs text-slate-500">Loaded dynamically from Admin panel</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowCategoryPicker(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center"
+              >
+                <X size={16} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {availableCategories.map((cat) => {
+                const isSelected = cropCategories === cat;
+                return (
+                  <TouchableOpacity
+                    key={cat}
+                    className={`flex-row items-center justify-between p-3.5 rounded-xl mb-2 border ${
+                      isSelected ? 'bg-emerald-50 border-emerald-400' : 'bg-slate-50 border-slate-200'
+                    }`}
+                    onPress={() => {
+                      setCropCategories(cat);
+                      setShowCategoryPicker(false);
+                    }}
+                  >
+                    <View className="flex-row items-center gap-2.5">
+                      <Sprout size={16} color={isSelected ? '#07843D' : '#64748B'} />
+                      <Text className={`text-sm ${isSelected ? 'font-black text-emerald-900' : 'font-medium text-slate-700'}`}>
+                        {cat}
+                      </Text>
+                    </View>
+                    {isSelected && <Check size={16} color="#07843D" />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
