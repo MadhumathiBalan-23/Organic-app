@@ -308,7 +308,7 @@ export const VendorRegistrationScreen: React.FC<VendorRegistrationScreenProps> =
             <View className="w-9 h-9" />
           )}
           <View className="items-center flex-1 mx-2">
-            <Text className="text-white text-base font-black">Vendor Registration</Text>
+            <Text className="text-white text-base font-black">Farmer Partner Registration</Text>
             <Text className="text-emerald-100 text-[11px] font-semibold">Step {currentStep} of 3</Text>
           </View>
           <TouchableOpacity

@@ -106,7 +106,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         case 'PROFILE':
           return 'My Profile';
         case 'VENDOR_REGISTRATION':
-          return 'Vendor Registration';
+          return 'Farmer Partner Registration';
         case 'CART':
           return 'Shopping Cart';
         case 'PRODUCT_DETAILS':

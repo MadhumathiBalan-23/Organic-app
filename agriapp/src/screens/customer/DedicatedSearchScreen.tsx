@@ -287,3 +287,4 @@ export const DedicatedSearchScreen: React.FC<DedicatedSearchScreenProps> = ({
 };
 
 export default DedicatedSearchScreen;
+

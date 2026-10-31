@@ -179,7 +179,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         </View>
       </View>
 
-      {/* ── 3. Vendor Registration Section (Only shown for non-vendors) ── */}
+      {/* ── 3. Partner / Producer Registration Section (Only shown for non-vendors) ── */}
       {!isApprovedVendor && vendorApplicationStatus !== 'APPROVED' && (
         <View className="bg-white rounded-2xl p-4 border border-slate-200/80 mb-3.5 shadow-xs">
           <View className="flex-row items-center gap-3 mb-3">
@@ -187,7 +187,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <Store size={20} color="#047857" />
             </View>
             <View className="flex-1">
-              <Text className="text-sm font-bold text-slate-800">Organic Vendor Hub</Text>
+              <Text className="text-sm font-bold text-slate-800">Organic Farmer Partner</Text>
               <Text className="text-slate-500" style={{ fontSize: 11 }}>
                 Supply fresh harvest directly to local subscribers
               </Text>
@@ -203,7 +203,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </Text>
               </View>
               <Text className="text-slate-600 leading-4 mb-3" style={{ fontSize: 11 }}>
-                Your vendor application for +91 {userPhone || '98765 43210'} is being reviewed by Admin. Once approved, the Vendor Console will unlock automatically.
+                Your farmer partner application for +91 {userPhone || '98765 43210'} is being reviewed by Admin. Once approved, your Producer Console will unlock automatically.
               </Text>
               <TouchableOpacity
                 className="bg-white border border-amber-300 py-2 rounded-xl items-center justify-center flex-row gap-1.5"
@@ -231,7 +231,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           ) : (
             <View className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
               <Text className="text-slate-600 leading-4 mb-3" style={{ fontSize: 11 }}>
-                Produce certified organic vegetables, fruits, dairy, or cold-pressed oils? Register as a vendor to sell directly to local customers.
+                Produce certified organic vegetables, fruits, dairy, or cold-pressed oils? Register as an organic farmer to supply local customers directly.
               </Text>
               <TouchableOpacity
                 className="bg-emerald-800 py-2.5 rounded-xl items-center justify-center shadow-sm flex-row gap-1.5 active:bg-emerald-900"
@@ -239,7 +239,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 activeOpacity={0.85}
               >
                 <Store size={14} color="#FFFFFF" />
-                <Text className="text-white font-bold text-xs">Apply as Vendor</Text>
+                <Text className="text-white font-bold text-xs">Register as Farmer Partner</Text>
               </TouchableOpacity>
             </View>
           )}

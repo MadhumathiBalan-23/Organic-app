@@ -1339,13 +1339,13 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
         </View>
       </Modal>
 
-      {/* ── Vendor Registration Modal ── */}
+      {/* ── Farmer Partner Registration Modal ── */}
       <Modal visible={showVendorModal} transparent animationType="slide">
         <View className="flex-1 bg-black/60 justify-end">
           <View className="bg-white rounded-t-3xl p-5 max-h-[85%]">
             <View className="flex-row justify-between items-center mb-4 pb-3 border-b border-slate-100">
               <View>
-                <Text className="text-base font-bold text-slate-800">Vendor Registration</Text>
+                <Text className="text-base font-bold text-slate-800">Farmer Partner Registration</Text>
                 <Text className="text-xs text-slate-500 mt-0.5">Sends verification request to Admin</Text>
               </View>
               <TouchableOpacity
