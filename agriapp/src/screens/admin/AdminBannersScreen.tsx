@@ -246,6 +246,9 @@ export const AdminBannersScreen: React.FC = () => {
     }
   };
 
+  // Scroll control for 2D canvas dragging
+  const [scrollEnabled, setScrollEnabled] = useState(true);
+
   // Apply swatch click
   const handleSwatchPress = (hex: string) => {
     updateCurrentColor(hex);
@@ -694,11 +697,16 @@ export const AdminBannersScreen: React.FC = () => {
       {/* ─── NEAT & SIMPLE BANNER ADD / EDIT MODAL ─── */}
       <Modal visible={!!modal} transparent animationType="slide" onRequestClose={() => setModal(null)}>
         <View className="flex-1 bg-black/50 justify-end">
-          <Pressable
-            style={StyleSheet.absoluteFill}
+          {/* Top backdrop touch area: ONLY touches above the sheet, never overlaps */}
+          <TouchableOpacity
+            className="flex-1"
+            activeOpacity={1}
             onPress={() => setModal(null)}
           />
-          <View className="bg-white rounded-t-3xl p-5 pb-8 max-h-[92%] z-10">
+          <View
+            style={{ elevation: 25 }}
+            className="bg-white rounded-t-3xl p-5 pb-8 max-h-[92%]"
+          >
             {/* Top Handle Bar */}
             <View className="w-10 h-1 bg-[#E2EBE6] rounded-full self-center mb-3" />
 
@@ -721,7 +729,11 @@ export const AdminBannersScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <ScrollView
+              scrollEnabled={scrollEnabled}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="always"
+            >
               {/* ─── 1. REALTIME LIVE PREVIEW CARD (Visible Color & Photo) ─── */}
               <View className="mb-4">
                 <View className="flex-row items-center justify-between mb-1.5">
@@ -794,9 +806,9 @@ export const AdminBannersScreen: React.FC = () => {
                 {/* Side-by-Side Dual Color Cards: Top Color & Bottom Color */}
                 <View className="flex-row items-center gap-2.5">
                   {/* Top Color Button */}
-                  <Pressable
+                  <TouchableOpacity
                     onPress={() => handleSelectTab('top')}
-                    hitSlop={8}
+                    activeOpacity={0.7}
                     className={`flex-1 p-3 rounded-2xl border flex-row items-center justify-between ${
                       activeColorTab === 'top'
                         ? 'bg-emerald-50/50 border-2 border-emerald-600 shadow-sm'
@@ -814,10 +826,10 @@ export const AdminBannersScreen: React.FC = () => {
                       </View>
                     </View>
                     <ChevronRight size={18} color={activeColorTab === 'top' ? '#059669' : '#94A3B8'} pointerEvents="none" />
-                  </Pressable>
+                  </TouchableOpacity>
 
                   {/* Swap Colors Button */}
-                  <Pressable
+                  <TouchableOpacity
                     onPress={() => {
                       const curTop = form.topColor || '#02381A';
                       const curBottom = form.bottomColor || '#EA580C';
@@ -830,16 +842,16 @@ export const AdminBannersScreen: React.FC = () => {
                       const newColor = activeColorTabRef.current === 'top' ? curBottom : curTop;
                       syncHsvFromHex(newColor);
                     }}
-                    hitSlop={8}
+                    activeOpacity={0.7}
                     className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 items-center justify-center active:bg-slate-200"
                   >
                     <Text className="text-emerald-700 font-black text-sm">⇄</Text>
-                  </Pressable>
+                  </TouchableOpacity>
 
                   {/* Bottom Color Button */}
-                  <Pressable
+                  <TouchableOpacity
                     onPress={() => handleSelectTab('bottom')}
-                    hitSlop={8}
+                    activeOpacity={0.7}
                     className={`flex-1 p-3 rounded-2xl border flex-row items-center justify-between ${
                       activeColorTab === 'bottom'
                         ? 'bg-emerald-50/50 border-2 border-emerald-600 shadow-sm'
@@ -857,7 +869,7 @@ export const AdminBannersScreen: React.FC = () => {
                       </View>
                     </View>
                     <ChevronRight size={18} color={activeColorTab === 'bottom' ? '#059669' : '#94A3B8'} pointerEvents="none" />
-                  </Pressable>
+                  </TouchableOpacity>
                 </View>
 
                 {/* Arrow Pointer under active card */}
@@ -887,9 +899,9 @@ export const AdminBannersScreen: React.FC = () => {
 
                     {/* Direct Segmented Switch: [ TOP ] [ BOTTOM ] */}
                     <View className="flex-row items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
-                      <Pressable
+                      <TouchableOpacity
                         onPress={() => handleSelectTab('top')}
-                        hitSlop={6}
+                        activeOpacity={0.7}
                         className={`px-3 py-1 rounded-lg ${
                           activeColorTab === 'top' ? 'bg-emerald-700 shadow-xs' : 'bg-transparent'
                         }`}
@@ -901,10 +913,10 @@ export const AdminBannersScreen: React.FC = () => {
                         >
                           TOP
                         </Text>
-                      </Pressable>
-                      <Pressable
+                      </TouchableOpacity>
+                      <TouchableOpacity
                         onPress={() => handleSelectTab('bottom')}
-                        hitSlop={6}
+                        activeOpacity={0.7}
                         className={`px-3 py-1 rounded-lg ${
                           activeColorTab === 'bottom' ? 'bg-emerald-700 shadow-xs' : 'bg-transparent'
                         }`}
@@ -916,7 +928,7 @@ export const AdminBannersScreen: React.FC = () => {
                         >
                           BOTTOM
                         </Text>
-                      </Pressable>
+                      </TouchableOpacity>
                     </View>
                   </View>
 
@@ -927,10 +939,13 @@ export const AdminBannersScreen: React.FC = () => {
                       className="flex-1 h-44 rounded-2xl overflow-hidden relative border border-slate-200"
                       onStartShouldSetResponder={() => true}
                       onMoveShouldSetResponder={() => true}
-                      onResponderGrant={handleCanvasTouch}
+                      onResponderGrant={(e) => {
+                        setScrollEnabled(false);
+                        handleCanvasTouch(e);
+                      }}
                       onResponderMove={handleCanvasTouch}
-                      onResponderRelease={() => {}}
-                      onResponderTerminate={() => {}}
+                      onResponderRelease={() => setScrollEnabled(true)}
+                      onResponderTerminate={() => setScrollEnabled(true)}
                       onResponderTerminationRequest={() => true}
                     >
                       <Svg width="100%" height="100%">
@@ -965,10 +980,13 @@ export const AdminBannersScreen: React.FC = () => {
                       className="w-6 h-44 rounded-full overflow-hidden relative border border-slate-200"
                       onStartShouldSetResponder={() => true}
                       onMoveShouldSetResponder={() => true}
-                      onResponderGrant={handleHueTouch}
+                      onResponderGrant={(e) => {
+                        setScrollEnabled(false);
+                        handleHueTouch(e);
+                      }}
                       onResponderMove={handleHueTouch}
-                      onResponderRelease={() => {}}
-                      onResponderTerminate={() => {}}
+                      onResponderRelease={() => setScrollEnabled(true)}
+                      onResponderTerminate={() => setScrollEnabled(true)}
                       onResponderTerminationRequest={() => true}
                     >
                       <Svg width="100%" height="100%">
@@ -1002,10 +1020,13 @@ export const AdminBannersScreen: React.FC = () => {
                       className="w-6 h-44 rounded-full overflow-hidden relative border border-slate-200"
                       onStartShouldSetResponder={() => true}
                       onMoveShouldSetResponder={() => true}
-                      onResponderGrant={handleBrightTouch}
+                      onResponderGrant={(e) => {
+                        setScrollEnabled(false);
+                        handleBrightTouch(e);
+                      }}
                       onResponderMove={handleBrightTouch}
-                      onResponderRelease={() => {}}
-                      onResponderTerminate={() => {}}
+                      onResponderRelease={() => setScrollEnabled(true)}
+                      onResponderTerminate={() => setScrollEnabled(true)}
                       onResponderTerminationRequest={() => true}
                     >
                       <Svg width="100%" height="100%">
@@ -1216,20 +1237,32 @@ export const AdminBannersScreen: React.FC = () => {
               </TouchableOpacity>
 
               {/* ─── 9. SAVE & CANCEL ACTIONS ─── */}
-              <View className="flex-row gap-2.5 mt-1 mb-4">
-                <AppButton
-                  variant="outline"
-                  title="Cancel"
+              <View className="flex-row gap-3 mt-2 mb-6">
+                <TouchableOpacity
                   onPress={() => setModal(null)}
-                  style={{ flex: 1 }}
-                />
-                <AppButton
-                  variant="primary"
-                  title={isSaving ? 'Saving...' : editId ? 'Update Banner' : 'Publish Banner'}
+                  activeOpacity={0.7}
+                  className="flex-1 py-3.5 rounded-2xl border-2 border-slate-300 items-center justify-center bg-white"
+                >
+                  <Text className="text-sm font-extrabold text-slate-700">Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
                   onPress={handleSave}
                   disabled={isSaving}
-                  style={{ flex: 1.5 }}
-                />
+                  activeOpacity={0.8}
+                  className="flex-[1.6] py-3.5 rounded-2xl bg-emerald-700 items-center justify-center shadow-md active:bg-emerald-800"
+                >
+                  {isSaving ? (
+                    <View className="flex-row items-center gap-2">
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <Text className="text-sm font-black text-white">Saving...</Text>
+                    </View>
+                  ) : (
+                    <Text className="text-sm font-black text-white">
+                      {editId ? 'Update Banner' : 'Publish Banner'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
               </View>
             </ScrollView>
           </View>
