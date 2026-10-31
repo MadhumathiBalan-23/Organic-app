@@ -21,6 +21,8 @@ import {
   Palette,
   X,
   CheckCircle2,
+  ChevronRight,
+  Pipette,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Stop, Rect } from 'react-native-svg';
@@ -28,6 +30,47 @@ import { bannerService } from '../../services';
 import { getGradientTheme } from '../../components/HomeHeader';
 import { AppButton, EmptyState } from '../../components/LoadingAndError';
 import { C, SectionHeader } from './types';
+
+// Color Space Helpers (HSV <-> HEX)
+export const hsvToHex = (h: number, s: number, v: number): string => {
+  const f = (n: number, k = (n + h / 60) % 6) =>
+    v - v * s * Math.max(Math.min(k, 4 - k, 1), 0);
+  const r = Math.round(f(5) * 255);
+  const g = Math.round(f(3) * 255);
+  const b = Math.round(f(1) * 255);
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
+};
+
+export const hexToHsv = (hex: string): { h: number; s: number; v: number } => {
+  let c = hex.replace('#', '').trim();
+  if (c.length === 3) c = c.split('').map(x => x + x).join('');
+  if (c.length !== 6) return { h: 140, s: 0.9, v: 0.25 };
+  const r = parseInt(c.slice(0, 2), 16) / 255;
+  const g = parseInt(c.slice(2, 4), 16) / 255;
+  const b = parseInt(c.slice(4, 6), 16) / 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+
+  let h = 0;
+  if (delta !== 0) {
+    if (max === r) h = ((g - b) / delta) % 6;
+    else if (max === g) h = (b - r) / delta + 2;
+    else h = (r - g) / delta + 4;
+    h = Math.round(h * 60);
+    if (h < 0) h += 360;
+  }
+  const s = max === 0 ? 0 : delta / max;
+  const v = max;
+  return { h, s, v };
+};
+
+// 14 Curated Touch-Friendly Swatches (matching Image 2)
+export const PICKER_SWATCHES = [
+  '#02381A', '#07843D', '#10B981', '#0284C7', '#4F46E5', '#9333EA',
+  '#EF4444', '#EA580C', '#F59E0B', '#EAB308', '#D4A373', '#64748B', '#CBD5E1', '#FFFFFF',
+];
 
 // Curated 12 Clean Banner Colors
 export const BANNER_COLORS = [
@@ -155,13 +198,90 @@ export const AdminBannersScreen: React.FC = () => {
   const [modal, setModal] = useState<'add' | 'edit' | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
 
-  // Selected color tracking for swatches
-  const [selectedColorHex, setSelectedColorHex] = useState<string>('#07843D');
+  // Active Color Picker state (matching Image 2)
+  const [showPicker, setShowPicker] = useState<boolean>(true);
+  const [selectedTarget, setSelectedTarget] = useState<'top' | 'bottom'>('top');
+  const [tempColor, setTempColor] = useState<string>('#02381A');
 
-  // Top / Bottom target selector & palette mode
-  const [colorTarget, setColorTarget] = useState<'top' | 'bottom'>('top');
-  const [paletteMode, setPaletteMode] = useState<'palette' | 'presets'>('palette');
-  const [activeCategoryIndex, setActiveCategoryIndex] = useState<number>(0);
+  // HSV state for 2D color picker
+  const [hueVal, setHueVal] = useState<number>(147);
+  const [satVal, setSatVal] = useState<number>(0.96);
+  const [valVal, setValVal] = useState<number>(0.22);
+
+  // Sync HSV when tempColor changes
+  const syncHsvFromHex = (hex: string) => {
+    const hsv = hexToHsv(hex);
+    setHueVal(hsv.h);
+    setSatVal(hsv.s);
+    setValVal(hsv.v);
+  };
+
+  // Open picker for a target
+  const handleOpenPicker = (target: 'top' | 'bottom') => {
+    setSelectedTarget(target);
+    const currentColor = target === 'top' ? (form.topColor || '#02381A') : (form.bottomColor || '#EA580C');
+    setTempColor(currentColor);
+    syncHsvFromHex(currentColor);
+    setShowPicker(true);
+  };
+
+  // Apply swatch click
+  const applySwatch = (hex: string) => {
+    setTempColor(hex);
+    syncHsvFromHex(hex);
+  };
+
+  // 2D Saturation / Value Canvas touch handler
+  const handleCanvasTouch = (evt: any) => {
+    const { locationX, locationY } = evt.nativeEvent;
+    const clampedX = Math.max(0, Math.min(220, locationX));
+    const clampedY = Math.max(0, Math.min(176, locationY));
+    const newSat = Math.max(0, Math.min(1, clampedX / 220));
+    const newVal = Math.max(0, Math.min(1, 1 - clampedY / 176));
+    setSatVal(newSat);
+    setValVal(newVal);
+    const newHex = hsvToHex(hueVal, newSat, newVal);
+    setTempColor(newHex);
+  };
+
+  // Hue Slider touch handler
+  const handleHueTouch = (evt: any) => {
+    const { locationY } = evt.nativeEvent;
+    const clampedY = Math.max(0, Math.min(176, locationY));
+    const newHue = Math.round((clampedY / 176) * 360);
+    setHueVal(newHue);
+    const newHex = hsvToHex(newHue, satVal, valVal);
+    setTempColor(newHex);
+  };
+
+  // Brightness/Value Slider touch handler
+  const handleBrightTouch = (evt: any) => {
+    const { locationY } = evt.nativeEvent;
+    const clampedY = Math.max(0, Math.min(176, locationY));
+    const newVal = Math.max(0, Math.min(1, 1 - clampedY / 176));
+    setValVal(newVal);
+    const newHex = hsvToHex(hueVal, satVal, newVal);
+    setTempColor(newHex);
+  };
+
+  // Confirm Apply
+  const handleConfirmApply = () => {
+    const cleanHex = tempColor.trim().startsWith('#') ? tempColor.trim() : `#${tempColor.trim()}`;
+    if (selectedTarget === 'top') {
+      setForm(prev => ({
+        ...prev,
+        topColor: cleanHex,
+        backgroundColor: `${cleanHex}|${prev.bottomColor || '#EA580C'}`,
+      }));
+    } else {
+      setForm(prev => ({
+        ...prev,
+        bottomColor: cleanHex,
+        backgroundColor: `${prev.topColor || '#02381A'}|${cleanHex}`,
+      }));
+    }
+    setShowPicker(false);
+  };
 
   // Loading states
   const [isUploading, setIsUploading] = useState(false);
@@ -173,8 +293,8 @@ export const AdminBannersScreen: React.FC = () => {
     subtitle: '',
     imageUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&q=80&w=800',
     topColor: '#02381A',
-    bottomColor: '#15803D',
-    backgroundColor: '#02381A|#15803D',
+    bottomColor: '#EA580C',
+    backgroundColor: '#02381A|#EA580C',
     textColor: '#FFFFFF',
     buttonColor: '#FDE047',
     buttonTextColor: '#78350F',
@@ -200,79 +320,6 @@ export const AdminBannersScreen: React.FC = () => {
   useEffect(() => {
     loadBanners();
   }, []);
-
-  // Set Top or Bottom color from palette swatch
-  const handlePickColor = (hex: string) => {
-    setSelectedColorHex(hex);
-    if (colorTarget === 'top') {
-      setForm(prev => ({
-        ...prev,
-        topColor: hex,
-        backgroundColor: `${hex}|${prev.bottomColor || '#15803D'}`,
-      }));
-    } else {
-      setForm(prev => ({
-        ...prev,
-        bottomColor: hex,
-        backgroundColor: `${prev.topColor || '#02381A'}|${hex}`,
-      }));
-    }
-  };
-
-  // Select a pre-configured harmonious Gradient Duo (sets both Top & Bottom)
-  const handleSelectPreset = (item: typeof GRADIENT_PRESETS[0]) => {
-    setSelectedColorHex(item.bottom);
-    setForm(prev => ({
-      ...prev,
-      topColor: item.top,
-      bottomColor: item.bottom,
-      backgroundColor: `${item.top}|${item.bottom}`,
-    }));
-  };
-
-  // Instant Swap Top and Bottom colors
-  const handleSwapColors = () => {
-    setForm(prev => {
-      const nextTop = prev.bottomColor || '#15803D';
-      const nextBottom = prev.topColor || '#02381A';
-      return {
-        ...prev,
-        topColor: nextTop,
-        bottomColor: nextBottom,
-        backgroundColor: `${nextTop}|${nextBottom}`,
-      };
-    });
-  };
-
-  // Legacy Banner Color Selection (sets both top & bottom)
-  const handleSelectColor = (item: typeof BANNER_COLORS[0]) => {
-    setSelectedColorHex(item.hex);
-    setForm(prev => ({
-      ...prev,
-      topColor: item.top,
-      bottomColor: item.bottom,
-      backgroundColor: `${item.top}|${item.bottom}`,
-    }));
-  };
-
-  // Custom hex color input for current target (top or bottom)
-  const handleCustomHex = (hex: string) => {
-    const formatted = hex.startsWith('#') ? hex : `#${hex}`;
-    setSelectedColorHex(formatted);
-    if (colorTarget === 'top') {
-      setForm(prev => ({
-        ...prev,
-        topColor: formatted,
-        backgroundColor: `${formatted}|${prev.bottomColor || '#15803D'}`,
-      }));
-    } else {
-      setForm(prev => ({
-        ...prev,
-        bottomColor: formatted,
-        backgroundColor: `${prev.topColor || '#02381A'}|${formatted}`,
-      }));
-    }
-  };
 
   // Image upload via device gallery
   const handlePickFromGallery = async () => {
@@ -362,15 +409,13 @@ export const AdminBannersScreen: React.FC = () => {
 
   // Open modal in Add mode
   const openAdd = () => {
-    const defaultColor = BANNER_COLORS[0];
-    setSelectedColorHex(defaultColor.hex);
     setForm({
       title: '',
       subtitle: '',
       imageUrl: SAMPLE_PHOTOS[0].url,
-      topColor: defaultColor.top,
-      bottomColor: defaultColor.bottom,
-      backgroundColor: `${defaultColor.top}|${defaultColor.bottom}`,
+      topColor: '#02381A',
+      bottomColor: '#EA580C',
+      backgroundColor: '#02381A|#EA580C',
       textColor: '#FFFFFF',
       buttonColor: '#FDE047',
       buttonTextColor: '#78350F',
@@ -380,29 +425,29 @@ export const AdminBannersScreen: React.FC = () => {
       displayOrder: String(banners.length + 1),
       isActive: true,
     });
+    setSelectedTarget('top');
+    setTempColor('#02381A');
+    syncHsvFromHex('#02381A');
+    setShowPicker(true);
     setEditId(null);
     setModal('add');
   };
 
   // Open modal in Edit mode
   const openEdit = (b: any) => {
-    const rawBg = b.backgroundColor || '#02381A|#15803D';
+    const rawBg = b.backgroundColor || '#02381A|#EA580C';
     let top = '#02381A';
-    let bottom = '#15803D';
+    let bottom = '#EA580C';
 
     if (rawBg.includes('|')) {
       const parts = rawBg.split('|').map((s: string) => s.trim()).filter(Boolean);
       top = parts[0] || '#02381A';
-      bottom = parts[1] || parts[0] || '#15803D';
+      bottom = parts[1] || parts[0] || '#EA580C';
     } else {
       const bGrad = getGradientTheme(rawBg);
       top = bGrad.dark;
       bottom = bGrad.light;
     }
-
-    // Match closest color or use top
-    const matched = BANNER_COLORS.find(c => c.top.toUpperCase() === top.toUpperCase() || c.hex.toUpperCase() === top.toUpperCase());
-    setSelectedColorHex(matched ? matched.hex : top);
 
     setForm({
       title: b.title || '',
@@ -420,6 +465,10 @@ export const AdminBannersScreen: React.FC = () => {
       displayOrder: String(b.displayOrder || 1),
       isActive: b.isActive !== undefined ? b.isActive : true,
     });
+    setSelectedTarget('top');
+    setTempColor(top);
+    syncHsvFromHex(top);
+    setShowPicker(true);
     setEditId(b.id);
     setModal('edit');
   };
@@ -736,273 +785,278 @@ export const AdminBannersScreen: React.FC = () => {
                 </View>
               </View>
 
-              {/* ─── 2. PROPER TOP & BOTTOM COLOR PALETTE ─── */}
-              <View className="mb-4 bg-[#F8FAF8] border border-[#E2EBE6] rounded-2xl p-3.5 shadow-xs">
-                {/* Header Title with Gradient Flow Bar */}
-                <View className="flex-row items-center justify-between mb-2">
-                  <View className="flex-row items-center gap-1.5">
-                    <Palette size={16} color="#047857" strokeWidth={2.5} />
-                    <Text className="text-xs font-black text-[#1a1a2e] uppercase tracking-wider">
-                      Header & Banner Color Palette
-                    </Text>
-                  </View>
-                  <View className="flex-row items-center gap-1 bg-emerald-100 px-2 py-0.5 rounded-full">
-                    <Text className="text-2xs font-extrabold text-emerald-900">REALTIME DUAL THEME</Text>
-                  </View>
-                </View>
-
-                {/* Realtime Gradient Flow Preview Strip */}
-                <View className="h-7 rounded-xl overflow-hidden mb-3 relative border border-slate-300 shadow-xs">
-                  <Svg width="100%" height="100%">
-                    <Defs>
-                      <SvgLinearGradient id="paletteBarGrad" x1="0" y1="0" x2="1" y2="0">
-                        <Stop offset="0%" stopColor={form.topColor || '#02381A'} stopOpacity="1" />
-                        <Stop offset="100%" stopColor={form.bottomColor || '#15803D'} stopOpacity="1" />
-                      </SvgLinearGradient>
-                    </Defs>
-                    <Rect width="100%" height="100%" fill="url(#paletteBarGrad)" />
-                  </Svg>
-                  <View className="absolute inset-0 flex-row items-center justify-between px-3">
-                    <Text className="text-2xs font-extrabold text-white shadow-sm">
-                      TOP: {form.topColor || '#02381A'}
-                    </Text>
-                    <Text className="text-2xs font-black text-white/85">➔ GRADIENT FLOW ➔</Text>
-                    <Text className="text-2xs font-extrabold text-white shadow-sm">
-                      BOTTOM: {form.bottomColor || '#15803D'}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Dual Color Target Cards: Top Color vs Bottom Color + Swap */}
-                <View className="flex-row items-center gap-2 mb-3">
+              {/* ─── 2. TOP & BOTTOM COLOR SELECTOR (IMAGE 2 DESIGN) ─── */}
+              <View className="mb-4">
+                {/* Side-by-Side Dual Color Cards: Top Color & Bottom Color */}
+                <View className="flex-row items-center gap-3">
                   {/* Top Color Button */}
                   <TouchableOpacity
-                    onPress={() => setColorTarget('top')}
-                    className={`flex-1 p-2 rounded-xl border flex-row items-center gap-2 ${
-                      colorTarget === 'top'
-                        ? 'bg-white border-emerald-600 ring-2 ring-emerald-500 shadow-sm'
-                        : 'bg-[#F0F5F1] border-slate-200'
+                    onPress={() => handleOpenPicker('top')}
+                    className={`flex-1 p-2.5 rounded-2xl border flex-row items-center justify-between ${
+                      showPicker && selectedTarget === 'top'
+                        ? 'bg-white border-2 border-emerald-600 shadow-sm'
+                        : 'bg-white border border-slate-200'
                     }`}
                     activeOpacity={0.8}
                   >
-                    <View
-                      className="w-7 h-7 rounded-lg border border-slate-300 shadow-xs"
-                      style={{ backgroundColor: form.topColor || '#02381A' }}
-                    />
-                    <View className="flex-1">
-                      <Text className="text-2xs font-bold text-slate-500 uppercase">Top Color</Text>
-                      <Text className="text-xs font-black text-slate-800" numberOfLines={1}>
-                        {form.topColor || '#02381A'}
-                      </Text>
+                    <View className="flex-row items-center gap-2.5">
+                      <View
+                        className="w-10 h-10 rounded-xl border border-slate-200 shadow-xs"
+                        style={{ backgroundColor: form.topColor || '#02381A' }}
+                      />
+                      <View>
+                        <Text className="text-xs font-semibold text-slate-800">Top Color</Text>
+                        <Text className="text-sm font-black text-slate-900">{form.topColor || '#02381A'}</Text>
+                      </View>
                     </View>
-                    {colorTarget === 'top' && (
-                      <View className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
-                    )}
-                  </TouchableOpacity>
-
-                  {/* Quick Swap Button */}
-                  <TouchableOpacity
-                    onPress={handleSwapColors}
-                    className="w-9 h-9 rounded-full bg-white border border-slate-300 items-center justify-center shadow-xs"
-                    activeOpacity={0.7}
-                  >
-                    <Text className="text-sm font-black text-slate-700">⇄</Text>
+                    <ChevronRight size={18} color="#64748B" />
                   </TouchableOpacity>
 
                   {/* Bottom Color Button */}
                   <TouchableOpacity
-                    onPress={() => setColorTarget('bottom')}
-                    className={`flex-1 p-2 rounded-xl border flex-row items-center gap-2 ${
-                      colorTarget === 'bottom'
-                        ? 'bg-white border-emerald-600 ring-2 ring-emerald-500 shadow-sm'
-                        : 'bg-[#F0F5F1] border-slate-200'
+                    onPress={() => handleOpenPicker('bottom')}
+                    className={`flex-1 p-2.5 rounded-2xl border flex-row items-center justify-between ${
+                      showPicker && selectedTarget === 'bottom'
+                        ? 'bg-white border-2 border-emerald-600 shadow-sm'
+                        : 'bg-white border border-slate-200'
                     }`}
                     activeOpacity={0.8}
                   >
-                    <View
-                      className="w-7 h-7 rounded-lg border border-slate-300 shadow-xs"
-                      style={{ backgroundColor: form.bottomColor || '#15803D' }}
-                    />
-                    <View className="flex-1">
-                      <Text className="text-2xs font-bold text-slate-500 uppercase">Bottom Color</Text>
-                      <Text className="text-xs font-black text-slate-800" numberOfLines={1}>
-                        {form.bottomColor || '#15803D'}
-                      </Text>
+                    <View className="flex-row items-center gap-2.5">
+                      <View
+                        className="w-10 h-10 rounded-xl border border-slate-200 shadow-xs"
+                        style={{ backgroundColor: form.bottomColor || '#EA580C' }}
+                      />
+                      <View>
+                        <Text className="text-xs font-semibold text-slate-800">Bottom Color</Text>
+                        <Text className="text-sm font-black text-slate-900">{form.bottomColor || '#EA580C'}</Text>
+                      </View>
                     </View>
-                    {colorTarget === 'bottom' && (
-                      <View className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
-                    )}
+                    <ChevronRight size={18} color="#64748B" />
                   </TouchableOpacity>
                 </View>
 
-                {/* Mode Switcher: Full Palette vs Preset Duos */}
-                <View className="flex-row items-center bg-[#E5EDE7] p-1 rounded-xl mb-3">
-                  <TouchableOpacity
-                    onPress={() => setPaletteMode('palette')}
-                    className={`flex-1 py-1.5 rounded-lg items-center ${
-                      paletteMode === 'palette' ? 'bg-white shadow-xs' : ''
-                    }`}
-                    activeOpacity={0.8}
-                  >
-                    <Text
-                      className={`text-2xs font-black ${
-                        paletteMode === 'palette' ? 'text-emerald-900' : 'text-slate-600'
-                      }`}
-                    >
-                      🎨 Pick {colorTarget === 'top' ? 'Top' : 'Bottom'} Color
-                    </Text>
-                  </TouchableOpacity>
+                {/* Arrow Pointer under active card */}
+                {showPicker && (
+                  <View
+                    style={{
+                      marginLeft: selectedTarget === 'top' ? '22%' : '72%',
+                      width: 0,
+                      height: 0,
+                      borderLeftWidth: 8,
+                      borderRightWidth: 8,
+                      borderBottomWidth: 8,
+                      borderLeftColor: 'transparent',
+                      borderRightColor: 'transparent',
+                      borderBottomColor: '#FFFFFF',
+                      marginBottom: -1,
+                      zIndex: 30,
+                    }}
+                  />
+                )}
 
-                  <TouchableOpacity
-                    onPress={() => setPaletteMode('presets')}
-                    className={`flex-1 py-1.5 rounded-lg items-center ${
-                      paletteMode === 'presets' ? 'bg-white shadow-xs' : ''
-                    }`}
-                    activeOpacity={0.8}
-                  >
-                    <Text
-                      className={`text-2xs font-black ${
-                        paletteMode === 'presets' ? 'text-emerald-900' : 'text-slate-600'
-                      }`}
-                    >
-                      🌈 Preset Duos ({GRADIENT_PRESETS.length})
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                {/* ─── "SELECT COLOR" POPOVER CARD (EXACT IMAGE 2 REPLICA) ─── */}
+                {showPicker && (
+                  <View className="bg-white rounded-3xl border border-slate-200 p-4 mt-1 mb-2 shadow-lg z-20">
+                    {/* Header */}
+                    <View className="flex-row items-center justify-between mb-3">
+                      <Text className="text-base font-extrabold text-slate-900">Select Color</Text>
+                      <TouchableOpacity
+                        onPress={() => setShowPicker(false)}
+                        className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center"
+                        activeOpacity={0.7}
+                      >
+                        <X size={16} color="#64748B" />
+                      </TouchableOpacity>
+                    </View>
 
-                {/* MODE 1: RICH CATEGORIZED COLOR PALETTE */}
-                {paletteMode === 'palette' && (
-                  <View>
-                    {/* Category Tabs */}
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      className="flex-row gap-1.5 mb-2.5 pb-1"
-                    >
-                      {COLOR_PALETTE_CATEGORIES.map((cat, idx) => {
-                        const isSelected = activeCategoryIndex === idx;
+                    {/* 2D Saturation / Value Box + Hue & Brightness Sliders */}
+                    <View className="flex-row gap-2.5 mb-3.5">
+                      {/* 2D Canvas */}
+                      <View
+                        className="flex-1 h-44 rounded-2xl overflow-hidden relative border border-slate-200"
+                        onStartShouldSetResponder={() => true}
+                        onMoveShouldSetResponder={() => true}
+                        onResponderGrant={handleCanvasTouch}
+                        onResponderMove={handleCanvasTouch}
+                      >
+                        <Svg width="100%" height="100%">
+                          <Defs>
+                            <SvgLinearGradient id="hsvSatGrad" x1="0" y1="0" x2="1" y2="0">
+                              <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
+                              <Stop offset="100%" stopColor={hsvToHex(hueVal, 1, 1)} stopOpacity="1" />
+                            </SvgLinearGradient>
+                            <SvgLinearGradient id="hsvValGrad" x1="0" y1="0" x2="0" y2="1">
+                              <Stop offset="0%" stopColor="#000000" stopOpacity="0" />
+                              <Stop offset="100%" stopColor="#000000" stopOpacity="1" />
+                            </SvgLinearGradient>
+                          </Defs>
+                          <Rect width="100%" height="100%" fill="url(#hsvSatGrad)" />
+                          <Rect width="100%" height="100%" fill="url(#hsvValGrad)" />
+                        </Svg>
+                        {/* Interactive Selector Thumb */}
+                        <View
+                          pointerEvents="none"
+                          style={{
+                            position: 'absolute',
+                            left: `${Math.max(0, Math.min(100, satVal * 100))}%`,
+                            top: `${Math.max(0, Math.min(100, (1 - valVal) * 100))}%`,
+                            transform: [{ translateX: -10 }, { translateY: -10 }],
+                          }}
+                          className="w-5 h-5 rounded-full border-2 border-white shadow-md bg-transparent"
+                        />
+                      </View>
+
+                      {/* Vertical Hue Slider */}
+                      <View
+                        className="w-6 h-44 rounded-full overflow-hidden relative border border-slate-200"
+                        onStartShouldSetResponder={() => true}
+                        onMoveShouldSetResponder={() => true}
+                        onResponderGrant={handleHueTouch}
+                        onResponderMove={handleHueTouch}
+                      >
+                        <Svg width="100%" height="100%">
+                          <Defs>
+                            <SvgLinearGradient id="hsvHueGrad" x1="0" y1="0" x2="0" y2="1">
+                              <Stop offset="0%" stopColor="#FF0000" />
+                              <Stop offset="17%" stopColor="#FFFF00" />
+                              <Stop offset="33%" stopColor="#00FF00" />
+                              <Stop offset="50%" stopColor="#00FFFF" />
+                              <Stop offset="67%" stopColor="#0000FF" />
+                              <Stop offset="83%" stopColor="#FF00FF" />
+                              <Stop offset="100%" stopColor="#FF0000" />
+                            </SvgLinearGradient>
+                          </Defs>
+                          <Rect width="100%" height="100%" rx={12} fill="url(#hsvHueGrad)" />
+                        </Svg>
+                        {/* Hue Thumb */}
+                        <View
+                          pointerEvents="none"
+                          style={{
+                            position: 'absolute',
+                            top: `${Math.max(0, Math.min(100, (hueVal / 360) * 100))}%`,
+                            transform: [{ translateY: -10 }],
+                          }}
+                          className="w-5 h-5 rounded-full border-2 border-white shadow-md bg-white/40 self-center"
+                        />
+                      </View>
+
+                      {/* Vertical Brightness / Shade Slider */}
+                      <View
+                        className="w-6 h-44 rounded-full overflow-hidden relative border border-slate-200"
+                        onStartShouldSetResponder={() => true}
+                        onMoveShouldSetResponder={() => true}
+                        onResponderGrant={handleBrightTouch}
+                        onResponderMove={handleBrightTouch}
+                      >
+                        <Svg width="100%" height="100%">
+                          <Defs>
+                            <SvgLinearGradient id="hsvBrightGrad" x1="0" y1="0" x2="0" y2="1">
+                              <Stop offset="0%" stopColor={hsvToHex(hueVal, 1, 1)} stopOpacity="1" />
+                              <Stop offset="100%" stopColor="#000000" stopOpacity="1" />
+                            </SvgLinearGradient>
+                          </Defs>
+                          <Rect width="100%" height="100%" rx={12} fill="url(#hsvBrightGrad)" />
+                        </Svg>
+                        {/* Brightness Thumb */}
+                        <View
+                          pointerEvents="none"
+                          style={{
+                            position: 'absolute',
+                            top: `${Math.max(0, Math.min(100, (1 - valVal) * 100))}%`,
+                            transform: [{ translateY: -10 }],
+                          }}
+                          className="w-5 h-5 rounded-full border-2 border-white shadow-md bg-white/40 self-center"
+                        />
+                      </View>
+                    </View>
+
+                    {/* 14 Curated Color Dots (2 Rows of 7) */}
+                    <View className="flex-row flex-wrap justify-between gap-y-2.5 mb-3.5">
+                      {PICKER_SWATCHES.map(hex => {
+                        const isMatch = (tempColor || '').toUpperCase() === hex.toUpperCase();
                         return (
                           <TouchableOpacity
-                            key={cat.name}
-                            onPress={() => setActiveCategoryIndex(idx)}
-                            className={`py-1 px-2.5 rounded-lg border ${
-                              isSelected
-                                ? 'bg-emerald-600 border-emerald-700'
-                                : 'bg-white border-slate-200'
-                            }`}
-                            activeOpacity={0.8}
-                          >
-                            <Text
-                              className={`text-2xs font-bold ${
-                                isSelected ? 'text-white' : 'text-slate-700'
-                              }`}
-                            >
-                              {cat.name}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </ScrollView>
-
-                    {/* Color Swatches Grid for Active Category */}
-                    <View className="flex-row flex-wrap gap-2.5 p-3 rounded-2xl bg-white border border-[#E2EBE6] mb-2.5">
-                      {COLOR_PALETTE_CATEGORIES[activeCategoryIndex].colors.map(colorItem => {
-                        const activeHex = colorTarget === 'top' ? form.topColor : form.bottomColor;
-                        const isSelected = (activeHex || '').toUpperCase() === colorItem.hex.toUpperCase();
-                        return (
-                          <TouchableOpacity
-                            key={colorItem.hex}
-                            onPress={() => handlePickColor(colorItem.hex)}
-                            style={{ backgroundColor: colorItem.hex }}
+                            key={hex}
+                            onPress={() => applySwatch(hex)}
+                            style={{ backgroundColor: hex }}
                             className={`w-9 h-9 rounded-full items-center justify-center border shadow-xs ${
-                              isSelected
+                              isMatch
                                 ? 'border-[3px] border-white ring-2 ring-emerald-600 scale-110'
                                 : 'border-slate-300'
                             }`}
                             activeOpacity={0.8}
                           >
-                            {isSelected && <Check size={14} color="#FFFFFF" strokeWidth={3.5} />}
+                            {isMatch && (
+                              <Check
+                                size={14}
+                                color={hex === '#FFFFFF' ? '#047857' : '#FFFFFF'}
+                                strokeWidth={3.5}
+                              />
+                            )}
                           </TouchableOpacity>
                         );
                       })}
                     </View>
-                  </View>
-                )}
 
-                {/* MODE 2: DUAL GRADIENT PRESETS */}
-                {paletteMode === 'presets' && (
-                  <View className="flex-row flex-wrap gap-2 mb-2.5">
-                    {GRADIENT_PRESETS.map(item => {
-                      const isMatch =
-                        (form.topColor || '').toUpperCase() === item.top.toUpperCase() &&
-                        (form.bottomColor || '').toUpperCase() === item.bottom.toUpperCase();
-                      return (
+                    {/* HEX Input Row with Eyedropper */}
+                    <View className="flex-row items-center gap-2 mb-3.5">
+                      <View
+                        className="w-10 h-10 rounded-xl border border-slate-300 shadow-xs"
+                        style={{ backgroundColor: tempColor || '#02381A' }}
+                      />
+                      <View className="flex-1 flex-row items-center bg-[#F8FAF8] border border-slate-200 rounded-xl px-3 h-11">
+                        <TextInput
+                          className="flex-1 text-sm font-black text-slate-800 py-0"
+                          value={tempColor}
+                          onChangeText={text => {
+                            const clean = text.trim();
+                            const hex = clean.startsWith('#') ? clean : `#${clean}`;
+                            setTempColor(hex);
+                            if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(hex)) {
+                              syncHsvFromHex(hex);
+                            }
+                          }}
+                          placeholder="#02381A"
+                          placeholderTextColor="#94A3B8"
+                          autoCapitalize="characters"
+                        />
                         <TouchableOpacity
-                          key={item.name}
-                          onPress={() => handleSelectPreset(item)}
-                          className={`flex-row items-center gap-1.5 py-1.5 px-2.5 rounded-xl border bg-white ${
-                            isMatch
-                              ? 'border-emerald-600 ring-1 ring-emerald-500 shadow-xs'
-                              : 'border-slate-200'
-                          }`}
-                          activeOpacity={0.8}
+                          onPress={() => {
+                            // Cycle through popular shades
+                            const favs = ['#02381A', '#07843D', '#9AADA6', '#EA580C', '#F2C500', '#0284C7'];
+                            const idx = favs.indexOf(tempColor.toUpperCase());
+                            const next = favs[(idx + 1) % favs.length];
+                            applySwatch(next);
+                          }}
+                          className="p-1 rounded-lg bg-slate-100"
+                          activeOpacity={0.7}
                         >
-                          {/* Mini Duo Swatch */}
-                          <View className="w-4 h-4 rounded-full overflow-hidden border border-slate-300 flex-row">
-                            <View className="flex-1" style={{ backgroundColor: item.top }} />
-                            <View className="flex-1" style={{ backgroundColor: item.bottom }} />
-                          </View>
-                          <Text className="text-2xs font-extrabold text-slate-800">{item.name}</Text>
-                          {isMatch && <Check size={11} color="#047857" strokeWidth={3} />}
+                          <Pipette size={18} color="#64748B" />
                         </TouchableOpacity>
-                      );
-                    })}
+                      </View>
+                    </View>
+
+                    {/* Action Buttons: Cancel and Apply */}
+                    <View className="flex-row items-center gap-3">
+                      <TouchableOpacity
+                        onPress={() => setShowPicker(false)}
+                        className="flex-1 py-3 rounded-xl bg-slate-100 items-center justify-center"
+                        activeOpacity={0.8}
+                      >
+                        <Text className="text-sm font-bold text-slate-700">Cancel</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        onPress={handleConfirmApply}
+                        className="flex-1 py-3 rounded-xl bg-emerald-700 items-center justify-center shadow-sm"
+                        activeOpacity={0.8}
+                      >
+                        <Text className="text-sm font-black text-white">✓ Apply</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 )}
-
-                {/* Custom HEX code input for active color target */}
-                <View className="flex-row items-center bg-white border border-slate-200 rounded-xl px-3 h-10">
-                  <View
-                    className="w-4 h-4 rounded-full mr-2 border border-slate-300"
-                    style={{
-                      backgroundColor:
-                        colorTarget === 'top' ? form.topColor || '#02381A' : form.bottomColor || '#15803D',
-                    }}
-                  />
-                  <Text className="text-2xs font-extrabold text-slate-500 mr-2 uppercase">
-                    {colorTarget === 'top' ? 'Top HEX:' : 'Bottom HEX:'}
-                  </Text>
-                  <TextInput
-                    className="flex-1 text-xs font-black text-slate-800 py-0"
-                    value={colorTarget === 'top' ? form.topColor : form.bottomColor}
-                    onChangeText={handleCustomHex}
-                    placeholder="#07843D"
-                    placeholderTextColor="#94A3B8"
-                    autoCapitalize="characters"
-                  />
-                </View>
-
-                {/* Quick Favorite Organic Shades (Sage Green, Forest Dark, Farm Green, Amber) */}
-                <View className="flex-row items-center gap-1.5 mt-2 flex-wrap">
-                  <Text className="text-2xs font-bold text-slate-400 mr-1">Quick:</Text>
-                  {[
-                    { label: '🌿 Farm Green', hex: '#07843D' },
-                    { label: '🌲 Deep Forest', hex: '#02381A' },
-                    { label: '🍃 Sage Green', hex: '#9AADA6' },
-                    { label: '🌾 Gold Sun', hex: '#F2C500' },
-                    { label: '🍊 Sunset', hex: '#EA580C' },
-                  ].map(quick => (
-                    <TouchableOpacity
-                      key={quick.hex}
-                      onPress={() => handlePickColor(quick.hex)}
-                      className="flex-row items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded-md"
-                      activeOpacity={0.7}
-                    >
-                      <View className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: quick.hex }} />
-                      <Text className="text-2xs font-bold text-slate-700">{quick.label}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
               </View>
 
               {/* ─── 3. BANNER PHOTO (GALLERY, CAMERA, SAMPLE PHOTOS) ─── */}
