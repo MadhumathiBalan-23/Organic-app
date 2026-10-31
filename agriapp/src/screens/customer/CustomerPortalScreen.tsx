@@ -970,7 +970,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
   }, [cartCount]);
 
   const renderFloatingCartBar = () => {
-    if (isCartBarDismissed || cartCount === 0 || customerScreen === 'CART' || customerScreen === 'CHECKOUT') return null;
+    if (isCartBarDismissed || cartCount === 0 || !['HOME', 'ALL_PRODUCTS', 'CATEGORY_PRODUCTS'].includes(customerScreen)) return null;
     return (
       <View className="absolute bottom-3 left-4 right-4 bg-[#0D2B1D] rounded-2xl px-4 py-3 flex-row items-center justify-between shadow-xl border border-[#22c55e] z-50">
         <View className="flex-1 mr-2">

@@ -5,6 +5,14 @@ import {
   ScrollView, useWindowDimensions, Animated
 } from 'react-native';
 import { MapPin, ArrowRight, AlertCircle, ArrowLeft, User, Store, ShieldCheck } from 'lucide-react-native';
+import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-reanimated';
+
+try {
+  configureReanimatedLogger({
+    level: ReanimatedLogLevel.warn,
+    strict: false,
+  });
+} catch (_) {}
 import {
   TopLeftLeaves,
   TopRightLeaves,
@@ -19,6 +27,10 @@ LogBox.ignoreLogs([
   'kgqk: UNAVAILABLE',
   '[LocationService] OSM reverse geocoding error',
   '[LocationService] Expo reverse geocoding error',
+  '[Reanimated] Reading from `value` during component render',
+  '[Reanimated] Writing to `value` during component render',
+  'Reading from `value` during component render',
+  'Writing to `value` during component render',
 ]);
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { defaultProduct, Product } from './src/constants/mockData';
