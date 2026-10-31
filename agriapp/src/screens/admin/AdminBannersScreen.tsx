@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
+  Pressable,
+  StyleSheet,
   TextInput,
   Modal,
   Alert,
@@ -41,13 +43,15 @@ export const hsvToHex = (h: number, s: number, v: number): string => {
   return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
 };
 
-export const hexToHsv = (hex: string): { h: number; s: number; v: number } => {
+export const hexToHsv = (hex?: string): { h: number; s: number; v: number } => {
+  if (!hex || typeof hex !== 'string') return { h: 140, s: 0.9, v: 0.25 };
   let c = hex.replace('#', '').trim();
   if (c.length === 3) c = c.split('').map(x => x + x).join('');
   if (c.length !== 6) return { h: 140, s: 0.9, v: 0.25 };
   const r = parseInt(c.slice(0, 2), 16) / 255;
   const g = parseInt(c.slice(2, 4), 16) / 255;
   const b = parseInt(c.slice(4, 6), 16) / 255;
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return { h: 140, s: 0.9, v: 0.25 };
 
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
@@ -198,8 +202,9 @@ export const AdminBannersScreen: React.FC = () => {
   const [modal, setModal] = useState<'add' | 'edit' | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
 
-  // Active Color Tab: 'top' | 'bottom' (Smooth tab switching)
+  // Active Color Tab: 'top' | 'bottom' (Smooth tab switching with Ref for zero-delay closures)
   const [activeColorTab, setActiveColorTab] = useState<'top' | 'bottom'>('top');
+  const activeColorTabRef = useRef<'top' | 'bottom'>('top');
 
   // HSV state for 2D color picker
   const [hueVal, setHueVal] = useState<number>(147);
@@ -207,8 +212,8 @@ export const AdminBannersScreen: React.FC = () => {
   const [valVal, setValVal] = useState<number>(0.22);
 
   // Sync HSV when color changes
-  const syncHsvFromHex = (hex: string) => {
-    const hsv = hexToHsv(hex);
+  const syncHsvFromHex = (hex?: string) => {
+    const hsv = hexToHsv(hex || '#02381A');
     setHueVal(hsv.h);
     setSatVal(hsv.s);
     setValVal(hsv.v);
@@ -216,6 +221,7 @@ export const AdminBannersScreen: React.FC = () => {
 
   // Switch between Top and Bottom color tabs reliably
   const handleSelectTab = (tab: 'top' | 'bottom') => {
+    activeColorTabRef.current = tab;
     setActiveColorTab(tab);
     const color = tab === 'top' ? (form.topColor || '#02381A') : (form.bottomColor || '#EA580C');
     syncHsvFromHex(color);
@@ -224,7 +230,8 @@ export const AdminBannersScreen: React.FC = () => {
   // Update current active color (top or bottom) in real time
   const updateCurrentColor = (hex: string) => {
     const clean = hex.trim().startsWith('#') ? hex.trim() : `#${hex.trim()}`;
-    if (activeColorTab === 'top') {
+    const currentTab = activeColorTabRef.current;
+    if (currentTab === 'top') {
       setForm(prev => ({
         ...prev,
         topColor: clean,
@@ -430,6 +437,7 @@ export const AdminBannersScreen: React.FC = () => {
       displayOrder: String(banners.length + 1),
       isActive: true,
     });
+    activeColorTabRef.current = 'top';
     setActiveColorTab('top');
     syncHsvFromHex('#02381A');
     setEditId(null);
@@ -468,6 +476,7 @@ export const AdminBannersScreen: React.FC = () => {
       displayOrder: String(b.displayOrder || 1),
       isActive: b.isActive !== undefined ? b.isActive : true,
     });
+    activeColorTabRef.current = 'top';
     setActiveColorTab('top');
     syncHsvFromHex(top);
     setEditId(b.id);
@@ -684,15 +693,12 @@ export const AdminBannersScreen: React.FC = () => {
 
       {/* ─── NEAT & SIMPLE BANNER ADD / EDIT MODAL ─── */}
       <Modal visible={!!modal} transparent animationType="slide" onRequestClose={() => setModal(null)}>
-        <TouchableOpacity
-          className="flex-1 bg-black/50 justify-end"
-          activeOpacity={1}
-          onPress={() => setModal(null)}
-        >
-          <View
-            className="bg-white rounded-t-3xl p-5 pb-8 max-h-[92%]"
-            onStartShouldSetResponder={() => true}
-          >
+        <View className="flex-1 bg-black/50 justify-end">
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setModal(null)}
+          />
+          <View className="bg-white rounded-t-3xl p-5 pb-8 max-h-[92%] z-10">
             {/* Top Handle Bar */}
             <View className="w-10 h-1 bg-[#E2EBE6] rounded-full self-center mb-3" />
 
@@ -786,18 +792,18 @@ export const AdminBannersScreen: React.FC = () => {
               {/* ─── 2. TOP & BOTTOM COLOR SELECTOR (IMAGE 2 DESIGN) ─── */}
               <View className="mb-4">
                 {/* Side-by-Side Dual Color Cards: Top Color & Bottom Color */}
-                <View className="flex-row items-center gap-3">
+                <View className="flex-row items-center gap-2.5">
                   {/* Top Color Button */}
-                  <TouchableOpacity
+                  <Pressable
                     onPress={() => handleSelectTab('top')}
-                    className={`flex-1 p-2.5 rounded-2xl border flex-row items-center justify-between ${
+                    hitSlop={8}
+                    className={`flex-1 p-3 rounded-2xl border flex-row items-center justify-between ${
                       activeColorTab === 'top'
-                        ? 'bg-white border-2 border-emerald-600 shadow-sm'
+                        ? 'bg-emerald-50/50 border-2 border-emerald-600 shadow-sm'
                         : 'bg-white border border-slate-200'
                     }`}
-                    activeOpacity={0.8}
                   >
-                    <View className="flex-row items-center gap-2.5">
+                    <View className="flex-row items-center gap-2.5" pointerEvents="none">
                       <View
                         className="w-10 h-10 rounded-xl border border-slate-200 shadow-xs"
                         style={{ backgroundColor: form.topColor || '#02381A' }}
@@ -807,20 +813,40 @@ export const AdminBannersScreen: React.FC = () => {
                         <Text className="text-sm font-black text-slate-900">{form.topColor || '#02381A'}</Text>
                       </View>
                     </View>
-                    <ChevronRight size={18} color={activeColorTab === 'top' ? '#059669' : '#64748B'} />
-                  </TouchableOpacity>
+                    <ChevronRight size={18} color={activeColorTab === 'top' ? '#059669' : '#94A3B8'} pointerEvents="none" />
+                  </Pressable>
+
+                  {/* Swap Colors Button */}
+                  <Pressable
+                    onPress={() => {
+                      const curTop = form.topColor || '#02381A';
+                      const curBottom = form.bottomColor || '#EA580C';
+                      setForm(prev => ({
+                        ...prev,
+                        topColor: curBottom,
+                        bottomColor: curTop,
+                        backgroundColor: `${curBottom}|${curTop}`,
+                      }));
+                      const newColor = activeColorTabRef.current === 'top' ? curBottom : curTop;
+                      syncHsvFromHex(newColor);
+                    }}
+                    hitSlop={8}
+                    className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 items-center justify-center active:bg-slate-200"
+                  >
+                    <Text className="text-emerald-700 font-black text-sm">⇄</Text>
+                  </Pressable>
 
                   {/* Bottom Color Button */}
-                  <TouchableOpacity
+                  <Pressable
                     onPress={() => handleSelectTab('bottom')}
-                    className={`flex-1 p-2.5 rounded-2xl border flex-row items-center justify-between ${
+                    hitSlop={8}
+                    className={`flex-1 p-3 rounded-2xl border flex-row items-center justify-between ${
                       activeColorTab === 'bottom'
-                        ? 'bg-white border-2 border-emerald-600 shadow-sm'
+                        ? 'bg-emerald-50/50 border-2 border-emerald-600 shadow-sm'
                         : 'bg-white border border-slate-200'
                     }`}
-                    activeOpacity={0.8}
                   >
-                    <View className="flex-row items-center gap-2.5">
+                    <View className="flex-row items-center gap-2.5" pointerEvents="none">
                       <View
                         className="w-10 h-10 rounded-xl border border-slate-200 shadow-xs"
                         style={{ backgroundColor: form.bottomColor || '#EA580C' }}
@@ -830,14 +856,15 @@ export const AdminBannersScreen: React.FC = () => {
                         <Text className="text-sm font-black text-slate-900">{form.bottomColor || '#EA580C'}</Text>
                       </View>
                     </View>
-                    <ChevronRight size={18} color={activeColorTab === 'bottom' ? '#059669' : '#64748B'} />
-                  </TouchableOpacity>
+                    <ChevronRight size={18} color={activeColorTab === 'bottom' ? '#059669' : '#94A3B8'} pointerEvents="none" />
+                  </Pressable>
                 </View>
 
                 {/* Arrow Pointer under active card */}
                 <View
+                  pointerEvents="none"
                   style={{
-                    marginLeft: activeColorTab === 'top' ? '22%' : '72%',
+                    marginLeft: activeColorTab === 'top' ? '20%' : '75%',
                     width: 0,
                     height: 0,
                     borderLeftWidth: 8,
@@ -847,21 +874,49 @@ export const AdminBannersScreen: React.FC = () => {
                     borderRightColor: 'transparent',
                     borderBottomColor: '#FFFFFF',
                     marginBottom: -1,
-                    zIndex: 30,
                   }}
                 />
 
                 {/* ─── "SELECT COLOR" CARD (ALWAYS ACTIVE & RELIABLE) ─── */}
-                <View className="bg-white rounded-3xl border border-slate-200 p-4 mt-1 mb-2 shadow-lg z-20">
-                  {/* Header */}
+                <View className="bg-white rounded-3xl border border-slate-200 p-4 mt-1 mb-2 shadow-lg">
+                  {/* Header with Direct Top / Bottom Switch Pills */}
                   <View className="flex-row items-center justify-between mb-3">
                     <Text className="text-base font-extrabold text-slate-900">
                       Select {activeColorTab === 'top' ? 'Top Color' : 'Bottom Color'}
                     </Text>
-                    <View className="bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
-                      <Text className="text-2xs font-extrabold text-emerald-800">
-                        {activeColorTab === 'top' ? 'EDITING TOP' : 'EDITING BOTTOM'}
-                      </Text>
+
+                    {/* Direct Segmented Switch: [ TOP ] [ BOTTOM ] */}
+                    <View className="flex-row items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+                      <Pressable
+                        onPress={() => handleSelectTab('top')}
+                        hitSlop={6}
+                        className={`px-3 py-1 rounded-lg ${
+                          activeColorTab === 'top' ? 'bg-emerald-700 shadow-xs' : 'bg-transparent'
+                        }`}
+                      >
+                        <Text
+                          className={`text-2xs font-extrabold ${
+                            activeColorTab === 'top' ? 'text-white' : 'text-slate-600'
+                          }`}
+                        >
+                          TOP
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => handleSelectTab('bottom')}
+                        hitSlop={6}
+                        className={`px-3 py-1 rounded-lg ${
+                          activeColorTab === 'bottom' ? 'bg-emerald-700 shadow-xs' : 'bg-transparent'
+                        }`}
+                      >
+                        <Text
+                          className={`text-2xs font-extrabold ${
+                            activeColorTab === 'bottom' ? 'text-white' : 'text-slate-600'
+                          }`}
+                        >
+                          BOTTOM
+                        </Text>
+                      </Pressable>
                     </View>
                   </View>
 
@@ -874,6 +929,9 @@ export const AdminBannersScreen: React.FC = () => {
                       onMoveShouldSetResponder={() => true}
                       onResponderGrant={handleCanvasTouch}
                       onResponderMove={handleCanvasTouch}
+                      onResponderRelease={() => {}}
+                      onResponderTerminate={() => {}}
+                      onResponderTerminationRequest={() => true}
                     >
                       <Svg width="100%" height="100%">
                         <Defs>
@@ -909,6 +967,9 @@ export const AdminBannersScreen: React.FC = () => {
                       onMoveShouldSetResponder={() => true}
                       onResponderGrant={handleHueTouch}
                       onResponderMove={handleHueTouch}
+                      onResponderRelease={() => {}}
+                      onResponderTerminate={() => {}}
+                      onResponderTerminationRequest={() => true}
                     >
                       <Svg width="100%" height="100%">
                         <Defs>
@@ -943,6 +1004,9 @@ export const AdminBannersScreen: React.FC = () => {
                       onMoveShouldSetResponder={() => true}
                       onResponderGrant={handleBrightTouch}
                       onResponderMove={handleBrightTouch}
+                      onResponderRelease={() => {}}
+                      onResponderTerminate={() => {}}
+                      onResponderTerminationRequest={() => true}
                     >
                       <Svg width="100%" height="100%">
                         <Defs>
@@ -972,16 +1036,16 @@ export const AdminBannersScreen: React.FC = () => {
                       const currentActiveHex = activeColorTab === 'top' ? form.topColor : form.bottomColor;
                       const isMatch = (currentActiveHex || '').toUpperCase() === hex.toUpperCase();
                       return (
-                        <TouchableOpacity
+                        <Pressable
                           key={hex}
                           onPress={() => handleSwatchPress(hex)}
+                          hitSlop={4}
                           style={{ backgroundColor: hex }}
                           className={`w-9 h-9 rounded-full items-center justify-center border shadow-xs ${
                             isMatch
                               ? 'border-[3px] border-white ring-2 ring-emerald-600 scale-110'
                               : 'border-slate-300'
                           }`}
-                          activeOpacity={0.8}
                         >
                           {isMatch && (
                             <Check
@@ -990,7 +1054,7 @@ export const AdminBannersScreen: React.FC = () => {
                               strokeWidth={3.5}
                             />
                           )}
-                        </TouchableOpacity>
+                        </Pressable>
                       );
                     })}
                   </View>
@@ -1169,7 +1233,7 @@ export const AdminBannersScreen: React.FC = () => {
               </View>
             </ScrollView>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
     </View>
   );
