@@ -198,17 +198,15 @@ export const AdminBannersScreen: React.FC = () => {
   const [modal, setModal] = useState<'add' | 'edit' | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
 
-  // Active Color Picker state (matching Image 2)
-  const [showPicker, setShowPicker] = useState<boolean>(true);
-  const [selectedTarget, setSelectedTarget] = useState<'top' | 'bottom'>('top');
-  const [tempColor, setTempColor] = useState<string>('#02381A');
+  // Active Color Tab: 'top' | 'bottom' (Smooth tab switching)
+  const [activeColorTab, setActiveColorTab] = useState<'top' | 'bottom'>('top');
 
   // HSV state for 2D color picker
   const [hueVal, setHueVal] = useState<number>(147);
   const [satVal, setSatVal] = useState<number>(0.96);
   const [valVal, setValVal] = useState<number>(0.22);
 
-  // Sync HSV when tempColor changes
+  // Sync HSV when color changes
   const syncHsvFromHex = (hex: string) => {
     const hsv = hexToHsv(hex);
     setHueVal(hsv.h);
@@ -216,18 +214,34 @@ export const AdminBannersScreen: React.FC = () => {
     setValVal(hsv.v);
   };
 
-  // Open picker for a target
-  const handleOpenPicker = (target: 'top' | 'bottom') => {
-    setSelectedTarget(target);
-    const currentColor = target === 'top' ? (form.topColor || '#02381A') : (form.bottomColor || '#EA580C');
-    setTempColor(currentColor);
-    syncHsvFromHex(currentColor);
-    setShowPicker(true);
+  // Switch between Top and Bottom color tabs reliably
+  const handleSelectTab = (tab: 'top' | 'bottom') => {
+    setActiveColorTab(tab);
+    const color = tab === 'top' ? (form.topColor || '#02381A') : (form.bottomColor || '#EA580C');
+    syncHsvFromHex(color);
+  };
+
+  // Update current active color (top or bottom) in real time
+  const updateCurrentColor = (hex: string) => {
+    const clean = hex.trim().startsWith('#') ? hex.trim() : `#${hex.trim()}`;
+    if (activeColorTab === 'top') {
+      setForm(prev => ({
+        ...prev,
+        topColor: clean,
+        backgroundColor: `${clean}|${prev.bottomColor || '#EA580C'}`,
+      }));
+    } else {
+      setForm(prev => ({
+        ...prev,
+        bottomColor: clean,
+        backgroundColor: `${prev.topColor || '#02381A'}|${clean}`,
+      }));
+    }
   };
 
   // Apply swatch click
-  const applySwatch = (hex: string) => {
-    setTempColor(hex);
+  const handleSwatchPress = (hex: string) => {
+    updateCurrentColor(hex);
     syncHsvFromHex(hex);
   };
 
@@ -241,7 +255,7 @@ export const AdminBannersScreen: React.FC = () => {
     setSatVal(newSat);
     setValVal(newVal);
     const newHex = hsvToHex(hueVal, newSat, newVal);
-    setTempColor(newHex);
+    updateCurrentColor(newHex);
   };
 
   // Hue Slider touch handler
@@ -251,7 +265,7 @@ export const AdminBannersScreen: React.FC = () => {
     const newHue = Math.round((clampedY / 176) * 360);
     setHueVal(newHue);
     const newHex = hsvToHex(newHue, satVal, valVal);
-    setTempColor(newHex);
+    updateCurrentColor(newHex);
   };
 
   // Brightness/Value Slider touch handler
@@ -261,26 +275,17 @@ export const AdminBannersScreen: React.FC = () => {
     const newVal = Math.max(0, Math.min(1, 1 - clampedY / 176));
     setValVal(newVal);
     const newHex = hsvToHex(hueVal, satVal, newVal);
-    setTempColor(newHex);
+    updateCurrentColor(newHex);
   };
 
-  // Confirm Apply
-  const handleConfirmApply = () => {
-    const cleanHex = tempColor.trim().startsWith('#') ? tempColor.trim() : `#${tempColor.trim()}`;
-    if (selectedTarget === 'top') {
-      setForm(prev => ({
-        ...prev,
-        topColor: cleanHex,
-        backgroundColor: `${cleanHex}|${prev.bottomColor || '#EA580C'}`,
-      }));
-    } else {
-      setForm(prev => ({
-        ...prev,
-        bottomColor: cleanHex,
-        backgroundColor: `${prev.topColor || '#02381A'}|${cleanHex}`,
-      }));
+  // Direct HEX Text Input handler
+  const handleHexInput = (text: string) => {
+    const clean = text.trim();
+    const hex = clean.startsWith('#') ? clean : `#${clean}`;
+    updateCurrentColor(hex);
+    if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(hex)) {
+      syncHsvFromHex(hex);
     }
-    setShowPicker(false);
   };
 
   // Loading states
@@ -410,7 +415,7 @@ export const AdminBannersScreen: React.FC = () => {
   // Open modal in Add mode
   const openAdd = () => {
     setForm({
-      title: '',
+      title: 'Organic Promotional Banner',
       subtitle: '',
       imageUrl: SAMPLE_PHOTOS[0].url,
       topColor: '#02381A',
@@ -425,10 +430,8 @@ export const AdminBannersScreen: React.FC = () => {
       displayOrder: String(banners.length + 1),
       isActive: true,
     });
-    setSelectedTarget('top');
-    setTempColor('#02381A');
+    setActiveColorTab('top');
     syncHsvFromHex('#02381A');
-    setShowPicker(true);
     setEditId(null);
     setModal('add');
   };
@@ -450,7 +453,7 @@ export const AdminBannersScreen: React.FC = () => {
     }
 
     setForm({
-      title: b.title || '',
+      title: b.title || 'Organic Promotional Banner',
       subtitle: b.subtitle || '',
       imageUrl: b.imageUrl || '',
       topColor: top,
@@ -465,30 +468,25 @@ export const AdminBannersScreen: React.FC = () => {
       displayOrder: String(b.displayOrder || 1),
       isActive: b.isActive !== undefined ? b.isActive : true,
     });
-    setSelectedTarget('top');
-    setTempColor(top);
+    setActiveColorTab('top');
     syncHsvFromHex(top);
-    setShowPicker(true);
     setEditId(b.id);
     setModal('edit');
   };
 
   // Save banner
   const handleSave = async () => {
-    if (!form.title.trim()) {
-      Alert.alert('Title Required', 'Please enter a headline title for this banner.');
-      return;
-    }
-
     const finalBg =
       form.topColor && form.bottomColor
         ? `${form.topColor.trim()}|${form.bottomColor.trim()}`
-        : form.backgroundColor || '#02381A|#15803D';
+        : form.backgroundColor || '#02381A|#EA580C';
+
+    const bannerTitle = form.title?.trim() || 'Organic Promotional Banner';
 
     const payload = {
-      title: form.title.trim(),
+      title: bannerTitle,
       subtitle: form.subtitle?.trim() || undefined,
-      imageUrl: form.imageUrl.trim() || undefined,
+      imageUrl: form.imageUrl?.trim() || undefined,
       backgroundColor: finalBg,
       textColor: form.textColor || '#FFFFFF',
       buttonColor: form.buttonColor || '#FDE047',
@@ -791,9 +789,9 @@ export const AdminBannersScreen: React.FC = () => {
                 <View className="flex-row items-center gap-3">
                   {/* Top Color Button */}
                   <TouchableOpacity
-                    onPress={() => handleOpenPicker('top')}
+                    onPress={() => handleSelectTab('top')}
                     className={`flex-1 p-2.5 rounded-2xl border flex-row items-center justify-between ${
-                      showPicker && selectedTarget === 'top'
+                      activeColorTab === 'top'
                         ? 'bg-white border-2 border-emerald-600 shadow-sm'
                         : 'bg-white border border-slate-200'
                     }`}
@@ -809,14 +807,14 @@ export const AdminBannersScreen: React.FC = () => {
                         <Text className="text-sm font-black text-slate-900">{form.topColor || '#02381A'}</Text>
                       </View>
                     </View>
-                    <ChevronRight size={18} color="#64748B" />
+                    <ChevronRight size={18} color={activeColorTab === 'top' ? '#059669' : '#64748B'} />
                   </TouchableOpacity>
 
                   {/* Bottom Color Button */}
                   <TouchableOpacity
-                    onPress={() => handleOpenPicker('bottom')}
+                    onPress={() => handleSelectTab('bottom')}
                     className={`flex-1 p-2.5 rounded-2xl border flex-row items-center justify-between ${
-                      showPicker && selectedTarget === 'bottom'
+                      activeColorTab === 'bottom'
                         ? 'bg-white border-2 border-emerald-600 shadow-sm'
                         : 'bg-white border border-slate-200'
                     }`}
@@ -832,231 +830,205 @@ export const AdminBannersScreen: React.FC = () => {
                         <Text className="text-sm font-black text-slate-900">{form.bottomColor || '#EA580C'}</Text>
                       </View>
                     </View>
-                    <ChevronRight size={18} color="#64748B" />
+                    <ChevronRight size={18} color={activeColorTab === 'bottom' ? '#059669' : '#64748B'} />
                   </TouchableOpacity>
                 </View>
 
                 {/* Arrow Pointer under active card */}
-                {showPicker && (
-                  <View
-                    style={{
-                      marginLeft: selectedTarget === 'top' ? '22%' : '72%',
-                      width: 0,
-                      height: 0,
-                      borderLeftWidth: 8,
-                      borderRightWidth: 8,
-                      borderBottomWidth: 8,
-                      borderLeftColor: 'transparent',
-                      borderRightColor: 'transparent',
-                      borderBottomColor: '#FFFFFF',
-                      marginBottom: -1,
-                      zIndex: 30,
-                    }}
-                  />
-                )}
+                <View
+                  style={{
+                    marginLeft: activeColorTab === 'top' ? '22%' : '72%',
+                    width: 0,
+                    height: 0,
+                    borderLeftWidth: 8,
+                    borderRightWidth: 8,
+                    borderBottomWidth: 8,
+                    borderLeftColor: 'transparent',
+                    borderRightColor: 'transparent',
+                    borderBottomColor: '#FFFFFF',
+                    marginBottom: -1,
+                    zIndex: 30,
+                  }}
+                />
 
-                {/* ─── "SELECT COLOR" POPOVER CARD (EXACT IMAGE 2 REPLICA) ─── */}
-                {showPicker && (
-                  <View className="bg-white rounded-3xl border border-slate-200 p-4 mt-1 mb-2 shadow-lg z-20">
-                    {/* Header */}
-                    <View className="flex-row items-center justify-between mb-3">
-                      <Text className="text-base font-extrabold text-slate-900">Select Color</Text>
+                {/* ─── "SELECT COLOR" CARD (ALWAYS ACTIVE & RELIABLE) ─── */}
+                <View className="bg-white rounded-3xl border border-slate-200 p-4 mt-1 mb-2 shadow-lg z-20">
+                  {/* Header */}
+                  <View className="flex-row items-center justify-between mb-3">
+                    <Text className="text-base font-extrabold text-slate-900">
+                      Select {activeColorTab === 'top' ? 'Top Color' : 'Bottom Color'}
+                    </Text>
+                    <View className="bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                      <Text className="text-2xs font-extrabold text-emerald-800">
+                        {activeColorTab === 'top' ? 'EDITING TOP' : 'EDITING BOTTOM'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* 2D Saturation / Value Box + Hue & Brightness Sliders */}
+                  <View className="flex-row gap-2.5 mb-3.5">
+                    {/* 2D Canvas */}
+                    <View
+                      className="flex-1 h-44 rounded-2xl overflow-hidden relative border border-slate-200"
+                      onStartShouldSetResponder={() => true}
+                      onMoveShouldSetResponder={() => true}
+                      onResponderGrant={handleCanvasTouch}
+                      onResponderMove={handleCanvasTouch}
+                    >
+                      <Svg width="100%" height="100%">
+                        <Defs>
+                          <SvgLinearGradient id="hsvSatGrad" x1="0" y1="0" x2="1" y2="0">
+                            <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
+                            <Stop offset="100%" stopColor={hsvToHex(hueVal, 1, 1)} stopOpacity="1" />
+                          </SvgLinearGradient>
+                          <SvgLinearGradient id="hsvValGrad" x1="0" y1="0" x2="0" y2="1">
+                            <Stop offset="0%" stopColor="#000000" stopOpacity="0" />
+                            <Stop offset="100%" stopColor="#000000" stopOpacity="1" />
+                          </SvgLinearGradient>
+                        </Defs>
+                        <Rect width="100%" height="100%" fill="url(#hsvSatGrad)" />
+                        <Rect width="100%" height="100%" fill="url(#hsvValGrad)" />
+                      </Svg>
+                      {/* Interactive Selector Thumb */}
+                      <View
+                        pointerEvents="none"
+                        style={{
+                          position: 'absolute',
+                          left: `${Math.max(0, Math.min(100, satVal * 100))}%`,
+                          top: `${Math.max(0, Math.min(100, (1 - valVal) * 100))}%`,
+                          transform: [{ translateX: -10 }, { translateY: -10 }],
+                        }}
+                        className="w-5 h-5 rounded-full border-2 border-white shadow-md bg-transparent"
+                      />
+                    </View>
+
+                    {/* Vertical Hue Slider */}
+                    <View
+                      className="w-6 h-44 rounded-full overflow-hidden relative border border-slate-200"
+                      onStartShouldSetResponder={() => true}
+                      onMoveShouldSetResponder={() => true}
+                      onResponderGrant={handleHueTouch}
+                      onResponderMove={handleHueTouch}
+                    >
+                      <Svg width="100%" height="100%">
+                        <Defs>
+                          <SvgLinearGradient id="hsvHueGrad" x1="0" y1="0" x2="0" y2="1">
+                            <Stop offset="0%" stopColor="#FF0000" />
+                            <Stop offset="17%" stopColor="#FFFF00" />
+                            <Stop offset="33%" stopColor="#00FF00" />
+                            <Stop offset="50%" stopColor="#00FFFF" />
+                            <Stop offset="67%" stopColor="#0000FF" />
+                            <Stop offset="83%" stopColor="#FF00FF" />
+                            <Stop offset="100%" stopColor="#FF0000" />
+                          </SvgLinearGradient>
+                        </Defs>
+                        <Rect width="100%" height="100%" rx={12} fill="url(#hsvHueGrad)" />
+                      </Svg>
+                      {/* Hue Thumb */}
+                      <View
+                        pointerEvents="none"
+                        style={{
+                          position: 'absolute',
+                          top: `${Math.max(0, Math.min(100, (hueVal / 360) * 100))}%`,
+                          transform: [{ translateY: -10 }],
+                        }}
+                        className="w-5 h-5 rounded-full border-2 border-white shadow-md bg-white/40 self-center"
+                      />
+                    </View>
+
+                    {/* Vertical Brightness / Shade Slider */}
+                    <View
+                      className="w-6 h-44 rounded-full overflow-hidden relative border border-slate-200"
+                      onStartShouldSetResponder={() => true}
+                      onMoveShouldSetResponder={() => true}
+                      onResponderGrant={handleBrightTouch}
+                      onResponderMove={handleBrightTouch}
+                    >
+                      <Svg width="100%" height="100%">
+                        <Defs>
+                          <SvgLinearGradient id="hsvBrightGrad" x1="0" y1="0" x2="0" y2="1">
+                            <Stop offset="0%" stopColor={hsvToHex(hueVal, 1, 1)} stopOpacity="1" />
+                            <Stop offset="100%" stopColor="#000000" stopOpacity="1" />
+                          </SvgLinearGradient>
+                        </Defs>
+                        <Rect width="100%" height="100%" rx={12} fill="url(#hsvBrightGrad)" />
+                      </Svg>
+                      {/* Brightness Thumb */}
+                      <View
+                        pointerEvents="none"
+                        style={{
+                          position: 'absolute',
+                          top: `${Math.max(0, Math.min(100, (1 - valVal) * 100))}%`,
+                          transform: [{ translateY: -10 }],
+                        }}
+                        className="w-5 h-5 rounded-full border-2 border-white shadow-md bg-white/40 self-center"
+                      />
+                    </View>
+                  </View>
+
+                  {/* 14 Curated Color Dots (2 Rows of 7) */}
+                  <View className="flex-row flex-wrap justify-between gap-y-2.5 mb-3.5">
+                    {PICKER_SWATCHES.map(hex => {
+                      const currentActiveHex = activeColorTab === 'top' ? form.topColor : form.bottomColor;
+                      const isMatch = (currentActiveHex || '').toUpperCase() === hex.toUpperCase();
+                      return (
+                        <TouchableOpacity
+                          key={hex}
+                          onPress={() => handleSwatchPress(hex)}
+                          style={{ backgroundColor: hex }}
+                          className={`w-9 h-9 rounded-full items-center justify-center border shadow-xs ${
+                            isMatch
+                              ? 'border-[3px] border-white ring-2 ring-emerald-600 scale-110'
+                              : 'border-slate-300'
+                          }`}
+                          activeOpacity={0.8}
+                        >
+                          {isMatch && (
+                            <Check
+                              size={14}
+                              color={hex === '#FFFFFF' ? '#047857' : '#FFFFFF'}
+                              strokeWidth={3.5}
+                            />
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
+                  {/* HEX Input Row with Eyedropper */}
+                  <View className="flex-row items-center gap-2">
+                    <View
+                      className="w-10 h-10 rounded-xl border border-slate-300 shadow-xs"
+                      style={{
+                        backgroundColor:
+                          activeColorTab === 'top' ? form.topColor || '#02381A' : form.bottomColor || '#EA580C',
+                      }}
+                    />
+                    <View className="flex-1 flex-row items-center bg-[#F8FAF8] border border-slate-200 rounded-xl px-3 h-11">
+                      <TextInput
+                        className="flex-1 text-sm font-black text-slate-800 py-0"
+                        value={activeColorTab === 'top' ? form.topColor : form.bottomColor}
+                        onChangeText={handleHexInput}
+                        placeholder="#02381A"
+                        placeholderTextColor="#94A3B8"
+                        autoCapitalize="characters"
+                      />
                       <TouchableOpacity
-                        onPress={() => setShowPicker(false)}
-                        className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center"
+                        onPress={() => {
+                          const favs = ['#02381A', '#07843D', '#9AADA6', '#EA580C', '#F2C500', '#0284C7'];
+                          const cur = (activeColorTab === 'top' ? form.topColor : form.bottomColor) || '';
+                          const idx = favs.indexOf(cur.toUpperCase());
+                          const next = favs[(idx + 1) % favs.length];
+                          handleSwatchPress(next);
+                        }}
+                        className="p-1 rounded-lg bg-slate-100"
                         activeOpacity={0.7}
                       >
-                        <X size={16} color="#64748B" />
-                      </TouchableOpacity>
-                    </View>
-
-                    {/* 2D Saturation / Value Box + Hue & Brightness Sliders */}
-                    <View className="flex-row gap-2.5 mb-3.5">
-                      {/* 2D Canvas */}
-                      <View
-                        className="flex-1 h-44 rounded-2xl overflow-hidden relative border border-slate-200"
-                        onStartShouldSetResponder={() => true}
-                        onMoveShouldSetResponder={() => true}
-                        onResponderGrant={handleCanvasTouch}
-                        onResponderMove={handleCanvasTouch}
-                      >
-                        <Svg width="100%" height="100%">
-                          <Defs>
-                            <SvgLinearGradient id="hsvSatGrad" x1="0" y1="0" x2="1" y2="0">
-                              <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
-                              <Stop offset="100%" stopColor={hsvToHex(hueVal, 1, 1)} stopOpacity="1" />
-                            </SvgLinearGradient>
-                            <SvgLinearGradient id="hsvValGrad" x1="0" y1="0" x2="0" y2="1">
-                              <Stop offset="0%" stopColor="#000000" stopOpacity="0" />
-                              <Stop offset="100%" stopColor="#000000" stopOpacity="1" />
-                            </SvgLinearGradient>
-                          </Defs>
-                          <Rect width="100%" height="100%" fill="url(#hsvSatGrad)" />
-                          <Rect width="100%" height="100%" fill="url(#hsvValGrad)" />
-                        </Svg>
-                        {/* Interactive Selector Thumb */}
-                        <View
-                          pointerEvents="none"
-                          style={{
-                            position: 'absolute',
-                            left: `${Math.max(0, Math.min(100, satVal * 100))}%`,
-                            top: `${Math.max(0, Math.min(100, (1 - valVal) * 100))}%`,
-                            transform: [{ translateX: -10 }, { translateY: -10 }],
-                          }}
-                          className="w-5 h-5 rounded-full border-2 border-white shadow-md bg-transparent"
-                        />
-                      </View>
-
-                      {/* Vertical Hue Slider */}
-                      <View
-                        className="w-6 h-44 rounded-full overflow-hidden relative border border-slate-200"
-                        onStartShouldSetResponder={() => true}
-                        onMoveShouldSetResponder={() => true}
-                        onResponderGrant={handleHueTouch}
-                        onResponderMove={handleHueTouch}
-                      >
-                        <Svg width="100%" height="100%">
-                          <Defs>
-                            <SvgLinearGradient id="hsvHueGrad" x1="0" y1="0" x2="0" y2="1">
-                              <Stop offset="0%" stopColor="#FF0000" />
-                              <Stop offset="17%" stopColor="#FFFF00" />
-                              <Stop offset="33%" stopColor="#00FF00" />
-                              <Stop offset="50%" stopColor="#00FFFF" />
-                              <Stop offset="67%" stopColor="#0000FF" />
-                              <Stop offset="83%" stopColor="#FF00FF" />
-                              <Stop offset="100%" stopColor="#FF0000" />
-                            </SvgLinearGradient>
-                          </Defs>
-                          <Rect width="100%" height="100%" rx={12} fill="url(#hsvHueGrad)" />
-                        </Svg>
-                        {/* Hue Thumb */}
-                        <View
-                          pointerEvents="none"
-                          style={{
-                            position: 'absolute',
-                            top: `${Math.max(0, Math.min(100, (hueVal / 360) * 100))}%`,
-                            transform: [{ translateY: -10 }],
-                          }}
-                          className="w-5 h-5 rounded-full border-2 border-white shadow-md bg-white/40 self-center"
-                        />
-                      </View>
-
-                      {/* Vertical Brightness / Shade Slider */}
-                      <View
-                        className="w-6 h-44 rounded-full overflow-hidden relative border border-slate-200"
-                        onStartShouldSetResponder={() => true}
-                        onMoveShouldSetResponder={() => true}
-                        onResponderGrant={handleBrightTouch}
-                        onResponderMove={handleBrightTouch}
-                      >
-                        <Svg width="100%" height="100%">
-                          <Defs>
-                            <SvgLinearGradient id="hsvBrightGrad" x1="0" y1="0" x2="0" y2="1">
-                              <Stop offset="0%" stopColor={hsvToHex(hueVal, 1, 1)} stopOpacity="1" />
-                              <Stop offset="100%" stopColor="#000000" stopOpacity="1" />
-                            </SvgLinearGradient>
-                          </Defs>
-                          <Rect width="100%" height="100%" rx={12} fill="url(#hsvBrightGrad)" />
-                        </Svg>
-                        {/* Brightness Thumb */}
-                        <View
-                          pointerEvents="none"
-                          style={{
-                            position: 'absolute',
-                            top: `${Math.max(0, Math.min(100, (1 - valVal) * 100))}%`,
-                            transform: [{ translateY: -10 }],
-                          }}
-                          className="w-5 h-5 rounded-full border-2 border-white shadow-md bg-white/40 self-center"
-                        />
-                      </View>
-                    </View>
-
-                    {/* 14 Curated Color Dots (2 Rows of 7) */}
-                    <View className="flex-row flex-wrap justify-between gap-y-2.5 mb-3.5">
-                      {PICKER_SWATCHES.map(hex => {
-                        const isMatch = (tempColor || '').toUpperCase() === hex.toUpperCase();
-                        return (
-                          <TouchableOpacity
-                            key={hex}
-                            onPress={() => applySwatch(hex)}
-                            style={{ backgroundColor: hex }}
-                            className={`w-9 h-9 rounded-full items-center justify-center border shadow-xs ${
-                              isMatch
-                                ? 'border-[3px] border-white ring-2 ring-emerald-600 scale-110'
-                                : 'border-slate-300'
-                            }`}
-                            activeOpacity={0.8}
-                          >
-                            {isMatch && (
-                              <Check
-                                size={14}
-                                color={hex === '#FFFFFF' ? '#047857' : '#FFFFFF'}
-                                strokeWidth={3.5}
-                              />
-                            )}
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-
-                    {/* HEX Input Row with Eyedropper */}
-                    <View className="flex-row items-center gap-2 mb-3.5">
-                      <View
-                        className="w-10 h-10 rounded-xl border border-slate-300 shadow-xs"
-                        style={{ backgroundColor: tempColor || '#02381A' }}
-                      />
-                      <View className="flex-1 flex-row items-center bg-[#F8FAF8] border border-slate-200 rounded-xl px-3 h-11">
-                        <TextInput
-                          className="flex-1 text-sm font-black text-slate-800 py-0"
-                          value={tempColor}
-                          onChangeText={text => {
-                            const clean = text.trim();
-                            const hex = clean.startsWith('#') ? clean : `#${clean}`;
-                            setTempColor(hex);
-                            if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(hex)) {
-                              syncHsvFromHex(hex);
-                            }
-                          }}
-                          placeholder="#02381A"
-                          placeholderTextColor="#94A3B8"
-                          autoCapitalize="characters"
-                        />
-                        <TouchableOpacity
-                          onPress={() => {
-                            // Cycle through popular shades
-                            const favs = ['#02381A', '#07843D', '#9AADA6', '#EA580C', '#F2C500', '#0284C7'];
-                            const idx = favs.indexOf(tempColor.toUpperCase());
-                            const next = favs[(idx + 1) % favs.length];
-                            applySwatch(next);
-                          }}
-                          className="p-1 rounded-lg bg-slate-100"
-                          activeOpacity={0.7}
-                        >
-                          <Pipette size={18} color="#64748B" />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-
-                    {/* Action Buttons: Cancel and Apply */}
-                    <View className="flex-row items-center gap-3">
-                      <TouchableOpacity
-                        onPress={() => setShowPicker(false)}
-                        className="flex-1 py-3 rounded-xl bg-slate-100 items-center justify-center"
-                        activeOpacity={0.8}
-                      >
-                        <Text className="text-sm font-bold text-slate-700">Cancel</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        onPress={handleConfirmApply}
-                        className="flex-1 py-3 rounded-xl bg-emerald-700 items-center justify-center shadow-sm"
-                        activeOpacity={0.8}
-                      >
-                        <Text className="text-sm font-black text-white">✓ Apply</Text>
+                        <Pipette size={18} color="#64748B" />
                       </TouchableOpacity>
                     </View>
                   </View>
-                )}
+                </View>
               </View>
 
               {/* ─── 3. BANNER PHOTO (GALLERY, CAMERA, SAMPLE PHOTOS) ─── */}
@@ -1101,7 +1073,7 @@ export const AdminBannersScreen: React.FC = () => {
                 </View>
 
                 {/* 4 Quick Sample Photos */}
-                <View className="flex-row gap-2 mb-2">
+                <View className="flex-row gap-2">
                   {SAMPLE_PHOTOS.map(sample => {
                     const isSelected = form.imageUrl === sample.url;
                     return (
@@ -1120,54 +1092,9 @@ export const AdminBannersScreen: React.FC = () => {
                     );
                   })}
                 </View>
-
-                {/* Direct Image URL input */}
-                <TextInput
-                  className="border border-[#E2EBE6] rounded-xl px-3.5 h-10 text-xs text-[#1a1a2e] bg-[#F7FAF8]"
-                  value={form.imageUrl}
-                  onChangeText={v => setForm({ ...form, imageUrl: v })}
-                  placeholder="Or paste direct image URL (https://...)"
-                  placeholderTextColor={C.textMuted}
-                />
               </View>
 
-              {/* ─── 4. BANNER TITLE ─── */}
-              <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider mb-1">
-                Banner Headline Title *
-              </Text>
-              <TextInput
-                className="border border-[#E2EBE6] rounded-xl px-3.5 h-11 text-sm text-[#1a1a2e] bg-[#F7FAF8] mb-3 font-semibold"
-                value={form.title}
-                onChangeText={v => setForm({ ...form, title: v })}
-                placeholder="e.g. Grand Festive Harvest Specials 🪔"
-                placeholderTextColor={C.textMuted}
-              />
-
-              {/* ─── 5. SUBTITLE / TAGLINE ─── */}
-              <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider mb-1">
-                Subtitle Tagline (Optional)
-              </Text>
-              <TextInput
-                className="border border-[#E2EBE6] rounded-xl px-3.5 h-11 text-sm text-[#1a1a2e] bg-[#F7FAF8] mb-3"
-                value={form.subtitle}
-                onChangeText={v => setForm({ ...form, subtitle: v })}
-                placeholder="e.g. 100% Certified Organic • Flat 20% OFF Daily"
-                placeholderTextColor={C.textMuted}
-              />
-
-              {/* ─── 6. BUTTON TEXT ─── */}
-              <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider mb-1">
-                Call To Action Button Text
-              </Text>
-              <TextInput
-                className="border border-[#E2EBE6] rounded-xl px-3.5 h-11 text-sm text-[#1a1a2e] bg-[#F7FAF8] mb-3 font-bold"
-                value={form.buttonText}
-                onChangeText={v => setForm({ ...form, buttonText: v })}
-                placeholder="Shop Now →"
-                placeholderTextColor={C.textMuted}
-              />
-
-              {/* ─── 7. LINK DESTINATION ─── */}
+              {/* ─── 4. CUSTOMER TABS (WHEN CUSTOMER TAPS BANNER) ─── */}
               <Text className="text-xs font-bold text-[#5a6a63] uppercase tracking-wider mb-1">
                 When Customer Taps Banner:
               </Text>
