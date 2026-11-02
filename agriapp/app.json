@@ -2,7 +2,7 @@
   "expo": {
     "name": "Mathira Organic Farming",
     "slug": "mathira-organic-farming",
-    "version": "0.1.0",
+    "version": "0.0.2",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "assetBundlePatterns": [
