@@ -1,7 +1,7 @@
 // Comprehensive Automated Test Suite for User Isolation, Auth & Functions
 const http = require('http');
 
-const BASE_URL = 'http://localhost:5050/api';
+const BASE_URL = process.env.BASE_URL || 'http://localhost:5050/api';
 
 function request(method, path, body = null, headers = {}) {
   return new Promise((resolve, reject) => {

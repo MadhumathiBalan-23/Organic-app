@@ -6,7 +6,7 @@
 
 const http = require('http');
 
-const API_BASE = 'https://mathira.jeenora.com/api';
+const API_BASE = process.env.API_BASE || 'https://mathira.jeenora.com/api';
 
 function httpRequest(url, method = 'GET', data = null) {
   return new Promise((resolve, reject) => {

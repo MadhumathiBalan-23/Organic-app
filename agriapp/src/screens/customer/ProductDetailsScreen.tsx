@@ -573,7 +573,7 @@ export const ProductDetailsScreen: React.FC<ProductDetailsScreenProps> = ({
             </TouchableOpacity>
           )}
 
-          {product.subscriptionAllowed && (
+          {(product.subscriptionAllowed !== false) && (
             <TouchableOpacity
               className="flex-row items-center justify-center gap-1.5 bg-[#F2C500] px-3.5 py-2.5 rounded-xl shadow-xs active:bg-amber-400"
               onPress={() => onStartSubscription(product, detailQty)}

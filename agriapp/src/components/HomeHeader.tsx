@@ -104,7 +104,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
   onSearchChange,
   onPressSearch,
   placeholder = 'Search milk, vegetables, fruits, ghee...',
-  headerThemeColor = '#07843D',
+  headerThemeColor = '#064E3B',
   scrollY,
 }) => {
   const insets = useSafeAreaInsets();
@@ -301,7 +301,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
                 {typeof cartCount === 'number' && cartCount > 0 && (
                   <View 
                     className="absolute -top-0.5 -right-1 bg-red-500 rounded-full min-w-[19px] h-[19px] px-1 items-center justify-center border-2 z-10"
-                    style={{ borderColor: headerThemeColor || '#07843D' }}
+                    style={{ borderColor: headerThemeColor || '#064E3B' }}
                   >
                     <Text className="text-white text-[10.5px] font-extrabold text-center">
                       {cartCount > 99 ? '99+' : cartCount}

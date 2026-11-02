@@ -404,10 +404,10 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
             </View>
 
             {/* Headline and Description */}
-            <Text className="text-sm font-black text-white leading-tight">
+            <Text className="text-xs font-black text-white leading-tight">
               Fresh Harvest Ready for Tomorrow
             </Text>
-            <Text className="text-[11px] text-emerald-100/90 font-medium mt-0.5 leading-3.5">
+            <Text className="text-[10px] text-emerald-100/90 font-medium mt-0.5 leading-3">
               Punctual morning farm drop at your doorstep • Pause or skip anytime with 1-click
             </Text>
 

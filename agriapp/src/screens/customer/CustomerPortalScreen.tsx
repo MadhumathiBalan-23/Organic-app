@@ -565,7 +565,6 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
           ? `Your order was split into ${orderCount} separate partner orders for different farms and recorded in the database.`
           : `Your order #${data.data?.id ? data.data.id.substring(0, 8) : 'ORD'} for ₹${cartTotal} was successfully placed.`;
 
-      Alert.alert('Order Placed Successfully!', orderMessage);
       setCart([]);
       if (cleanUserPhone) {
         cartService.clearCart(cleanUserPhone).catch(() => {});
@@ -592,7 +591,6 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
           addToCart(it.product, it.quantity || 1);
         }
       });
-      Alert.alert('Items Added!', 'Order items have been added to your cart.');
       setCustomerScreen('CART');
     } else {
       setCustomerScreen('ALL_PRODUCTS');
@@ -937,13 +935,35 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
               </TouchableOpacity>
             </View>
           ) : (
-            <TouchableOpacity
-              className="bg-emerald-700 px-3.5 py-1.5 rounded-lg"
-              onPress={() => addToCart(p)}
-              activeOpacity={0.8}
-            >
-              <Text className="text-white text-xs font-bold">Add</Text>
-            </TouchableOpacity>
+            <View className="flex-row items-center gap-1.5">
+              {p.subscriptionAllowed !== false && (
+                <TouchableOpacity
+                  className="bg-[#FEF9C3] border border-amber-300 px-2 py-1.5 rounded-lg active:bg-amber-100"
+                  onPress={(e: any) => {
+                    e?.stopPropagation?.();
+                    setActiveSubscriptionData({
+                      product: p,
+                      qty: 1,
+                      freq: 'Daily',
+                      duration: 30,
+                      time: '06:30 AM',
+                      priceTotal: p.price * 30,
+                    });
+                    setCustomerScreen('SUBSCRIPTION_CREATE');
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text className="text-amber-900 text-[11px] font-extrabold">Sub</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                className="bg-emerald-700 px-3 py-1.5 rounded-lg"
+                onPress={() => addToCart(p)}
+                activeOpacity={0.8}
+              >
+                <Text className="text-white text-xs font-bold">Add</Text>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
       </TouchableOpacity>

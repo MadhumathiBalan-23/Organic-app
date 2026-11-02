@@ -412,7 +412,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <Clock size={17} color="#047857" />
           </View>
           <View className="flex-1 mr-2">
-            <Text className="text-sm font-semibold text-slate-800">Morning Delivery Window</Text>
+            <Text className="text-sm font-semibold text-slate-800">Delivery Window</Text>
             <Text className="text-slate-500 mt-0.5" style={{ fontSize: 11 }}>
               Daily 06:00 AM – 07:00 AM
             </Text>

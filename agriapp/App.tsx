@@ -4,7 +4,7 @@ import {
   TouchableOpacity, StatusBar, Alert, Modal, Image, ActivityIndicator, LogBox,
   ScrollView, useWindowDimensions, Animated
 } from 'react-native';
-import { MapPin, ArrowRight, AlertCircle, ArrowLeft, User, Store, ShieldCheck } from 'lucide-react-native';
+import { MapPin, ArrowRight, AlertCircle, ArrowLeft, User, Store, ShieldCheck, Sprout, Tractor, Zap, Lock } from 'lucide-react-native';
 import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-reanimated';
 
 try {
@@ -195,11 +195,11 @@ export default function App() {
 
         const creds = await deviceService.getStoredCredentials();
         if (creds.refreshToken && creds.deviceId) {
-          console.log('📱 [App] Validating device-bound refresh token on startup...');
+          console.log('[Device] [App] Validating device-bound refresh token on startup...');
           try {
             const res = await authService.refreshToken(creds.role || undefined);
             if (res.success && res.user) {
-              console.log(`✅ [App] Automatic login successful for ${res.role} on trusted device!`);
+              console.log(`[Success] [App] Automatic login successful for ${res.role} on trusted device!`);
               setPhone(res.user.phoneNumber || creds.phone || '');
               setCurrentUserId(res.user.id || '');
               const effectiveRole = (res.role as UserRole) || 'customer';
@@ -217,7 +217,7 @@ export default function App() {
               return;
             }
           } catch (tokErr) {
-            console.log('ℹ️ [App] Token refresh attempt failed:', tokErr);
+            console.log('[Info] [App] Token refresh attempt failed:', tokErr);
           }
         }
 
@@ -225,7 +225,7 @@ export default function App() {
         const savedPhone = safeStorage.getItem('agriflow_customer_phone');
         const savedRole = (safeStorage.getItem('agriflow_user_role') as UserRole) || null;
         if (savedPhone && savedRole) {
-          console.log(`📱 [App] Restored persisted session for ${savedRole}: ${savedPhone}`);
+          console.log(`[Device] [App] Restored persisted session for ${savedRole}: ${savedPhone}`);
           setPhone(savedPhone);
           setRole(savedRole);
           if (savedRole === 'admin') {
@@ -241,7 +241,7 @@ export default function App() {
           return;
         }
       } catch (err) {
-        console.log('ℹ️ [App] Session check error:', err);
+        console.log('[Info] [App] Session check error:', err);
       }
       setIsCheckingSession(false);
     };
@@ -747,7 +747,7 @@ export default function App() {
                 <Text className="text-sm font-bold text-slate-800 mb-2.5">Enter Mobile Number</Text>
 
                 <View className="flex-row items-center border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50">
-                  <Text className="text-lg">🇮🇳</Text>
+                  <View className="bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-300"><Text className="text-xs font-black text-emerald-800 tracking-wide">IN</Text></View>
                   <Text className="text-base font-bold text-slate-900 ml-2">+91</Text>
                   <View className="w-[1px] h-6 bg-slate-200 mx-3.5" />
                   <TextInput 
@@ -769,7 +769,7 @@ export default function App() {
                 {phone.length === 10 && (
                   <View className="bg-emerald-50 border border-emerald-200 rounded-xl py-2 px-3 mt-2.5 flex-row items-center justify-between">
                     <View className="flex-row items-center gap-1.5">
-                      <Text className="text-xs">🔑</Text>
+                      <Lock size={14} color="#047857" />
                       <Text className="text-xs font-semibold text-emerald-800">Your OTP Code:</Text>
                     </View>
                     <View className="bg-white border border-emerald-300 px-2.5 py-0.5 rounded shadow-xs">
@@ -816,7 +816,7 @@ export default function App() {
                 {/* Auto-Generated OTP Display Banner */}
                 <View className="bg-emerald-50 border border-emerald-200 rounded-xl py-2.5 px-3 mb-3.5 flex-row items-center justify-between">
                   <View className="flex-row items-center gap-1.5">
-                    <Text className="text-sm">🔑</Text>
+                    <Lock size={15} color="#047857" />
                     <Text className="text-xs font-semibold text-emerald-800">Your OTP Code:</Text>
                   </View>
                   <TouchableOpacity 
@@ -892,26 +892,26 @@ export default function App() {
             <View className="mt-3 mb-6">
               <View className="flex-row items-center justify-around py-3 px-2 bg-emerald-50/70 border border-emerald-100 rounded-2xl shadow-xs">
                 <View className="items-center px-1">
-                  <Text className="text-lg">🌿</Text>
+                  <Sprout size={22} color="#059669" />
                   <Text className="text-[11px] font-black text-slate-800 mt-0.5">100% Organic</Text>
                   <Text className="text-[9px] font-semibold text-emerald-800">Certified Pure</Text>
                 </View>
                 <View className="w-[1px] h-7 bg-emerald-200" />
                 <View className="items-center px-1">
-                  <Text className="text-lg">🚜</Text>
+                  <Tractor size={22} color="#059669" />
                   <Text className="text-[11px] font-black text-slate-800 mt-0.5">Direct Farm</Text>
                   <Text className="text-[9px] font-semibold text-emerald-800">Fair to Farmers</Text>
                 </View>
                 <View className="w-[1px] h-7 bg-emerald-200" />
                 <View className="items-center px-1">
-                  <Text className="text-lg">⚡</Text>
+                  <Zap size={22} color="#059669" />
                   <Text className="text-[11px] font-black text-slate-800 mt-0.5">Morning Fresh</Text>
                   <Text className="text-[9px] font-semibold text-emerald-800">Daily Harvest</Text>
                 </View>
               </View>
 
               <Text className="text-[11px] text-slate-400 text-center mt-3 font-medium">
-                🔒 Safe & Secure Login • No Password Required
+                Safe & Secure Login • No Password Required
               </Text>
             </View>
           </ScrollView>

@@ -340,6 +340,8 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
         deliveryTime: effectiveDeliveryTime,
         deliverySlot: timeMode === 'custom' ? 'Custom Delivery Time' : selectedSlotLabel,
         slotType: timeMode === 'custom' ? 'CUSTOM' : 'RECOMMENDED',
+        alternativeProductId: selectedAlternative?.id || undefined,
+        alternativeProductName: selectedAlternative?.name || undefined,
         duration,
         startDate: startDateStr,
         endDate: scheduleCalculation.endDateStr,
@@ -390,6 +392,8 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
         selectedDays: freq === 'Weekly' ? selectedDays : [],
         selectedDates: [],
         deliveryTime: effectiveDeliveryTime,
+        alternativeProductId: selectedAlternative?.id || undefined,
+        alternativeProductName: selectedAlternative?.name || undefined,
         duration,
         startDate: startDateStr,
         endDate: scheduleCalculation.endDateStr,
@@ -606,7 +610,7 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
   if (step === 'review') {
     return (
       <View className="flex-1 bg-[#FDFBF7]">
-        <ScrollView contentContainerClassName="p-4 pb-40" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="always" nestedScrollEnabled={true}>
+        <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: 24 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="always" nestedScrollEnabled={true}>
           {/* Section Title & Quick Edit Pill */}
           <View className="flex-row items-center justify-between mb-3.5">
             <View className="flex-1 mr-2">
@@ -759,16 +763,16 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
           </View>
         </ScrollView>
 
-        {/* Sticky Review Action Bar */}
+        {/* Fixed Review Action Bar in Natural Layout Flow */}
         <View 
-          style={{ paddingBottom: Math.max(16, insets.bottom + 12) }}
-          className="absolute bottom-0 left-0 right-0 px-4 pt-3.5 bg-white border-t border-slate-200 flex-row items-center justify-between shadow-xl"
+          style={{ paddingBottom: Math.max(16, insets.bottom + 8) }}
+          className="w-full bg-white border-t border-slate-200 px-4 pt-3.5 shadow-xl flex-row items-center gap-3 z-50"
         >
           <TouchableOpacity
-            className="px-5 py-3 rounded-xl border border-slate-300 bg-white items-center justify-center mr-3 active:opacity-70"
+            className="px-5 py-3.5 rounded-xl border border-slate-300 bg-white items-center justify-center active:opacity-70"
             onPress={() => setStep('configure')}
           >
-            <Text className="text-sm font-bold text-slate-700">Edit Plan</Text>
+            <Text className="text-sm font-bold text-slate-700">← Edit Plan</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -780,8 +784,8 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
               <>
+                <CheckCircle2 size={18} color="#FFFFFF" strokeWidth={2.5} />
                 <Text className="text-white text-base font-extrabold">Confirm Subscription</Text>
-                <ArrowLeft size={16} color="#FFFFFF" style={{ transform: [{ rotate: '180deg' }] }} />
               </>
             )}
           </TouchableOpacity>
@@ -795,7 +799,7 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
   // ─────────────────────────────────────────────────────────────
   return (
     <View className="flex-1 bg-[#FDFBF7]">
-      <ScrollView contentContainerClassName="p-4 pb-40" showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
         {/* Top Product Card (Optimized: full title, badge, clean price) */}
         <View className="bg-white p-3.5 rounded-2xl border border-slate-200/90 mb-3.5 shadow-sm">
           <View className="flex-row items-start">
@@ -1231,41 +1235,57 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
         </View>
       </ScrollView>
 
-      {/* Sticky Bottom Summary Bar */}
+      {/* Fixed Bottom Action Bar: Always 100% visible, never cut off */}
       <View 
-        style={{ paddingBottom: Math.max(16, insets.bottom + 12) }}
-        className="absolute bottom-0 left-0 right-0 px-4 pt-3.5 bg-white border-t border-slate-200 flex-row items-center justify-between shadow-2xl"
+        style={{ paddingBottom: Math.max(16, insets.bottom + 8) }}
+        className="w-full bg-white border-t border-slate-200 px-4 pt-3 shadow-2xl z-50"
       >
-        <View className="flex-1 mr-3">
-          <View className="flex-row items-center gap-1">
-            <Text className="text-xs font-extrabold text-emerald-900">Estimated Total</Text>
-            <Info size={12} color="#07843D" />
+        {/* Row 1: Estimated Total & Drops Summary */}
+        <View className="flex-row items-center justify-between mb-2.5">
+          <View>
+            <View className="flex-row items-center gap-1">
+              <Text className="text-xs font-bold text-slate-500 uppercase tracking-wider">Estimated Total</Text>
+              <Info size={12} color="#07843D" />
+            </View>
+            <Text className="text-2xl font-black text-emerald-800">
+              ₹{scheduleCalculation.priceTotal.toLocaleString()}
+            </Text>
           </View>
-          <Text className="text-2xl font-black text-emerald-800">
-            ₹{scheduleCalculation.priceTotal.toLocaleString()}
-          </Text>
-          <Text className="text-[11px] text-slate-400 font-semibold mt-0.5" numberOfLines={1}>
-            ({formatQtyDisplay(qty)} × {scheduleCalculation.totalDeliveries} drops · 1 Month)
-          </Text>
+
+          <View className="bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl items-end">
+            <Text className="text-xs font-extrabold text-emerald-800">
+              {scheduleCalculation.totalDeliveries} Drops • 1 Month
+            </Text>
+            <Text className="text-[10px] text-slate-500 font-semibold mt-0.5">
+              {formatQtyDisplay(qty)} per delivery
+            </Text>
+          </View>
         </View>
 
-        <Pressable
-          hitSlop={8}
-          onPress={() => setStep('review')}
-          style={({ pressed }) => ({
-            backgroundColor: pressed ? '#046A31' : '#07843D',
-            paddingHorizontal: 24,
-            paddingVertical: 14,
-            borderRadius: 16,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 8,
-            elevation: 4,
-          })}
-        >
-          <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '800' }}>Review Plan</Text>
-          <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '800' }}>→</Text>
-        </Pressable>
+        {/* Row 2: Prominent Action Buttons */}
+        <View className="flex-row items-center gap-2.5">
+          <TouchableOpacity
+            className="px-3.5 py-3.5 rounded-xl border border-slate-300 bg-white items-center justify-center active:opacity-70"
+            onPress={() => setStep('review')}
+          >
+            <Text className="text-xs font-bold text-slate-700">Review Plan</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            disabled={isSubmitting}
+            onPress={handleConfirmPlan}
+            className="flex-1 bg-[#07843D] py-3.5 rounded-xl flex-row items-center justify-center gap-2 shadow-md active:bg-[#056830]"
+          >
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <CheckCircle2 size={18} color="#FFFFFF" strokeWidth={2.5} />
+            )}
+            <Text className="text-white text-base font-black tracking-wide">
+              {isSubmitting ? 'Subscribing...' : 'Subscribe Now'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Start Date Calendar Modal */}
