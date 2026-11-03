@@ -59,4 +59,5 @@ export interface CustomerScreensProps {
   onChangeLocation?: () => void;
   onBannerThemeChange?: (color: string) => void;
   scrollY?: any;
+  onBack?: () => void;
 }

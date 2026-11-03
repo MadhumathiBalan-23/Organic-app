@@ -294,49 +294,24 @@ export const VendorRegistrationScreen: React.FC<VendorRegistrationScreenProps> =
   return (
     <View className="flex-1 bg-[#F9FAF9]">
       {/* ── Top Progress Header ── */}
-      <View className="bg-[#07843D] px-4 pt-3 pb-4 shadow-sm">
-        <View className="flex-row items-center justify-between mb-2">
-          {currentStep > 1 ? (
-            <TouchableOpacity
-              onPress={() => setCurrentStep((currentStep - 1) as any)}
-              className="w-9 h-9 rounded-full bg-white/15 items-center justify-center active:bg-white/25"
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <ArrowLeft size={18} color="#FFFFFF" />
-            </TouchableOpacity>
-          ) : (
-            <View className="w-9 h-9" />
-          )}
-          <View className="items-center flex-1 mx-2">
-            <Text className="text-white text-base font-black">Farmer Partner Registration</Text>
-            <Text className="text-emerald-100 text-[11px] font-semibold">Step {currentStep} of 3</Text>
-          </View>
-          <TouchableOpacity
-            onPress={onBack}
-            className="w-9 h-9 rounded-full bg-white/15 items-center justify-center active:bg-white/25"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <X size={18} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-
+      <View className="bg-[#07843D] px-4 pt-2.5 pb-3.5 shadow-sm">
         {/* 3-Step Pill Bar */}
-        <View className="flex-row items-center justify-between gap-2 mt-1">
+        <View className="flex-row items-center justify-between gap-2.5">
           <View className="flex-1">
             <View className={`h-1.5 rounded-full ${currentStep >= 1 ? 'bg-amber-300' : 'bg-white/20'}`} />
-            <Text className={`text-[10px] font-bold mt-1 text-center ${currentStep === 1 ? 'text-amber-200' : 'text-white/60'}`}>
+            <Text className={`text-[11px] font-bold mt-1.5 text-center ${currentStep === 1 ? 'text-amber-200' : 'text-white/60'}`}>
               1. Basic Info
             </Text>
           </View>
           <View className="flex-1">
             <View className={`h-1.5 rounded-full ${currentStep >= 2 ? 'bg-amber-300' : 'bg-white/20'}`} />
-            <Text className={`text-[10px] font-bold mt-1 text-center ${currentStep === 2 ? 'text-amber-200' : 'text-white/60'}`}>
+            <Text className={`text-[11px] font-bold mt-1.5 text-center ${currentStep === 2 ? 'text-amber-200' : 'text-white/60'}`}>
               2. GST & Logo
             </Text>
           </View>
           <View className="flex-1">
             <View className={`h-1.5 rounded-full ${currentStep >= 3 ? 'bg-amber-300' : 'bg-white/20'}`} />
-            <Text className={`text-[10px] font-bold mt-1 text-center ${currentStep === 3 ? 'text-amber-200' : 'text-white/60'}`}>
+            <Text className={`text-[11px] font-bold mt-1.5 text-center ${currentStep === 3 ? 'text-amber-200' : 'text-white/60'}`}>
               3. Bank Details
             </Text>
           </View>

@@ -4,6 +4,7 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import {
   User,
@@ -433,10 +434,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         <Text className="text-sm font-bold text-rose-600">Sign Out of Account</Text>
       </TouchableOpacity>
 
-      {/* ── 8. Footer Branding ── */}
-      <View className="items-center py-3 mb-6">
-        <Text className="text-slate-400 font-semibold" style={{ fontSize: 11 }}>
-          Mathira Organic Farming Pvt Ltd
+      {/* ── 8. Footer Branding with Mathira Logo ── */}
+      <View className="items-center py-4 mb-6">
+        <View className="w-12 h-12 rounded-2xl bg-white border border-emerald-100 shadow-xs items-center justify-center mb-2 overflow-hidden">
+          <Image
+            source={require('../../../asset/logo.png')}
+            style={{ width: 36, height: 36 }}
+            resizeMode="contain"
+          />
+        </View>
+        <Text className="text-slate-600 font-bold" style={{ fontSize: 12 }}>
+          Mathira Organic Farming
         </Text>
         <Text className="text-slate-400 mt-0.5" style={{ fontSize: 10 }}>
           100% Jaivik Bharat & NPOP Certified · Version 2.4.0

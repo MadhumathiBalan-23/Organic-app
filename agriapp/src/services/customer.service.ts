@@ -247,6 +247,76 @@ export const customerService = {
       return { products: [], categories: [], vendors: [] };
     }
   },
+
+  /**
+   * Consolidated Single Landing Page Feed (Requirement 3)
+   * Fetches active banners, categories, and products in a single optimized request
+   */
+  async getLandingFeed(): Promise<{ banners: any[]; categories: any[]; products: Product[] }> {
+    try {
+      const res = await axios.get(API_ENDPOINTS.customerLanding, { timeout: 10000 });
+      if (res.data && res.data.success && res.data.data) {
+        return {
+          banners: res.data.data.banners || [],
+          categories: res.data.data.categories || [],
+          products: res.data.data.products || [],
+        };
+      }
+    } catch (err: any) {
+      console.log('ℹ️ [customerService.getLandingFeed] Single API not available, fetching fallback:', err.message);
+    }
+
+    // Resilient Fallback: parallel fetch
+    try {
+      const [bannersRes, catRes, prodRes] = await Promise.allSettled([
+        axios.get(API_ENDPOINTS.banners, { timeout: 8000 }),
+        axios.get(API_ENDPOINTS.customerCategories, { timeout: 8000 }),
+        axios.get(API_ENDPOINTS.customerProducts, { timeout: 8000 }),
+      ]);
+
+      const banners = bannersRes.status === 'fulfilled' ? extractDataList(bannersRes.value.data) : [];
+      const categories = catRes.status === 'fulfilled' ? extractDataList(catRes.value.data) : [];
+      const products = prodRes.status === 'fulfilled' ? extractDataList(prodRes.value.data) : [];
+
+      return { banners, categories, products };
+    } catch {
+      return { banners: [], categories: [], products: [] };
+    }
+  },
+
+  /**
+   * Dynamic Product Reviews (Requirement 5)
+   */
+  async getProductReviews(productId: string): Promise<any[]> {
+    try {
+      const res = await axios.get(API_ENDPOINTS.productReviews(productId), { timeout: 8000 });
+      if (res.data && res.data.success && Array.isArray(res.data.data)) {
+        return res.data.data;
+      }
+      return [];
+    } catch (err: any) {
+      return [];
+    }
+  },
+
+  async addProductReview(
+    productId: string,
+    review: { userName: string; rating: number; comment: string; customerPhone?: string }
+  ): Promise<{ success: boolean; data?: any; message?: string; isUpdate?: boolean; field?: string }> {
+    try {
+      const res = await axios.post(API_ENDPOINTS.productReviews(productId), review, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 10000,
+      });
+      return res.data;
+    } catch (err: any) {
+      return {
+        success: false,
+        field: err.response?.data?.field,
+        message: err.response?.data?.message || err.message,
+      };
+    }
+  },
 };
 
 export default customerService;

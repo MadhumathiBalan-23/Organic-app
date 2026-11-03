@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, Text, Image, ActivityIndicator } from 'react-native';
 import { ShieldCheck, Sprout } from 'lucide-react-native';
 
 interface AuthenticationLoadingScreenProps {
@@ -11,8 +11,12 @@ export const AuthenticationLoadingScreen: React.FC<AuthenticationLoadingScreenPr
 }) => {
   return (
     <View className="flex-1 bg-[#0A2618] items-center justify-center px-6">
-      <View className="w-20 h-20 rounded-3xl bg-emerald-800/40 border border-emerald-500/30 items-center justify-center mb-6 shadow-2xl">
-        <Sprout size={40} color="#86EFAC" />
+      <View className="w-36 h-36 rounded-3xl bg-white border-2 border-emerald-500/40 items-center justify-center mb-6 shadow-2xl overflow-hidden p-2">
+        <Image
+          source={require('../../asset/gif.gif')}
+          style={{ width: 120, height: 120 }}
+          resizeMode="contain"
+        />
       </View>
 
       <Text className="text-xl font-black text-white text-center tracking-tight">

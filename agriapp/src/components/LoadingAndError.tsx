@@ -9,6 +9,7 @@ import {
   StyleProp,
   ViewStyle,
   TextStyle,
+  Image,
 } from 'react-native';
 import {
   AlertCircle,
@@ -114,6 +115,7 @@ export interface PageLoaderProps {
   subMessage?: string;
   minHeight?: number;
   transparent?: boolean;
+  useGif?: boolean;
   className?: string;
 }
 
@@ -122,6 +124,7 @@ export const PageLoader: React.FC<PageLoaderProps> = ({
   subMessage = 'Fetching the latest updates directly from Mathira farm...',
   minHeight = 260,
   transparent = false,
+  useGif = false,
   className = '',
 }) => {
   return (
@@ -130,12 +133,22 @@ export const PageLoader: React.FC<PageLoaderProps> = ({
       className={`flex-1 items-center justify-center p-6 ${transparent ? 'bg-transparent' : 'bg-slate-50'} ${className}`}
     >
       <View className="bg-white px-7 py-6 rounded-2xl items-center border border-slate-200 shadow-sm max-w-xs w-full">
-        <View className="w-14 h-14 rounded-full bg-emerald-50 border-2 border-emerald-200 items-center justify-center relative">
-          <Sprout size={28} color={UI_COLORS.primary} strokeWidth={2.4} />
-          <View className="absolute -top-1 -right-1 bg-amber-100 rounded-full p-1 border border-amber-200">
-            <Sparkles size={12} color="#F59E0B" fill="#F59E0B" />
+        {useGif ? (
+          <View className="w-20 h-20 rounded-2xl bg-white border border-emerald-100 items-center justify-center overflow-hidden mb-2">
+            <Image
+              source={require('../../asset/gif.gif')}
+              style={{ width: 72, height: 72 }}
+              resizeMode="contain"
+            />
           </View>
-        </View>
+        ) : (
+          <View className="w-14 h-14 rounded-full bg-emerald-50 border-2 border-emerald-200 items-center justify-center relative">
+            <Sprout size={28} color={UI_COLORS.primary} strokeWidth={2.4} />
+            <View className="absolute -top-1 -right-1 bg-amber-100 rounded-full p-1 border border-amber-200">
+              <Sparkles size={12} color="#F59E0B" fill="#F59E0B" />
+            </View>
+          </View>
+        )}
 
         <ActivityIndicator size="small" color={UI_COLORS.primary} className="mt-3 mb-2" />
 

@@ -52,6 +52,7 @@ import { DedicatedSearchScreen } from './DedicatedSearchScreen';
 import {
   bannerService,
   productService,
+  customerService,
   orderService,
   vendorService,
   authService,
@@ -84,6 +85,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
   setCart: propSetCart,
   onBannerThemeChange,
   scrollY,
+  onBack,
 }) => {
   // ── Cart State ──
   const [internalCart, setInternalCart] = useState<{ product: Product; qty: number }[]>([]);
@@ -309,47 +311,40 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
       .catch(() => {});
   }, [userPhone, customerScreen]);
 
-  // Load catalog items via modular services
-  const fetchBanners = async () => {
+  // ── Requirement 3: Consolidated Single Landing API Fetch ──
+  const [isLoadingLanding, setIsLoadingLanding] = useState(true);
+
+  const fetchLandingData = async () => {
+    setIsLoadingLanding(true);
     setIsLoadingBanners(true);
+    setIsLoadingCategories(true);
+    setIsLoadingProducts(true);
     try {
-      const list = await bannerService.getAll();
-      setBannersList(list);
-      if (list.length > 0 && onBannerThemeChange && list[0]?.backgroundColor) {
-        onBannerThemeChange(list[0].backgroundColor);
+      const feed = await customerService.getLandingFeed();
+      if (feed) {
+        if (Array.isArray(feed.banners) && feed.banners.length > 0) {
+          setBannersList(feed.banners);
+          if (onBannerThemeChange && feed.banners[0]?.backgroundColor) {
+            onBannerThemeChange(feed.banners[0].backgroundColor);
+          }
+        }
+        if (Array.isArray(feed.categories)) {
+          setCategoriesList(feed.categories);
+        }
+        if (Array.isArray(feed.products) && feed.products.length > 0) {
+          const sanitized = feed.products.map((p: any) => ({
+            ...p,
+            category: safeCategory(p.category || p.categoryName),
+          }));
+          setProductsList(sanitized);
+        }
       }
     } catch (e) {
-      console.warn('Error fetching banners:', e);
+      console.warn('Error fetching landing feed:', e);
     } finally {
+      setIsLoadingLanding(false);
       setIsLoadingBanners(false);
-    }
-  };
-
-  const fetchCategories = async () => {
-    setIsLoadingCategories(true);
-    try {
-      const list = await productService.getCategories();
-      setCategoriesList(list);
-    } catch (e) {
-      console.warn('Error fetching categories:', e);
-    } finally {
       setIsLoadingCategories(false);
-    }
-  };
-
-  const fetchProducts = async () => {
-    setIsLoadingProducts(true);
-    setProductsError(null);
-    try {
-      const list = await productService.getAll();
-      const sanitized = list.map((p: any) => ({
-        ...p,
-        category: safeCategory(p.category || p.categoryName),
-      }));
-      setProductsList(sanitized);
-    } catch {
-      setProductsError('Unable to load organic products from server. Please verify connection.');
-    } finally {
       setIsLoadingProducts(false);
     }
   };
@@ -405,11 +400,9 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
   };
 
   useEffect(() => {
-    fetchBanners();
-    fetchCategories();
-    fetchProducts();
+    fetchLandingData();
     fetchOrders();
-  }, [customerScreen, userPhone]);
+  }, [userPhone]);
 
   const handleBannerPress = (banner: DynamicBanner) => {
     if (!banner.targetType || banner.targetType === 'ALL_PRODUCTS' || banner.targetType === 'SCREEN') {
@@ -814,7 +807,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
           'Product Added Successfully!',
           `"${created.name}" (₹${created.price}/${created.unit}) has been added to the catalog and is now live!`
         );
-        fetchProducts();
+        fetchLandingData();
       } else {
         setAddProdError(data.message || 'Failed to add product. Please verify API server.');
       }
@@ -1037,6 +1030,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
         <CustomerHomeScreen
           headerGrad={activeBannerGrad}
           scrollY={scrollY}
+          isLoadingLanding={isLoadingLanding}
           isLoadingBanners={isLoadingBanners}
           bannersList={bannersList}
           bannerScrollRef={bannerScrollRef}
@@ -1084,7 +1078,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
 
       {customerScreen === 'SEARCH' && (
         <DedicatedSearchScreen
-          onBack={() => setCustomerScreen('HOME')}
+          onBack={onBack || (() => setCustomerScreen('HOME'))}
           onSelectProduct={(p: Product) => {
             setSelectedProduct(p);
             setCustomerScreen('PRODUCT_DETAILS');
@@ -1113,7 +1107,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
           }}
           onOpenVendorStore={handleOpenVendorStore}
           onOpenVendorDiscovery={handleOpenVendorDiscovery}
-          onBack={() => setCustomerScreen('HOME')}
+          onBack={onBack || (() => setCustomerScreen('HOME'))}
           onOpenCart={() => setCustomerScreen('CART')}
           onOpenPlans={() => setCustomerScreen('MY_SUBSCRIPTIONS')}
           headerThemeColor={activeBannerColor}
@@ -1136,7 +1130,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
             setNavCategoryName(catName);
             setCustomerScreen('CATEGORY_PRODUCTS');
           }}
-          onBack={() => setCustomerScreen('HOME')}
+          onBack={onBack || (() => setCustomerScreen('HOME'))}
           onOpenCart={() => setCustomerScreen('CART')}
           onOpenPlans={() => setCustomerScreen('MY_SUBSCRIPTIONS')}
           headerThemeColor={activeBannerColor}
@@ -1157,7 +1151,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
             setSelectedProduct(p);
             setCustomerScreen('PRODUCT_DETAILS');
           }}
-          onBack={() => setCustomerScreen('CATEGORY_PRODUCTS')}
+          onBack={onBack || (() => setCustomerScreen('CATEGORY_PRODUCTS'))}
         />
       )}
 
@@ -1165,10 +1159,12 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
         <ProductDetailsScreen
           product={selectedProduct}
           productsList={productsList}
-          onBack={() => setCustomerScreen('HOME')}
+          onBack={onBack || (() => setCustomerScreen('HOME'))}
           isFavorite={!!favorites[selectedProduct.id]}
           onToggleFavorite={toggleFavorite}
           selectedLocation={selectedLocation}
+          userPhone={userPhone}
+          customerName={profileName}
           onAddToCart={(p, qty) => {
             addToCart(p, qty);
             setCustomerScreen('HOME');
@@ -1207,7 +1203,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
           product={activeSubscriptionData.product}
           initialQty={activeSubscriptionData.qty || 1}
           userPhone={userPhone}
-          onBack={() => setCustomerScreen('HOME')}
+          onBack={onBack || (() => setCustomerScreen('HOME'))}
           onSubscriptionCreated={(createdSub: any) => {
             setSubscriptions((prev: any[]) => [createdSub, ...prev]);
             setCustomerScreen('MY_SUBSCRIPTIONS');
@@ -1223,7 +1219,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
         <PaymentScreen
           amount={activeSubscriptionData.priceTotal}
           onPaySuccess={handlePaySubscription}
-          onBack={() => setCustomerScreen('SUBSCRIPTION_CREATE')}
+          onBack={onBack || (() => setCustomerScreen('SUBSCRIPTION_CREATE'))}
         />
       )}
 
@@ -1249,7 +1245,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
           customerName={profileName}
           customerEmail={profileEmail}
           customerLocation={profileLocation || selectedLocation?.address}
-          onBack={() => setCustomerScreen('PROFILE')}
+          onBack={onBack || (() => setCustomerScreen('PROFILE'))}
           onSuccess={() => {
             if (onRefreshVendorStatus) onRefreshVendorStatus();
             setCustomerScreen('PROFILE');

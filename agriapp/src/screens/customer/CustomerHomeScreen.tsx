@@ -29,12 +29,15 @@ import Svg, { Defs, LinearGradient as SvgLinearGradient, Stop, Rect } from 'reac
 import { Product } from '../../constants/mockData';
 import { LoadingSpinner } from '../../components/LoadingAndError';
 import { getGradientTheme } from '../../components/HomeHeader';
+import { LandingPageSkeleton } from '../../components/SkeletonLoader';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_WIDTH = Math.min(SCREEN_WIDTH - 24, 380);
+const BANNER_HEIGHT = 195;
 
 interface CustomerHomeScreenProps {
   headerGrad: any;
+  isLoadingLanding?: boolean;
   isLoadingBanners: boolean;
   bannersList: any[];
   bannerScrollRef: React.RefObject<ScrollView | null>;
@@ -66,6 +69,7 @@ interface CustomerHomeScreenProps {
 
 export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
   headerGrad,
+  isLoadingLanding,
   isLoadingBanners,
   bannersList,
   bannerScrollRef,
@@ -94,6 +98,10 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
   setShowAddProductModal,
   renderProductCard,
 }) => {
+  if (isLoadingLanding) {
+    return <LandingPageSkeleton />;
+  }
+
   const getCategoryPhoto = (catName: string): string => {
     const match = (dbCategories || []).find(
       (c: any) => c.name?.toLowerCase() === catName?.toLowerCase()
@@ -143,7 +151,7 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
         scrollEventThrottle={16}
       >
         {/* Seamless Half-Banner Gradient Backdrop matching header theme */}
-        <View className="absolute top-0 left-0 right-0 h-[140px] overflow-hidden" pointerEvents="none">
+        <View className="absolute top-0 left-0 right-0 h-[175px] overflow-hidden" pointerEvents="none">
           <Svg width="100%" height="100%" key={`home_backdrop_${headerGrad.light}`}>
             <Defs>
               <SvgLinearGradient id="homeHalfBannerGrad" x1="0" y1="0" x2="0" y2="1">
@@ -158,7 +166,7 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
 
         {/* 1. Dynamic Promotional Banner Carousel */}
         {isLoadingBanners ? (
-          <View className="h-[165px] mx-3 mt-3 rounded-[20px] bg-[#EBF6EE] justify-center items-center">
+          <View style={{ height: BANNER_HEIGHT }} className="mx-3 mt-3 rounded-[20px] bg-[#EBF6EE] justify-center items-center">
             <LoadingSpinner size="small" message="Loading festive banners..." showLeafIcon />
           </View>
         ) : bannersList.length > 0 ? (
@@ -196,11 +204,12 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
                     style={{
                       backgroundColor: grad.dark,
                       width: BANNER_WIDTH,
+                      height: BANNER_HEIGHT,
                     }}
-                    className="h-[165px] rounded-[22px] overflow-hidden relative mr-3 shadow-md"
+                    className="rounded-[22px] overflow-hidden relative mr-3 shadow-md"
                   >
                     {hasImage ? (
-                      /* Full Banner Image ONLY: Clean, full-bleed promotional banner image */
+                      /* Full Banner Image: Clean, high-impact promotional image with dynamic fallback background */
                       <Image
                         source={{ uri: banner.imageUrl }}
                         className="w-full h-full"
@@ -260,11 +269,12 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
               })}
             </ScrollView>
 
-            {/* Interactive Pagination Dots with Theme Color Sync */}
+            {/* Interactive Pagination Dots with Dynamic Theme Color Sync */}
             {bannersList.length > 1 && (
               <View className="flex-row justify-center items-center mt-2.5 gap-1.5">
                 {bannersList.map((b, i) => {
                   const isActive = i === activeBannerIdx;
+                  const bGrad = getGradientTheme(b.backgroundColor);
                   return (
                     <TouchableOpacity
                       key={b.id || i}
@@ -272,7 +282,7 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
                         bannerScrollRef.current?.scrollTo({ x: i * (BANNER_WIDTH + 12), animated: true });
                         handleBannerChange(i);
                       }}
-                      style={isActive ? { backgroundColor: headerGrad.light || headerGrad.mid } : undefined}
+                      style={isActive ? { backgroundColor: bGrad.mid || headerGrad.light || headerGrad.mid } : undefined}
                       className={`h-2 rounded-full ${isActive ? 'w-5' : 'w-2 bg-slate-300'}`}
                       activeOpacity={0.7}
                     />

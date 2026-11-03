@@ -110,7 +110,7 @@ export const probeBackend = async (): Promise<string> => {
       console.log(`[API Config]: Connected to local backend at ${localUrl}`);
       return localUrl;
     }
-  } catch {}
+  } catch { }
 
   if (Platform.OS === 'web') return 'localhost';
   const candidates = [getApiHost(), HOST_LAN_IP, ANDROID_EMULATOR_IP, 'localhost'];
@@ -124,12 +124,12 @@ export const probeBackend = async (): Promise<string> => {
         setApiHost(host);
         return host;
       }
-    } catch {}
+    } catch { }
   }
   return HOST_LAN_IP;
 };
 
-probeBackend().catch(() => {});
+probeBackend().catch(() => { });
 
 // Comprehensive API Endpoints Registry
 export const API_ENDPOINTS = {
@@ -191,6 +191,8 @@ export const API_ENDPOINTS = {
   get customerProducts() { return `${getApiBase()}/customer/products`; },
   customerVendorProducts: (vendorId: string) => `${getApiBase()}/customer/vendors/${encodeURIComponent(vendorId)}/products`,
   customerProductDetails: (productId: string) => `${getApiBase()}/customer/products/${encodeURIComponent(productId)}`,
+  get customerLanding() { return `${getApiBase()}/customer/landing`; },
+  productReviews: (productId: string) => `${getApiBase()}/customer/products/${encodeURIComponent(productId)}/reviews`,
   get customerSearch() { return `${getApiBase()}/customer/products/search`; },
 
   // Orders, Subscriptions, Deliveries

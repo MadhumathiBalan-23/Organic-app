@@ -1,6 +1,31 @@
 import { Request, Response } from 'express';
+import fs from 'fs';
+import path from 'path';
 import { prisma } from '../config/db';
 import { ProductService } from '../services/product.service';
+
+const REVIEWS_FILE = path.join(__dirname, '../data/reviews.json');
+
+const getStoredReviews = (): Record<string, any[]> => {
+  try {
+    if (fs.existsSync(REVIEWS_FILE)) {
+      const data = fs.readFileSync(REVIEWS_FILE, 'utf-8');
+      return JSON.parse(data);
+    }
+  } catch (err) {
+    console.error('Error reading reviews file:', err);
+  }
+  return {};
+};
+
+const saveStoredReviews = (reviews: Record<string, any[]>) => {
+  try {
+    fs.mkdirSync(path.dirname(REVIEWS_FILE), { recursive: true });
+    fs.writeFileSync(REVIEWS_FILE, JSON.stringify(reviews, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error saving reviews file:', err);
+  }
+};
 
 export class CustomerController {
   /**
@@ -630,6 +655,255 @@ export class CustomerController {
       });
     } catch (error: any) {
       console.error('[CustomerController.searchProducts] Error:', error);
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  /**
+   * Consolidated Single Landing Feed API (Requirement 3)
+   * Fetches banners, categories, and products in a single call for high-performance skeleton loading
+   */
+  public static async getLandingFeed(req: Request, res: Response) {
+    try {
+      const now = new Date();
+      const [banners, categories, rawProducts] = await Promise.all([
+        // 1. Active Banners
+        prisma.banner.findMany({
+          where: {
+            isActive: true,
+            AND: [
+              { OR: [{ startAt: null }, { startAt: { lte: now } }] },
+              { OR: [{ endAt: null }, { endAt: { gte: now } }] },
+            ],
+          },
+          orderBy: { displayOrder: 'asc' },
+        }),
+        // 2. Active Categories
+        prisma.category.findMany({
+          where: { isActive: true },
+          orderBy: { displayOrder: 'asc' },
+        }),
+        // 3. Featured / Harvest Products
+        prisma.product.findMany({
+          where: { isAvailable: true },
+          include: {
+            category: true,
+            vendor: true,
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 30,
+        }),
+      ]);
+
+      const formattedProducts = rawProducts.map(CustomerController.formatCustomerProduct);
+
+      return res.json({
+        success: true,
+        data: {
+          banners,
+          categories: categories.map(c => ({
+            id: c.id,
+            name: c.name,
+            emoji: c.emoji,
+            imageUrl: c.imageUrl,
+            description: c.description,
+          })),
+          products: formattedProducts,
+          timestamp: new Date().toISOString(),
+        },
+      });
+    } catch (error: any) {
+      console.error('[CustomerController.getLandingFeed] Error:', error);
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  /**
+   * Dynamic Product Reviews (Requirement 5 & Product-Wise Customer Validation)
+   */
+  public static async getProductReviews(req: Request, res: Response) {
+    try {
+      const { productId } = req.params;
+      const cleanProductId = String(productId || '').trim();
+      const allReviews = getStoredReviews();
+      const productReviews = allReviews[cleanProductId] || [];
+
+      // Calculate aggregate rating stats
+      const totalCount = productReviews.length;
+      const avgRating = totalCount > 0
+        ? Number((productReviews.reduce((sum: number, r: any) => sum + (Number(r.rating) || 5), 0) / totalCount).toFixed(1))
+        : 5.0;
+
+      return res.json({
+        success: true,
+        count: totalCount,
+        avgRating,
+        data: productReviews,
+      });
+    } catch (error: any) {
+      console.error('[CustomerController.getProductReviews] Error:', error);
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  public static async addProductReview(req: Request, res: Response) {
+    try {
+      const { productId } = req.params;
+      const cleanProductId = String(productId || '').trim();
+
+      // 1. Product Validation
+      if (!cleanProductId) {
+        return res.status(400).json({ success: false, message: 'Product ID is required to submit a review.' });
+      }
+
+      const { userName, rating, comment } = req.body;
+
+      // 2. Rating Validation (Must be an integer between 1 and 5)
+      const numericRating = Number(rating);
+      if (isNaN(numericRating) || !Number.isInteger(numericRating) || numericRating < 1 || numericRating > 5) {
+        return res.status(400).json({
+          success: false,
+          field: 'rating',
+          message: 'Please select a valid rating between 1 and 5 stars.',
+        });
+      }
+
+      // 3. Customer Name Validation (Min 2 chars, max 50 chars, letters & spaces only)
+      const cleanName = typeof userName === 'string' ? userName.trim() : '';
+      if (!cleanName || cleanName.length < 2) {
+        return res.status(400).json({
+          success: false,
+          field: 'userName',
+          message: 'Customer name is required and must be at least 2 characters long.',
+        });
+      }
+      if (cleanName.length > 50) {
+        return res.status(400).json({
+          success: false,
+          field: 'userName',
+          message: 'Customer name cannot exceed 50 characters.',
+        });
+      }
+      if (!/^[a-zA-Z\s.'-]+$/.test(cleanName)) {
+        return res.status(400).json({
+          success: false,
+          field: 'userName',
+          message: 'Customer name can only contain letters, spaces, and periods.',
+        });
+      }
+
+      // 4. Feedback / Comment Validation (Min 10 chars, max 500 chars)
+      const cleanComment = typeof comment === 'string' ? comment.trim() : '';
+      if (!cleanComment || cleanComment.length < 10) {
+        return res.status(400).json({
+          success: false,
+          field: 'comment',
+          message: 'Review feedback must be at least 10 characters long to provide helpful details for buyers and farmers.',
+        });
+      }
+      if (cleanComment.length > 500) {
+        return res.status(400).json({
+          success: false,
+          field: 'comment',
+          message: 'Review feedback cannot exceed 500 characters.',
+        });
+      }
+
+      // 5. Customer Identification & Purchase Verification
+      const cleanPhone = String(req.body.customerPhone || req.body.userPhone || '').replace(/[^0-9]/g, '');
+      let isVerifiedPurchase = false;
+
+      if (cleanPhone) {
+        try {
+          const orderMatch = await prisma.orderItem.findFirst({
+            where: {
+              productId: cleanProductId,
+              order: {
+                customerPhone: { contains: cleanPhone },
+              },
+            },
+          });
+
+          const subMatch = !orderMatch ? await prisma.subscription.findFirst({
+            where: {
+              productId: cleanProductId,
+              customerPhone: { contains: cleanPhone },
+            },
+          }) : null;
+
+          isVerifiedPurchase = Boolean(orderMatch || subMatch);
+        } catch (err) {
+          console.log('[addProductReview] Note: DB purchase verification skipped:', err);
+        }
+      }
+
+      // 6. Product-Wise Isolation & Duplicate Prevention (One review per customer per product)
+      const allReviews = getStoredReviews();
+      if (!allReviews[cleanProductId]) {
+        allReviews[cleanProductId] = [];
+      }
+
+      const existingIndex = allReviews[cleanProductId].findIndex((r: any) => {
+        if (cleanPhone && r.customerPhone === cleanPhone) return true;
+        if (!cleanPhone && r.userName.toLowerCase() === cleanName.toLowerCase()) return true;
+        return false;
+      });
+
+      let savedReview: any;
+      let isUpdate = false;
+
+      if (existingIndex >= 0) {
+        // Customer already reviewed this product -> Update existing review!
+        isUpdate = true;
+        allReviews[cleanProductId][existingIndex] = {
+          ...allReviews[cleanProductId][existingIndex],
+          userName: cleanName,
+          rating: numericRating,
+          comment: cleanComment,
+          customerPhone: cleanPhone || allReviews[cleanProductId][existingIndex].customerPhone || null,
+          date: 'Updated just now',
+          updatedAt: new Date().toISOString(),
+          verifiedPurchase: isVerifiedPurchase || allReviews[cleanProductId][existingIndex].verifiedPurchase || false,
+        };
+        savedReview = allReviews[cleanProductId][existingIndex];
+      } else {
+        // Create new review
+        savedReview = {
+          id: `rev-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          productId: cleanProductId,
+          customerPhone: cleanPhone || null,
+          userName: cleanName,
+          rating: numericRating,
+          comment: cleanComment,
+          date: 'Just now',
+          createdAt: new Date().toISOString(),
+          verifiedPurchase: isVerifiedPurchase,
+        };
+        allReviews[cleanProductId].unshift(savedReview);
+      }
+
+      saveStoredReviews(allReviews);
+
+      // Update aggregate rating for the product in database
+      try {
+        const count = allReviews[cleanProductId].length;
+        const avg = count > 0 ? allReviews[cleanProductId].reduce((s: number, r: any) => s + r.rating, 0) / count : numericRating;
+        await prisma.product.update({
+          where: { id: cleanProductId },
+          data: { rating: Number(avg.toFixed(1)) },
+        });
+      } catch {}
+
+      return res.status(isUpdate ? 200 : 201).json({
+        success: true,
+        message: isUpdate
+          ? 'Your review for this product has been updated successfully.'
+          : 'Thank you! Your product review has been submitted successfully.',
+        isUpdate,
+        data: savedReview,
+      });
+    } catch (error: any) {
+      console.error('[CustomerController.addProductReview] Error:', error);
       return res.status(500).json({ success: false, error: error.message });
     }
   }

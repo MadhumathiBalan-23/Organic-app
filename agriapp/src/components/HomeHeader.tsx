@@ -279,8 +279,30 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Right: Cart (Dollar icon cleanly removed from landing header) */}
+        {/* Right: Subscription ($) Button & Cart */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
+          {/* Subscription Dollar Icon ($) - Tap to navigate to Subscription Page */}
+          <TouchableOpacity
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: '#F2C500',
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: '#000000',
+              shadowOffset: { width: 0, height: 1.5 },
+              shadowOpacity: 0.22,
+              shadowRadius: 2.5,
+              elevation: 3,
+            }}
+            onPress={onOpenPlans}
+            activeOpacity={0.8}
+            accessibilityLabel="Subscription Page"
+          >
+            <Text style={{ fontSize: 18, fontWeight: '900', color: '#18352B', textAlign: 'center', includeFontPadding: false }}>$</Text>
+          </TouchableOpacity>
+
           {/* White Shopping Cart Icon */}
           {Boolean(onOpenCart) && (
             <Animated.View

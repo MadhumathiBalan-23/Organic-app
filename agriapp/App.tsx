@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Text, View, TextInput, 
   TouchableOpacity, StatusBar, Alert, Modal, Image, ActivityIndicator, LogBox,
-  ScrollView, useWindowDimensions, Animated
+  ScrollView, useWindowDimensions, Animated, BackHandler
 } from 'react-native';
 import { MapPin, ArrowRight, AlertCircle, ArrowLeft, User, Store, ShieldCheck, Sprout, Tractor, Zap, Lock } from 'lucide-react-native';
 import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-reanimated';
@@ -51,6 +51,7 @@ import { deviceService } from './src/services/device.service';
 import { OTPVerificationScreen } from './src/components/OTPVerificationScreen';
 import { DeviceManagementModal } from './src/components/DeviceManagementModal';
 import { AuthenticationLoadingScreen } from './src/components/AuthenticationLoadingScreen';
+import { AppStartingLoadingScreen } from './src/components/AppStartingLoadingScreen';
 
 const safeStorage = {
   getItem: (key: string): string | null => {
@@ -85,11 +86,81 @@ export default function App() {
 
   // Tab & Navigation States per Role
   const [customerScreen, setCustomerScreen] = useState<string>('HOME');
-  const [headerThemeColor, setHeaderThemeColor] = useState<string>('#07843D');
-  const homeScrollY = useRef(new Animated.Value(0)).current;
   const [adminTab, setAdminTab] = useState<string>('dashboard');
   const [vendorTab, setVendorTab] = useState<string>('dashboard');
   const [showVendorAddProduct, setShowVendorAddProduct] = useState(false);
+  const [screenHistory, setScreenHistory] = useState<string[]>(['HOME']);
+
+  // Reliable Multi-Screen Stack Navigation (Requirement 2)
+  const handleNavigate = (newScreen: string) => {
+    if (newScreen !== customerScreen) {
+      setScreenHistory(prev => {
+        if (prev[prev.length - 1] === newScreen) return prev;
+        return [...prev, newScreen];
+      });
+      setCustomerScreen(newScreen);
+    }
+  };
+
+  // Back Navigation: Pop previous screen from stack; safe return to HOME
+  const handleBack = () => {
+    if (role === 'admin') {
+      if (adminTab !== 'dashboard') {
+        setAdminTab('dashboard');
+        return true;
+      }
+      return false;
+    }
+    if (role === 'vendor') {
+      if (vendorTab !== 'dashboard') {
+        setVendorTab('dashboard');
+        return true;
+      }
+      return false;
+    }
+
+    if (customerScreen === 'HOME') {
+      return false;
+    }
+
+    setScreenHistory(prev => {
+      if (prev.length > 1) {
+        const nextHistory = prev.slice(0, -1);
+        const prevScreen = nextHistory[nextHistory.length - 1];
+        setCustomerScreen(prevScreen || 'HOME');
+        return nextHistory;
+      } else {
+        setCustomerScreen('HOME');
+        return ['HOME'];
+      }
+    });
+    return true;
+  };
+
+  // Android Mobile Hardware Back Button Listener (Requirement 2)
+  useEffect(() => {
+    const onHardwareBack = () => {
+      if (role === 'customer' && customerScreen !== 'HOME') {
+        handleBack();
+        return true;
+      }
+      if (role === 'vendor' && vendorTab !== 'dashboard') {
+        setVendorTab('dashboard');
+        return true;
+      }
+      if (role === 'admin' && adminTab !== 'dashboard') {
+        setAdminTab('dashboard');
+        return true;
+      }
+      return false;
+    };
+
+    const backSub = BackHandler.addEventListener('hardwareBackPress', onHardwareBack);
+    return () => backSub.remove();
+  }, [role, customerScreen, vendorTab, adminTab]);
+
+  const [headerThemeColor, setHeaderThemeColor] = useState<string>('#07843D');
+  const homeScrollY = useRef(new Animated.Value(0)).current;
 
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedProduct, setSelectedProduct] = useState<Product>(defaultProduct);
@@ -122,8 +193,9 @@ export default function App() {
   const [isSwitchingToVendor, setIsSwitchingToVendor] = useState(false);
   const [vendorStatus, setVendorStatus] = useState<'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED'>('NONE');
 
-  // Device & Role Auth states
-  const [isCheckingSession, setIsCheckingSession] = useState<boolean>(false);
+  // App Starting / Splash & Session states
+  const [isAppStarting, setIsAppStarting] = useState<boolean>(true);
+  const [isCheckingSession, setIsCheckingSession] = useState<boolean>(true);
   const [loginRole, setLoginRole] = useState<'customer' | 'vendor' | 'admin'>('customer');
   const [otpExpiresAt, setOtpExpiresAt] = useState<string>('');
   const [currentUserId, setCurrentUserId] = useState<string>('');
@@ -182,9 +254,10 @@ export default function App() {
     }
   }, [refreshKey, phone]);
 
-  // Restore authenticated session & validate trusted device on app launch
+  // Restore authenticated session & validate trusted device on app launch with startup loading animation
   useEffect(() => {
     const checkTrustedSession = async () => {
+      const startTime = Date.now();
       try {
         const savedLoc = safeStorage.getItem('agriflow_selected_location');
         if (savedLoc && !selectedLocation) {
@@ -213,7 +286,6 @@ export default function App() {
               } else {
                 setCustomerScreen('HOME');
               }
-              setIsCheckingSession(false);
               return;
             }
           } catch (tokErr) {
@@ -237,13 +309,23 @@ export default function App() {
           } else {
             setCustomerScreen('HOME');
           }
-          setIsCheckingSession(false);
           return;
         }
       } catch (err) {
         console.log('[Info] [App] Session check error:', err);
+      } finally {
+        setIsCheckingSession(false);
+        // Ensure starting GIF displays smoothly for at least 2200ms
+        const elapsed = Date.now() - startTime;
+        const minDisplayTime = 2200;
+        if (elapsed < minDisplayTime) {
+          setTimeout(() => {
+            setIsAppStarting(false);
+          }, minDisplayTime - elapsed);
+        } else {
+          setIsAppStarting(false);
+        }
       }
-      setIsCheckingSession(false);
     };
 
     checkTrustedSession();
@@ -663,6 +745,17 @@ export default function App() {
     }
   };
 
+  // --- 0. APP STARTING / SPLASH LOADING PAGE WITH ANIMATED GIF ---
+  if (isAppStarting) {
+    return (
+      <MobileFrameWrapper>
+        <AppStartingLoadingScreen
+          message="Loading farm fresh produce..."
+        />
+      </MobileFrameWrapper>
+    );
+  }
+
   // --- MANDATORY LOCATION SELECTION BEFORE LOGIN OR ACCESS / CHANGE ADDRESS FIRST PAGE ---
   if (!selectedLocation || isChangingLocation) {
     return (
@@ -929,29 +1022,16 @@ export default function App() {
           role={role}
           currentScreen={role === 'admin' ? adminTab : role === 'vendor' ? vendorTab : customerScreen}
           onOpenMenu={() => setShowMenu(true)}
-          onBack={() => {
-            if (customerScreen === 'VENDOR_REGISTRATION') setCustomerScreen('PROFILE');
-            else if (customerScreen === 'PRODUCT_DETAILS') setCustomerScreen('ALL_PRODUCTS');
-            else if (customerScreen === 'SUBSCRIPTION_SUMMARY') setCustomerScreen('SUBSCRIPTION_CREATE');
-            else if (customerScreen === 'PAYMENT') setCustomerScreen('SUBSCRIPTION_SUMMARY');
-            else if (customerScreen === 'SUBSCRIPTION_CREATE') {
-              if (selectedProduct) {
-                setCustomerScreen('PRODUCT_DETAILS');
-              } else {
-                setCustomerScreen('HOME');
-              }
-            }
-            else setCustomerScreen('HOME');
-          }}
+          onBack={handleBack}
           onSwitchToCustomer={handleSwitchToCustomer}
           selectedLocation={selectedLocation}
           onChangeLocation={() => setIsChangingLocation(true)}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           cartCount={cartCount}
-          onOpenCart={() => setCustomerScreen('CART')}
-          onOpenSearch={() => setCustomerScreen('SEARCH')}
-          onOpenPlans={() => setCustomerScreen('MY_SUBSCRIPTIONS')}
+          onOpenCart={() => handleNavigate('CART')}
+          onOpenSearch={() => handleNavigate('SEARCH')}
+          onOpenPlans={() => handleNavigate('MY_SUBSCRIPTIONS')}
           headerThemeColor={headerThemeColor}
           scrollY={homeScrollY}
         />
@@ -961,12 +1041,13 @@ export default function App() {
           ['WHATSAPP_AI', 'AI_VOICE_CALL', 'DAILY_CONFIRMATION'].includes(customerScreen) ? (
             <AIScreens 
               customerScreen={customerScreen} 
-              setCustomerScreen={setCustomerScreen} 
+              setCustomerScreen={handleNavigate} 
             />
           ) : (
             <CustomerScreens
               customerScreen={customerScreen}
-              setCustomerScreen={setCustomerScreen}
+              setCustomerScreen={handleNavigate}
+              onBack={handleBack}
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
               selectedProduct={selectedProduct}
@@ -1014,7 +1095,7 @@ export default function App() {
         <AppFooter
           role={role}
           currentScreen={customerScreen}
-          onNavigate={(screen) => setCustomerScreen(screen)}
+          onNavigate={(screen) => handleNavigate(screen)}
           onSwitchToVendor={handleSwitchToVendor}
           isSwitchingToVendor={isSwitchingToVendor}
           isApprovedVendor={vendorStatus === 'APPROVED'}

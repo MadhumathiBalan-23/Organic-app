@@ -3,6 +3,10 @@ import { CustomerController } from '../controllers/customer.controller';
 
 const router = Router();
 
+// 0. Consolidated Single Landing Feed (Requirement 3)
+router.get('/customer/landing', CustomerController.getLandingFeed);
+router.get('/landing', CustomerController.getLandingFeed);
+
 // 1. Categories
 router.get('/customer/categories', CustomerController.getCategories);
 router.get('/customer/categories/:categoryId', CustomerController.getCategoryById);
@@ -21,5 +25,9 @@ router.get('/customer/vendors/:vendorId/products', CustomerController.getVendorP
 
 // 6. Single Product Details
 router.get('/customer/products/:vendorProductId', CustomerController.getProductById);
+
+// 7. Dynamic Product Reviews (Requirement 5)
+router.get('/customer/products/:productId/reviews', CustomerController.getProductReviews);
+router.post('/customer/products/:productId/reviews', CustomerController.addProductReview);
 
 export default router;
