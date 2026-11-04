@@ -46,3 +46,9 @@ Desktop.ini
 *.db-journal
 *.apk
 
+.gradle/
+**/android/.gradle/
+**/android/build/
+**/android/app/build/
+**/android/.cxx/
+**/android/.kotlin/
