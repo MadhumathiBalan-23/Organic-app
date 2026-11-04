@@ -1,13 +1,13 @@
 {
   "name": "agriflow-ai-app",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "main": "index.js",
   "scripts": {
-    "start": "node start.js -p 8085",
-    "android": "node start.js --android -p 8085",
-    "ios": "node start.js --ios -p 8085",
-    "web": "node start.js --web -p 8085",
+    "start": "node start.js -p 8082",
+    "android": "node start.js --android -p 8082",
+    "ios": "node start.js --ios -p 8082",
+    "web": "node start.js --web -p 8082",
     "build": "tsc && npx expo export -p web",
     "ts:check": "tsc"
   },
