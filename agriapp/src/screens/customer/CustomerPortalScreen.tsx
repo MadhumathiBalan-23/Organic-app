@@ -133,7 +133,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
 
   // Load database saved cart for customer on open / mount
   useEffect(() => {
-    if (cleanUserPhone) {
+    if (cleanUserPhone && cleanUserPhone.length === 10) {
       cartService.getCart(cleanUserPhone)
         .then((dbCart: any) => {
           if (Array.isArray(dbCart) && dbCart.length > 0) {
@@ -975,7 +975,7 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
   const renderFloatingCartBar = () => {
     if (isCartBarDismissed || cartCount === 0 || !['HOME', 'ALL_PRODUCTS', 'CATEGORY_PRODUCTS'].includes(customerScreen)) return null;
     return (
-      <View className="absolute bottom-3 left-4 right-4 bg-[#0D2B1D] rounded-2xl px-4 py-3 flex-row items-center justify-between shadow-xl border border-[#22c55e] z-50">
+      <View className="absolute bottom-[72px] left-4 right-4 bg-[#0D2B1D] rounded-2xl px-4 py-3 flex-row items-center justify-between shadow-xl border border-[#22c55e] z-50">
         <View className="flex-1 mr-2">
           <Text className="text-[#86EFAC] text-xs font-extrabold uppercase tracking-wider">
             {cartCount} {cartCount === 1 ? 'Item' : 'Items'} in Cart
@@ -1273,8 +1273,6 @@ export const CustomerPortalScreen: React.FC<CustomerScreensProps> = ({
           onLogout={handleLogout}
         />
       )}
-
-      {renderFloatingCartBar()}
 
       {/* ── Edit Profile Modal ── */}
       <Modal visible={showEditProfileModal} transparent animationType="slide">

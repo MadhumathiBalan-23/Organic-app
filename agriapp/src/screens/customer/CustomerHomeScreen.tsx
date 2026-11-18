@@ -466,7 +466,7 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
           </View>
 
           {/* Product Cards Grid */}
-          <View className="flex-row flex-wrap justify-between gap-y-3">
+          <View className="flex-row flex-wrap justify-between">
             {products.slice(0, 8).map((product) => renderProductCard(product))}
           </View>
         </View>

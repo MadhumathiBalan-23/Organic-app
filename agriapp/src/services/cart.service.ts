@@ -27,7 +27,7 @@ export const cartService = {
   getCart: async (userPhone: string): Promise<CartItemModel[]> => {
     try {
       const cleanPhone = String(userPhone || '').replace(/[^0-9]/g, '');
-      if (!cleanPhone) return [];
+      if (!cleanPhone || cleanPhone.length < 10) return [];
       const res = await axios.get(API_ENDPOINTS.userCart(cleanPhone), { timeout: 10000 });
       return extractDataList<CartItemModel>(res.data);
     } catch (err: any) {
@@ -40,7 +40,7 @@ export const cartService = {
   addToCart: async (userPhone: string, productId: string, qty = 1): Promise<CartItemModel[]> => {
     try {
       const cleanPhone = String(userPhone || '').replace(/[^0-9]/g, '');
-      if (!cleanPhone || !productId) return [];
+      if (!cleanPhone || cleanPhone.length < 10 || !productId) return [];
       const res = await axios.post(
         API_ENDPOINTS.addToCart,
         { phoneNumber: cleanPhone, productId, qty },
@@ -57,7 +57,7 @@ export const cartService = {
   updateCartQty: async (userPhone: string, productId: string, delta?: number, qty?: number): Promise<CartItemModel[]> => {
     try {
       const cleanPhone = String(userPhone || '').replace(/[^0-9]/g, '');
-      if (!cleanPhone || !productId) return [];
+      if (!cleanPhone || cleanPhone.length < 10 || !productId) return [];
       const res = await axios.put(
         API_ENDPOINTS.updateCartQty,
         { phoneNumber: cleanPhone, productId, delta, qty },
@@ -74,7 +74,7 @@ export const cartService = {
   removeFromCart: async (userPhone: string, productId: string): Promise<CartItemModel[]> => {
     try {
       const cleanPhone = String(userPhone || '').replace(/[^0-9]/g, '');
-      if (!cleanPhone || !productId) return [];
+      if (!cleanPhone || cleanPhone.length < 10 || !productId) return [];
       const res = await axios.delete(API_ENDPOINTS.removeFromCart(productId, cleanPhone), { timeout: 10000 });
       return extractDataList<CartItemModel>(res.data);
     } catch (err: any) {
@@ -87,7 +87,7 @@ export const cartService = {
   clearCart: async (userPhone: string): Promise<boolean> => {
     try {
       const cleanPhone = String(userPhone || '').replace(/[^0-9]/g, '');
-      if (!cleanPhone) return true;
+      if (!cleanPhone || cleanPhone.length < 10) return true;
       await axios.delete(API_ENDPOINTS.clearCart(cleanPhone), { timeout: 10000 });
       return true;
     } catch (err: any) {
@@ -100,7 +100,7 @@ export const cartService = {
   syncCart: async (userPhone: string, items: { product: { id: string }; qty: number }[]): Promise<CartItemModel[]> => {
     try {
       const cleanPhone = String(userPhone || '').replace(/[^0-9]/g, '');
-      if (!cleanPhone) return [];
+      if (!cleanPhone || cleanPhone.length < 10) return [];
       const formattedItems = (items || [])
         .filter(i => i && i.product && i.product.id)
         .map(i => ({ productId: i.product.id, qty: i.qty }));

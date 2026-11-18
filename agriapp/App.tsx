@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Text, View, TextInput,
   TouchableOpacity, StatusBar, Alert, Modal, Image, ActivityIndicator, LogBox,
@@ -235,7 +235,7 @@ export default function App() {
       .catch(() => { });
 
     // Automatically load customer's saved database cart when phone number is set
-    if (cleanPhone) {
+    if (cleanPhone && cleanPhone.length === 10) {
       cartService.getCart(cleanPhone)
         .then(items => {
           if (Array.isArray(items)) {
