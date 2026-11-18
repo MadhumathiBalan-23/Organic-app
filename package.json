@@ -2,12 +2,14 @@
   "name": "agriflow-ai-root",
   "version": "1.0.0",
   "private": true,
+  "main": "agriapp/index.js",
   "description": "AI-Powered Organic Product Management & Delivery Platform",
   "workspaces": [
     "api",
     "agriapp"
   ],
   "scripts": {
+    "start": "npm --prefix agriapp run start",
     "api:dev": "npm --prefix api run dev",
     "api:build": "npm --prefix api run build",
     "api:start": "npm --prefix api run start",
