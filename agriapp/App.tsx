@@ -1,18 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Text, View, TextInput, 
+﻿import React, { useState, useEffect, useRef } from 'react';
+import {
+  Text, View, TextInput,
   TouchableOpacity, StatusBar, Alert, Modal, Image, ActivityIndicator, LogBox,
   ScrollView, useWindowDimensions, Animated, BackHandler
 } from 'react-native';
 import { MapPin, ArrowRight, AlertCircle, ArrowLeft, User, Store, ShieldCheck, Sprout, Tractor, Zap, Lock } from 'lucide-react-native';
-import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-reanimated';
-
-try {
-  configureReanimatedLogger({
-    level: ReanimatedLogLevel.warn,
-    strict: false,
-  });
-} catch (_) {}
 import {
   TopLeftLeaves,
   TopRightLeaves,
@@ -59,7 +51,7 @@ const safeStorage = {
       const g = globalThis as any;
       if (typeof g.localStorage !== 'undefined' && g.localStorage) return g.localStorage.getItem(key);
       if (typeof g.window !== 'undefined' && g.window?.localStorage) return g.window.localStorage.getItem(key);
-    } catch {}
+    } catch { }
     return null;
   },
   setItem: (key: string, val: string) => {
@@ -67,14 +59,14 @@ const safeStorage = {
       const g = globalThis as any;
       if (typeof g.localStorage !== 'undefined' && g.localStorage) g.localStorage.setItem(key, val);
       else if (typeof g.window !== 'undefined' && g.window?.localStorage) g.window.localStorage.setItem(key, val);
-    } catch {}
+    } catch { }
   },
   removeItem: (key: string) => {
     try {
       const g = globalThis as any;
       if (typeof g.localStorage !== 'undefined' && g.localStorage) g.localStorage.removeItem(key);
       else if (typeof g.window !== 'undefined' && g.window?.localStorage) g.window.localStorage.removeItem(key);
-    } catch {}
+    } catch { }
   }
 };
 
@@ -218,7 +210,7 @@ export default function App() {
           }
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
     const subUrl = cleanPhone ? API_ENDPOINTS.userSubscriptions(cleanPhone) : API_ENDPOINTS.subscriptions;
@@ -231,7 +223,7 @@ export default function App() {
           setSubscriptions([]);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     fetch(API_ENDPOINTS.deliveries)
       .then(res => res.json())
@@ -240,7 +232,7 @@ export default function App() {
           setPendingDeliveriesCount(json.data.filter((d: any) => d.status !== 'Delivered').length);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     // Automatically load customer's saved database cart when phone number is set
     if (cleanPhone) {
@@ -250,7 +242,7 @@ export default function App() {
             setCart(items);
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [refreshKey, phone]);
 
@@ -263,7 +255,7 @@ export default function App() {
         if (savedLoc && !selectedLocation) {
           try {
             setSelectedLocation(JSON.parse(savedLoc));
-          } catch {}
+          } catch { }
         }
 
         const creds = await deviceService.getStoredCredentials();
@@ -336,7 +328,7 @@ export default function App() {
     try {
       const saved = safeStorage.getItem('agriflow_selected_location');
       if (saved) return JSON.parse(saved);
-    } catch {}
+    } catch { }
     return {
       address: 'Nerunjipettai, Anthiyur, Tamil Nadu',
       latitude: 11.5908,
@@ -494,11 +486,11 @@ export default function App() {
     if (cart.length > 0) {
       cartService.syncCart(cleanPhone, cart).then(synced => {
         if (Array.isArray(synced) && synced.length > 0) setCart(synced);
-      }).catch(() => {});
+      }).catch(() => { });
     } else {
       cartService.getCart(cleanPhone).then(dbCart => {
         if (Array.isArray(dbCart) && dbCart.length > 0) setCart(dbCart);
-      }).catch(() => {});
+      }).catch(() => { });
     }
 
     setAuthStep('PHONE');
@@ -590,11 +582,11 @@ export default function App() {
         if (cart.length > 0) {
           cartService.syncCart(cleanPhone, cart).then(synced => {
             if (Array.isArray(synced) && synced.length > 0) setCart(synced);
-          }).catch(() => {});
+          }).catch(() => { });
         } else {
           cartService.getCart(cleanPhone).then(dbCart => {
             if (Array.isArray(dbCart) && dbCart.length > 0) setCart(dbCart);
-          }).catch(() => {});
+          }).catch(() => { });
         }
 
         setAuthStep('PHONE');
@@ -676,7 +668,7 @@ export default function App() {
       if (currentUserId || phone) {
         await authService.logout(currentUserId || phone);
       }
-    } catch {}
+    } catch { }
     safeStorage.removeItem('agriflow_customer_phone');
     safeStorage.removeItem('agriflow_user_role');
 
@@ -800,11 +792,11 @@ export default function App() {
           >
             {/* Centered Brand Logo with Green Circle Ring */}
             <View className="items-center mb-4">
-              <View 
+              <View
                 style={{ width: 92, height: 92, overflow: 'hidden' }}
                 className="w-[92px] h-[92px] rounded-full border-2 border-emerald-600 bg-white items-center justify-center shadow-md overflow-hidden"
               >
-                <Image 
+                <Image
                   source={require('./asset/logo.png')}
                   style={{ width: 80, height: 80 }}
                   className="w-20 h-20 rounded-full"
@@ -843,18 +835,18 @@ export default function App() {
                   <View className="bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-300"><Text className="text-xs font-black text-emerald-800 tracking-wide">IN</Text></View>
                   <Text className="text-base font-bold text-slate-900 ml-2">+91</Text>
                   <View className="w-[1px] h-6 bg-slate-200 mx-3.5" />
-                  <TextInput 
-                    className="flex-1 text-[15px] text-slate-900 font-semibold py-0" 
-                    placeholder="10-digit mobile number" 
+                  <TextInput
+                    className="flex-1 text-[15px] text-slate-900 font-semibold py-0"
+                    placeholder="10-digit mobile number"
                     placeholderTextColor="#94A3B8"
-                    keyboardType="phone-pad" 
+                    keyboardType="phone-pad"
                     maxLength={10}
-                    value={phone} 
+                    value={phone}
                     editable={true}
                     onChangeText={(text) => {
                       setPhone(text.replace(/[^0-9]/g, ''));
                       setAuthError(null);
-                    }} 
+                    }}
                   />
                 </View>
 
@@ -892,8 +884,8 @@ export default function App() {
               </View>
             ) : (
               <View className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm mb-4">
-                <TouchableOpacity 
-                  className="flex-row items-center gap-1 mb-3 self-start" 
+                <TouchableOpacity
+                  className="flex-row items-center gap-1 mb-3 self-start"
                   onPress={() => { setAuthStep('PHONE'); setAuthError(null); }}
                   activeOpacity={0.7}
                 >
@@ -912,7 +904,7 @@ export default function App() {
                     <Lock size={15} color="#047857" />
                     <Text className="text-xs font-semibold text-emerald-800">Your OTP Code:</Text>
                   </View>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     className="bg-white border border-emerald-400 px-3 py-1 rounded-lg shadow-xs flex-row items-center gap-1"
                     activeOpacity={0.7}
                     onPress={() => {
@@ -926,13 +918,13 @@ export default function App() {
                 </View>
 
                 <View className="items-center mb-3">
-                  <TextInput 
-                    className="text-3xl font-extrabold tracking-widest text-center text-slate-900 bg-slate-50 border border-slate-200 rounded-xl py-3 px-6 w-52" 
-                    placeholder="• • • •" 
+                  <TextInput
+                    className="text-3xl font-extrabold tracking-widest text-center text-slate-900 bg-slate-50 border border-slate-200 rounded-xl py-3 px-6 w-52"
+                    placeholder="• • • •"
                     placeholderTextColor="#CBD5E1"
-                    keyboardType="number-pad" 
+                    keyboardType="number-pad"
                     maxLength={4}
-                    value={otp} 
+                    value={otp}
                     editable={true}
                     onChangeText={(text) => {
                       const cleaned = text.replace(/[^0-9]/g, '');
@@ -941,7 +933,7 @@ export default function App() {
                       if (cleaned.length === 4) {
                         handleVerifyOtp(cleaned);
                       }
-                    }} 
+                    }}
                     autoFocus
                   />
                   <Text className="text-[11px] text-slate-400 mt-1.5 font-medium">
@@ -970,7 +962,7 @@ export default function App() {
 
                 <View className="flex-row justify-center items-center mt-4">
                   <Text className="text-xs text-slate-500">Didn't receive code? </Text>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={() => handleSendOtp(phone)}
                   >
                     <Text className="text-xs font-bold text-emerald-700">
@@ -1039,9 +1031,9 @@ export default function App() {
         {/* Dynamic Main Body Content */}
         {role === 'customer' && (
           ['WHATSAPP_AI', 'AI_VOICE_CALL', 'DAILY_CONFIRMATION'].includes(customerScreen) ? (
-            <AIScreens 
-              customerScreen={customerScreen} 
-              setCustomerScreen={handleNavigate} 
+            <AIScreens
+              customerScreen={customerScreen}
+              setCustomerScreen={handleNavigate}
             />
           ) : (
             <CustomerScreens

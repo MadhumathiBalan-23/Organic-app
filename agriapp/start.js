@@ -27,6 +27,7 @@ const child = spawn(process.execPath, [
   'start',
   ...args
 ], {
+  cwd: __dirname,
   stdio: 'inherit',
   env: {
     ...process.env,

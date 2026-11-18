@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Mathira Organic Farming",
+    "slug": "mathira-organic-farming",
+    "version": "0.1.1",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "icon": "./agriapp/asset/logo.png",
+    "splash": {
+      "image": "./agriapp/asset/gif.gif",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.mathira.organicfarming",
+      "versionCode": 3,
+      "backgroundColor": "#FFFFFF",
+      "adaptiveIcon": {
+        "foregroundImage": "./agriapp/asset/logo.png",
+        "backgroundColor": "#FDFBF7"
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-status-bar",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Mathira Organic Farming to access your location to discover nearby organic vendors and calculate delivery charges."
+        }
+      ],
+      "expo-secure-store"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "6bade273-bc73-4652-b8b8-0ec083ef1594"
+      }
+    },
+    "owner": "madhu_mathi"
+  }
+}

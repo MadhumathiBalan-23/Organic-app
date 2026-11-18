@@ -20,13 +20,7 @@
     "android": {
       "package": "com.mathira.organicfarming",
       "versionCode": 3,
-      "usesCleartextTraffic": true,
       "backgroundColor": "#FFFFFF",
-      "splash": {
-        "image": "./asset/gif.gif",
-        "resizeMode": "contain",
-        "backgroundColor": "#FFFFFF"
-      },
       "adaptiveIcon": {
         "foregroundImage": "./asset/logo.png",
         "backgroundColor": "#FDFBF7"
