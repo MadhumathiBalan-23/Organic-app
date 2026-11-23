@@ -119,6 +119,7 @@ model User {
   devices       UserDevice[]
   refreshTokens RefreshToken[]
   loginHistories LoginHistory[]
+  notifications  Notification[]
 }
 
 model Brand {
@@ -386,4 +387,43 @@ model LoginHistory {
   @@index([userId])
   @@index([createdAt])
 }
+
+model Notification {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phoneNumber String?
+  title       String
+  message     String
+  type        String   @default("DELIVERY_DELAY") // DELIVERY_DELAY, SCHEDULE_CHANGE, NIGHT_CONFIRMATION, ORDER_UPDATE
+  channel     String   @default("VOICE") // VOICE, WHATSAPP, SMS, PUSH, IN_APP
+  status      String   @default("SENT") // SENT, DELIVERED, FAILED, ACKNOWLEDGED
+  actionUrl   String?
+  metadata    String?  @default("{}") // JSON metadata
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([phoneNumber])
+  @@index([createdAt])
+}
+
+model VoiceCallLog {
+  id             String    @id @default(uuid())
+  customerPhone  String
+  customerName   String
+  callSid        String?   @unique
+  triggerReason  String    @default("AUTO_SLA_BREACH") // AUTO_SLA_BREACH, MANUAL_DRIVER_DELAY, NIGHT_CONFIRMATION, HUB_DELAY
+  audioUrl       String?
+  durationSecs   Int       @default(0)
+  callStatus     String    @default("INITIATED") // INITIATED, RINGING, COMPLETED, BUSY, NO_ANSWER, FAILED
+  dtmfResponse   String?   // "1" (Confirmed), "2" (Rescheduled / Skipped)
+  fallbackSent   Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  completedAt    DateTime?
+
+  @@index([customerPhone])
+  @@index([callStatus])
+}
+
 

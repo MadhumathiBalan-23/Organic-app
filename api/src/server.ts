@@ -2,6 +2,7 @@ import os from 'os';
 import app from './app';
 import { config } from './config';
 import { prisma } from './config/db';
+import { AutoDelayWatcherCron } from './cron/auto-delay-watcher.cron';
 
 const PORT = config.port;
 
@@ -22,6 +23,9 @@ const server = app.listen(Number(PORT), '0.0.0.0', () => {
   console.log(`[Server]: Local:   http://localhost:${PORT}`);
   console.log(`[Server]: Network: http://${getNetworkIp()}:${PORT}`);
   console.log(`[Server]: Health:  http://localhost:${PORT}/api/health`);
+  
+  // Initialize Mode 2 Autonomous SLA Breach Watcher & Reminder Cron Engine
+  AutoDelayWatcherCron.init();
 });
 
 server.on('error', (err: any) => {

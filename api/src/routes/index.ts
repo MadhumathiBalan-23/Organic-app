@@ -16,6 +16,8 @@ import locationRoutes from './location.routes';
 import bannerRoutes from './banner.routes';
 import cartRoutes from './cart.routes';
 import customerRoutes from './customer.routes';
+import notificationRoutes from './notification.routes';
+import aiIntentRoutes from './ai-intent.routes';
 
 const router = Router();
 
@@ -37,5 +39,7 @@ router.use(locationRoutes);
 router.use(bannerRoutes);
 router.use(cartRoutes);
 router.use(customerRoutes);
+router.use(notificationRoutes);
+router.use(aiIntentRoutes);
 
 export default router;

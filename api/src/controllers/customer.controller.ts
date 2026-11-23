@@ -685,7 +685,7 @@ export class CustomerController {
         }),
         // 3. Featured / Harvest Products
         prisma.product.findMany({
-          where: { isAvailable: true },
+          where: { isActive: true },
           include: {
             category: true,
             vendor: true,
