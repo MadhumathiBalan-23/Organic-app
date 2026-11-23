@@ -2,7 +2,7 @@
   "expo": {
     "name": "Mathira Organic Farming",
     "slug": "mathira-organic-farming",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "assetBundlePatterns": [
@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.mathira.organicfarming",
-      "versionCode": 3,
+      "versionCode": 4,
       "backgroundColor": "#FFFFFF",
       "adaptiveIcon": {
         "foregroundImage": "./asset/logo.png",
