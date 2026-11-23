@@ -3,7 +3,10 @@ module.exports = {
   content: [
     "./App.{js,jsx,ts,tsx}",
     "./index.js",
-    "./src/**/*.{js,jsx,ts,tsx}"
+    "./src/**/*.{js,jsx,ts,tsx}",
+    "./agriapp/App.{js,jsx,ts,tsx}",
+    "./agriapp/index.js",
+    "./agriapp/src/**/*.{js,jsx,ts,tsx}",
   ],
   presets: [require("nativewind/preset")],
   theme: {
@@ -52,9 +55,8 @@ module.exports = {
           500: '#F59E0B',
           600: '#D97706',
           700: '#B45309',
-          800: '#92400E',
         },
-      }
+      },
     },
   },
   plugins: [],

@@ -23,15 +23,41 @@ export interface CartItemModel {
 }
 
 export const cartService = {
-  // Fetch user's persistent cart from PostgreSQL database
+  // Fetch user's persistent cart from database
   getCart: async (userPhone: string): Promise<CartItemModel[]> => {
     try {
       const cleanPhone = String(userPhone || '').replace(/[^0-9]/g, '');
       if (!cleanPhone || cleanPhone.length < 10) return [];
-      const res = await axios.get(API_ENDPOINTS.userCart(cleanPhone), { timeout: 10000 });
+      const url = API_ENDPOINTS.userCart(cleanPhone);
+
+      // 1. Try native fetch with timeout for optimal mobile Android/iOS compatibility
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        if (res.ok) {
+          const json = await res.json();
+          return extractDataList<CartItemModel>(json);
+        }
+      } catch {
+        // Fall through to Axios attempt
+      }
+
+      // 2. Fallback to Axios if fetch did not resolve
+      const res = await axios.get(url, {
+        headers: { 'Accept': 'application/json' },
+        timeout: 10000,
+      });
       return extractDataList<CartItemModel>(res.data);
-    } catch (err: any) {
-      console.warn('⚠️ [CartService.getCart] Error:', err.message);
+    } catch {
       return [];
     }
   },
@@ -41,14 +67,35 @@ export const cartService = {
     try {
       const cleanPhone = String(userPhone || '').replace(/[^0-9]/g, '');
       if (!cleanPhone || cleanPhone.length < 10 || !productId) return [];
+      const url = API_ENDPOINTS.addToCart;
+      const payload = JSON.stringify({ phoneNumber: cleanPhone, productId, qty });
+
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: payload,
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        if (res.ok) {
+          const json = await res.json();
+          return extractDataList<CartItemModel>(json);
+        }
+      } catch { }
+
       const res = await axios.post(
-        API_ENDPOINTS.addToCart,
+        url,
         { phoneNumber: cleanPhone, productId, qty },
-        { headers: { 'Content-Type': 'application/json' }, timeout: 10000 }
+        { headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }, timeout: 10000 }
       );
       return extractDataList<CartItemModel>(res.data);
-    } catch (err: any) {
-      console.warn('⚠️ [CartService.addToCart] Error:', err.message);
+    } catch {
       return [];
     }
   },
@@ -58,14 +105,35 @@ export const cartService = {
     try {
       const cleanPhone = String(userPhone || '').replace(/[^0-9]/g, '');
       if (!cleanPhone || cleanPhone.length < 10 || !productId) return [];
+      const url = API_ENDPOINTS.updateCartQty;
+      const payload = JSON.stringify({ phoneNumber: cleanPhone, productId, delta, qty });
+
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch(url, {
+          method: 'PUT',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: payload,
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        if (res.ok) {
+          const json = await res.json();
+          return extractDataList<CartItemModel>(json);
+        }
+      } catch { }
+
       const res = await axios.put(
-        API_ENDPOINTS.updateCartQty,
+        url,
         { phoneNumber: cleanPhone, productId, delta, qty },
-        { headers: { 'Content-Type': 'application/json' }, timeout: 10000 }
+        { headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }, timeout: 10000 }
       );
       return extractDataList<CartItemModel>(res.data);
-    } catch (err: any) {
-      console.warn('⚠️ [CartService.updateCartQty] Error:', err.message);
+    } catch {
       return [];
     }
   },
@@ -75,10 +143,26 @@ export const cartService = {
     try {
       const cleanPhone = String(userPhone || '').replace(/[^0-9]/g, '');
       if (!cleanPhone || cleanPhone.length < 10 || !productId) return [];
-      const res = await axios.delete(API_ENDPOINTS.removeFromCart(productId, cleanPhone), { timeout: 10000 });
+      const url = API_ENDPOINTS.removeFromCart(productId, cleanPhone);
+
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch(url, {
+          method: 'DELETE',
+          headers: { 'Accept': 'application/json' },
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        if (res.ok) {
+          const json = await res.json();
+          return extractDataList<CartItemModel>(json);
+        }
+      } catch { }
+
+      const res = await axios.delete(url, { timeout: 10000 });
       return extractDataList<CartItemModel>(res.data);
-    } catch (err: any) {
-      console.warn('⚠️ [CartService.removeFromCart] Error:', err.message);
+    } catch {
       return [];
     }
   },
@@ -88,10 +172,23 @@ export const cartService = {
     try {
       const cleanPhone = String(userPhone || '').replace(/[^0-9]/g, '');
       if (!cleanPhone || cleanPhone.length < 10) return true;
-      await axios.delete(API_ENDPOINTS.clearCart(cleanPhone), { timeout: 10000 });
+      const url = API_ENDPOINTS.clearCart(cleanPhone);
+
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch(url, {
+          method: 'DELETE',
+          headers: { 'Accept': 'application/json' },
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        if (res.ok) return true;
+      } catch { }
+
+      await axios.delete(url, { timeout: 10000 });
       return true;
-    } catch (err: any) {
-      console.warn('⚠️ [CartService.clearCart] Error:', err.message);
+    } catch {
       return false;
     }
   },
@@ -104,15 +201,35 @@ export const cartService = {
       const formattedItems = (items || [])
         .filter(i => i && i.product && i.product.id)
         .map(i => ({ productId: i.product.id, qty: i.qty }));
+      const url = API_ENDPOINTS.syncCart;
+      const payload = JSON.stringify({ phoneNumber: cleanPhone, items: formattedItems });
+
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: payload,
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        if (res.ok) {
+          const json = await res.json();
+          return extractDataList<CartItemModel>(json);
+        }
+      } catch { }
 
       const res = await axios.post(
-        API_ENDPOINTS.syncCart,
+        url,
         { phoneNumber: cleanPhone, items: formattedItems },
-        { headers: { 'Content-Type': 'application/json' }, timeout: 10000 }
+        { headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }, timeout: 10000 }
       );
       return extractDataList<CartItemModel>(res.data);
-    } catch (err: any) {
-      console.warn('⚠️ [CartService.syncCart] Error:', err.message);
+    } catch {
       return [];
     }
   },

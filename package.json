@@ -10,6 +10,7 @@
   ],
   "scripts": {
     "start": "npm --prefix agriapp run start",
+    "web": "npm --prefix agriapp run web",
     "api:dev": "npm --prefix api run dev",
     "api:build": "npm --prefix api run build",
     "api:start": "npm --prefix api run start",

@@ -9,6 +9,7 @@ export * from './location.service';
 export * from './cart.service';
 export * from './subscription.service';
 export * from './customer.service';
+export * from './notification.service';
 
 import { bannerService, uploadBannerImage } from './banner.service';
 import { productService } from './product.service';

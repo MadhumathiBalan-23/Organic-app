@@ -340,36 +340,48 @@ export const AppButton: React.FC<AppButtonProps> = ({
           btn: 'bg-emerald-50 border border-emerald-200',
           text: 'text-emerald-900 font-extrabold',
           loaderColor: UI_COLORS.primary,
+          inlineBtn: { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0', borderWidth: 1 },
+          inlineText: { color: '#064E3B', fontWeight: '800' as const },
         };
       case 'outline':
         return {
           btn: 'bg-transparent border border-emerald-600',
           text: 'text-emerald-700 font-bold',
           loaderColor: UI_COLORS.primary,
+          inlineBtn: { backgroundColor: 'transparent', borderColor: '#059669', borderWidth: 1.5 },
+          inlineText: { color: '#047857', fontWeight: '700' as const },
         };
       case 'danger':
         return {
           btn: 'bg-red-600 shadow-sm',
           text: 'text-white font-bold',
           loaderColor: '#FFFFFF',
+          inlineBtn: { backgroundColor: '#DC2626' },
+          inlineText: { color: '#FFFFFF', fontWeight: '700' as const },
         };
       case 'warning':
         return {
           btn: 'bg-amber-600 shadow-sm',
           text: 'text-white font-bold',
           loaderColor: '#FFFFFF',
+          inlineBtn: { backgroundColor: '#D97706' },
+          inlineText: { color: '#FFFFFF', fontWeight: '700' as const },
         };
       case 'ghost':
         return {
           btn: 'bg-transparent',
           text: 'text-emerald-700 font-bold',
           loaderColor: UI_COLORS.primary,
+          inlineBtn: { backgroundColor: 'transparent' },
+          inlineText: { color: '#047857', fontWeight: '700' as const },
         };
       default: // primary
         return {
           btn: 'bg-emerald-700 shadow-sm',
           text: 'text-white font-bold',
           loaderColor: '#FFFFFF',
+          inlineBtn: { backgroundColor: '#047857' },
+          inlineText: { color: '#FFFFFF', fontWeight: '800' as const },
         };
     }
   };
@@ -377,13 +389,33 @@ export const AppButton: React.FC<AppButtonProps> = ({
   const getSizeStyles = () => {
     switch (size) {
       case 'small':
-        return { btn: 'h-9 px-3 rounded-lg', text: 'text-xs' };
+        return {
+          btn: 'h-9 px-3 rounded-lg',
+          text: 'text-xs',
+          inlineBtn: { height: 36, paddingHorizontal: 12, borderRadius: 8 },
+          inlineText: { fontSize: 12 },
+        };
       case 'large':
-        return { btn: 'min-h-[58px] py-3.5 px-6 rounded-2xl', text: 'text-base font-extrabold' };
+        return {
+          btn: 'min-h-[58px] py-3.5 px-6 rounded-2xl',
+          text: 'text-base font-extrabold',
+          inlineBtn: { minHeight: 56, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 16 },
+          inlineText: { fontSize: 16, fontWeight: '800' as const },
+        };
       case 'xlarge':
-        return { btn: 'min-h-[64px] py-4 px-8 rounded-2xl', text: 'text-lg font-black tracking-wide' };
+        return {
+          btn: 'min-h-[64px] py-4 px-8 rounded-2xl',
+          text: 'text-lg font-black tracking-wide',
+          inlineBtn: { minHeight: 64, paddingHorizontal: 32, paddingVertical: 16, borderRadius: 18 },
+          inlineText: { fontSize: 18, fontWeight: '900' as const },
+        };
       default: // medium
-        return { btn: 'h-11 px-4 rounded-xl', text: 'text-sm' };
+        return {
+          btn: 'h-11 px-4 rounded-xl',
+          text: 'text-sm',
+          inlineBtn: { height: 44, paddingHorizontal: 16, borderRadius: 12 },
+          inlineText: { fontSize: 14, fontWeight: '600' as const },
+        };
     }
   };
 
@@ -392,26 +424,43 @@ export const AppButton: React.FC<AppButtonProps> = ({
 
   return (
     <TouchableOpacity
-      style={style}
+      style={[
+        {
+          width: fullWidth ? '100%' : 'auto',
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: isDisabled ? 0.55 : 1,
+        },
+        v.inlineBtn,
+        sz.inlineBtn,
+        style,
+      ]}
       className={`items-center justify-center ${fullWidth ? 'w-full' : ''} ${v.btn} ${sz.btn} ${isDisabled ? 'opacity-55' : 'active:opacity-90'} ${className}`}
       onPress={onPress}
       disabled={isDisabled}
       activeOpacity={0.8}
     >
       {loading ? (
-        <View className="flex-row items-center justify-center">
-          <ActivityIndicator size="small" color={v.loaderColor} className="mr-2" />
-          <Text style={textStyle} className={`font-bold tracking-wide ${v.text} ${sz.text} ${textClassName}`}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }} className="flex-row items-center justify-center">
+          <ActivityIndicator size="small" color={v.loaderColor} style={{ marginRight: 8 }} className="mr-2" />
+          <Text
+            style={[v.inlineText, sz.inlineText, textStyle]}
+            className={`font-bold tracking-wide ${v.text} ${sz.text} ${textClassName}`}
+          >
             {loadingText || title}
           </Text>
         </View>
       ) : (
-        <View className="flex-row items-center justify-center">
-          {icon ? <View className="mr-2">{icon}</View> : null}
-          <Text style={textStyle} className={`font-bold tracking-wide ${v.text} ${sz.text} ${textClassName}`} numberOfLines={1}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }} className="flex-row items-center justify-center">
+          {icon ? <View style={{ marginRight: 8 }} className="mr-2">{icon}</View> : null}
+          <Text
+            style={[v.inlineText, sz.inlineText, textStyle]}
+            className={`font-bold tracking-wide ${v.text} ${sz.text} ${textClassName}`}
+            numberOfLines={1}
+          >
             {title}
           </Text>
-          {rightIcon ? <View className="ml-2">{rightIcon}</View> : null}
+          {rightIcon ? <View style={{ marginLeft: 8 }} className="ml-2">{rightIcon}</View> : null}
         </View>
       )}
     </TouchableOpacity>

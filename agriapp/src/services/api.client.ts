@@ -60,25 +60,9 @@ export const getApiBase = (): string => {
 
 export const API_BASE = getApiBase();
 
-// Configure Axios fallback: If HTTPS fails, seamlessly fallback to HTTP
-axios.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const config = error.config;
-    if (
-      config &&
-      !config._retry &&
-      config.url &&
-      config.url.startsWith('https://mathira.jeenora.com')
-    ) {
-      console.warn('⚠️ [Network Interceptor]: Retrying seamlessly with HTTP fallback...');
-      config._retry = true;
-      config.url = config.url.replace(/^https:\/\/mathira\.jeenora\.com/, 'http://mathira.jeenora.com');
-      return axios(config);
-    }
-    return Promise.reject(error);
-  }
-);
+// Standardize Axios defaults for cloud HTTPS endpoints
+axios.defaults.headers.common['Accept'] = 'application/json';
+axios.defaults.timeout = 12000;
 
 /**
  * Safely extracts array data from API response regardless of JSON nesting

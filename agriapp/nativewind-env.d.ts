@@ -38,3 +38,5 @@ declare module 'react-native-safe-area-context' {
     className?: string;
   }
 }
+
+declare module '*.css';

@@ -1,3 +1,4 @@
+import './global.css';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Text, View, TextInput,
@@ -786,56 +787,101 @@ export default function App() {
           <BottomLandscape width={windowWidth} height={130} />
 
           <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 36, paddingBottom: 40, alignItems: 'stretch' }}
             contentContainerClassName="px-5 pt-9 pb-10 z-10 items-stretch"
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
             {/* Centered Brand Logo with Green Circle Ring */}
-            <View className="items-center mb-4">
+            <View style={{ alignItems: 'center', marginBottom: 16 }} className="items-center mb-4">
               <View
-                style={{ width: 92, height: 92, overflow: 'hidden' }}
+                style={{ width: 92, height: 92, overflow: 'hidden', borderRadius: 46, borderWidth: 2, borderColor: '#059669', backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}
                 className="w-[92px] h-[92px] rounded-full border-2 border-emerald-600 bg-white items-center justify-center shadow-md overflow-hidden"
               >
                 <Image
                   source={require('./asset/logo.png')}
-                  style={{ width: 80, height: 80 }}
+                  style={{ width: 80, height: 80, borderRadius: 40 }}
                   className="w-20 h-20 rounded-full"
                   resizeMode="contain"
                 />
               </View>
-              <Text className="text-2xl font-black text-slate-900 text-center mt-3 tracking-tight">Mathira Organic Farming</Text>
-              <Text className="text-xs text-slate-500 text-center mt-0.5 font-medium">
+              <Text style={{ fontSize: 24, fontWeight: '900', color: '#0F172A', textAlign: 'center', marginTop: 12, letterSpacing: -0.5 }} className="text-2xl font-black text-slate-900 text-center mt-3 tracking-tight">Mathira Organic Farming</Text>
+              <Text style={{ fontSize: 13, color: '#64748B', textAlign: 'center', marginTop: 4, fontWeight: '500' }} className="text-xs text-slate-500 text-center mt-0.5 font-medium">
                 Fresh organic products, delivered to your door.
               </Text>
             </View>
 
             {/* Delivery Address Card with Change action */}
-            <View className="flex-row items-center bg-emerald-50 border border-emerald-200 rounded-2xl p-3 mb-5 gap-2.5">
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#ECFDF5',
+                borderColor: '#A7F3D0',
+                borderWidth: 1,
+                borderRadius: 16,
+                padding: 12,
+                marginBottom: 20,
+              }}
+              className="flex-row items-center bg-emerald-50 border border-emerald-200 rounded-2xl p-3 mb-5 gap-2.5"
+            >
               <MapPin size={22} color="#059669" />
-              <View className="flex-1">
-                <Text className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">Delivering to</Text>
-                <Text className="text-xs font-semibold text-slate-800 mt-0.5" numberOfLines={1}>
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#065F46', textTransform: 'uppercase', letterSpacing: 0.5 }} className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">Delivering to</Text>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#1E293B', marginTop: 2 }} className="text-xs font-semibold text-slate-800 mt-0.5" numberOfLines={1}>
                   {selectedLocation?.address || 'Sanitorium, Perundurai, Tamil Nadu'}
                 </Text>
               </View>
               <TouchableOpacity
+                style={{ backgroundColor: '#059669', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}
                 className="bg-emerald-600 px-3 py-1.5 rounded-lg"
                 onPress={() => setIsChangingLocation(true)}
                 activeOpacity={0.8}
               >
-                <Text className="text-white text-xs font-bold">Change</Text>
+                <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '700' }} className="text-white text-xs font-bold">Change</Text>
               </TouchableOpacity>
             </View>
 
             {authStep === 'PHONE' ? (
-              <View className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm mb-4">
-                <Text className="text-sm font-bold text-slate-800 mb-2.5">Enter Mobile Number</Text>
+              <View
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  borderColor: '#F1F5F9',
+                  borderWidth: 1,
+                  borderRadius: 16,
+                  padding: 16,
+                  marginBottom: 16,
+                  elevation: 2,
+                  shadowColor: '#000',
+                  shadowOpacity: 0.05,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowRadius: 8
+                }}
+                className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm mb-4"
+              >
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#1E293B', marginBottom: 10 }} className="text-sm font-bold text-slate-800 mb-2.5">Enter Mobile Number</Text>
 
-                <View className="flex-row items-center border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50">
-                  <View className="bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-300"><Text className="text-xs font-black text-emerald-800 tracking-wide">IN</Text></View>
-                  <Text className="text-base font-bold text-slate-900 ml-2">+91</Text>
-                  <View className="w-[1px] h-6 bg-slate-200 mx-3.5" />
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    borderColor: '#E2E8F0',
+                    borderWidth: 1,
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    backgroundColor: '#F8FAFC'
+                  }}
+                  className="flex-row items-center border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50"
+                >
+                  <View style={{ backgroundColor: '#D1FAE5', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: '#6EE7B7' }} className="bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-300">
+                    <Text style={{ fontSize: 12, fontWeight: '900', color: '#065F46' }} className="text-xs font-black text-emerald-800 tracking-wide">IN</Text>
+                  </View>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#0F172A', marginLeft: 8 }} className="text-base font-bold text-slate-900 ml-2">+91</Text>
+                  <View style={{ width: 1, height: 24, backgroundColor: '#E2E8F0', marginHorizontal: 12 }} className="w-[1px] h-6 bg-slate-200 mx-3.5" />
                   <TextInput
+                    style={{ flex: 1, fontSize: 15, color: '#0F172A', fontWeight: '600', paddingVertical: 0 }}
                     className="flex-1 text-[15px] text-slate-900 font-semibold py-0"
                     placeholder="10-digit mobile number"
                     placeholderTextColor="#94A3B8"
@@ -852,13 +898,27 @@ export default function App() {
 
                 {/* Auto-Generated OTP Display when 10-digit phone number is entered */}
                 {phone.length === 10 && (
-                  <View className="bg-emerald-50 border border-emerald-200 rounded-xl py-2 px-3 mt-2.5 flex-row items-center justify-between">
-                    <View className="flex-row items-center gap-1.5">
+                  <View
+                    style={{
+                      backgroundColor: '#ECFDF5',
+                      borderColor: '#A7F3D0',
+                      borderWidth: 1,
+                      borderRadius: 12,
+                      paddingVertical: 8,
+                      paddingHorizontal: 12,
+                      marginTop: 10,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}
+                    className="bg-emerald-50 border border-emerald-200 rounded-xl py-2 px-3 mt-2.5 flex-row items-center justify-between"
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }} className="flex-row items-center gap-1.5">
                       <Lock size={14} color="#047857" />
-                      <Text className="text-xs font-semibold text-emerald-800">Your OTP Code:</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#065F46', marginLeft: 6 }} className="text-xs font-semibold text-emerald-800">Your OTP Code:</Text>
                     </View>
-                    <View className="bg-white border border-emerald-300 px-2.5 py-0.5 rounded shadow-xs">
-                      <Text className="text-xs font-black text-emerald-800 tracking-wider">{generatedOtp || '1234'}</Text>
+                    <View style={{ backgroundColor: '#FFFFFF', borderColor: '#6EE7B7', borderWidth: 1, paddingHorizontal: 10, paddingVertical: 2, borderRadius: 6 }} className="bg-white border border-emerald-300 px-2.5 py-0.5 rounded shadow-xs">
+                      <Text style={{ fontSize: 12, fontWeight: '900', color: '#065F46', letterSpacing: 1 }} className="text-xs font-black text-emerald-800 tracking-wider">{generatedOtp || '1234'}</Text>
                     </View>
                   </View>
                 )}
@@ -883,28 +943,68 @@ export default function App() {
                 />
               </View>
             ) : (
-              <View className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm mb-4">
+              <View
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  borderColor: '#F1F5F9',
+                  borderWidth: 1,
+                  borderRadius: 16,
+                  padding: 16,
+                  marginBottom: 16,
+                  elevation: 2,
+                  shadowColor: '#000',
+                  shadowOpacity: 0.05,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowRadius: 8
+                }}
+                className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm mb-4"
+              >
                 <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12, alignSelf: 'flex-start' }}
                   className="flex-row items-center gap-1 mb-3 self-start"
                   onPress={() => { setAuthStep('PHONE'); setAuthError(null); }}
                   activeOpacity={0.7}
                 >
                   <ArrowLeft size={16} color="#047857" strokeWidth={2.5} />
-                  <Text className="text-xs font-bold text-emerald-700">Edit Number</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#047857', marginLeft: 4 }} className="text-xs font-bold text-emerald-700">Edit Number</Text>
                 </TouchableOpacity>
 
-                <Text className="text-lg font-bold text-slate-900">Verify Mobile Number</Text>
-                <Text className="text-xs text-slate-500 mt-1 mb-3">
-                  Enter the 4-digit code sent to <Text className="font-bold text-slate-800">+91 {phone}</Text>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: '#0F172A' }} className="text-lg font-bold text-slate-900">Verify Mobile Number</Text>
+                <Text style={{ fontSize: 12, color: '#64748B', marginTop: 4, marginBottom: 12 }} className="text-xs text-slate-500 mt-1 mb-3">
+                  Enter the 4-digit code sent to <Text style={{ fontWeight: '700', color: '#1E293B' }} className="font-bold text-slate-800">+91 {phone}</Text>
                 </Text>
 
                 {/* Auto-Generated OTP Display Banner */}
-                <View className="bg-emerald-50 border border-emerald-200 rounded-xl py-2.5 px-3 mb-3.5 flex-row items-center justify-between">
-                  <View className="flex-row items-center gap-1.5">
+                <View
+                  style={{
+                    backgroundColor: '#ECFDF5',
+                    borderColor: '#A7F3D0',
+                    borderWidth: 1,
+                    borderRadius: 12,
+                    paddingVertical: 10,
+                    paddingHorizontal: 12,
+                    marginBottom: 14,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}
+                  className="bg-emerald-50 border border-emerald-200 rounded-xl py-2.5 px-3 mb-3.5 flex-row items-center justify-between"
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }} className="flex-row items-center gap-1.5">
                     <Lock size={15} color="#047857" />
-                    <Text className="text-xs font-semibold text-emerald-800">Your OTP Code:</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#065F46', marginLeft: 6 }} className="text-xs font-semibold text-emerald-800">Your OTP Code:</Text>
                   </View>
                   <TouchableOpacity
+                    style={{
+                      backgroundColor: '#FFFFFF',
+                      borderColor: '#34D399',
+                      borderWidth: 1,
+                      paddingHorizontal: 12,
+                      paddingVertical: 4,
+                      borderRadius: 8,
+                      flexDirection: 'row',
+                      alignItems: 'center'
+                    }}
                     className="bg-white border border-emerald-400 px-3 py-1 rounded-lg shadow-xs flex-row items-center gap-1"
                     activeOpacity={0.7}
                     onPress={() => {
@@ -912,13 +1012,27 @@ export default function App() {
                       setAuthError(null);
                     }}
                   >
-                    <Text className="text-base font-black text-emerald-800 tracking-widest">{generatedOtp || '1234'}</Text>
-                    <Text className="text-[10px] text-emerald-600 font-bold ml-1">(Tap to fill)</Text>
+                    <Text style={{ fontSize: 16, fontWeight: '900', color: '#065F46', letterSpacing: 2 }} className="text-base font-black text-emerald-800 tracking-widest">{generatedOtp || '1234'}</Text>
+                    <Text style={{ fontSize: 10, color: '#059669', fontWeight: '700', marginLeft: 4 }} className="text-[10px] text-emerald-600 font-bold ml-1">(Tap to fill)</Text>
                   </TouchableOpacity>
                 </View>
 
-                <View className="items-center mb-3">
+                <View style={{ alignItems: 'center', marginBottom: 12 }} className="items-center mb-3">
                   <TextInput
+                    style={{
+                      fontSize: 28,
+                      fontWeight: '800',
+                      letterSpacing: 8,
+                      textAlign: 'center',
+                      color: '#0F172A',
+                      backgroundColor: '#F8FAFC',
+                      borderColor: '#E2E8F0',
+                      borderWidth: 1,
+                      borderRadius: 12,
+                      paddingVertical: 12,
+                      paddingHorizontal: 24,
+                      width: 208
+                    }}
                     className="text-3xl font-extrabold tracking-widest text-center text-slate-900 bg-slate-50 border border-slate-200 rounded-xl py-3 px-6 w-52"
                     placeholder="• • • •"
                     placeholderTextColor="#CBD5E1"
@@ -936,7 +1050,7 @@ export default function App() {
                     }}
                     autoFocus
                   />
-                  <Text className="text-[11px] text-slate-400 mt-1.5 font-medium">
+                  <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 6, fontWeight: '500' }} className="text-[11px] text-slate-400 mt-1.5 font-medium">
                     Type the 4-digit OTP shown above to verify
                   </Text>
                 </View>
@@ -960,12 +1074,12 @@ export default function App() {
                   textClassName="text-lg font-black tracking-wider text-white"
                 />
 
-                <View className="flex-row justify-center items-center mt-4">
-                  <Text className="text-xs text-slate-500">Didn't receive code? </Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 16 }} className="flex-row justify-center items-center mt-4">
+                  <Text style={{ fontSize: 12, color: '#64748B' }} className="text-xs text-slate-500">Didn't receive code? </Text>
                   <TouchableOpacity
                     onPress={() => handleSendOtp(phone)}
                   >
-                    <Text className="text-xs font-bold text-emerald-700">
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#047857' }} className="text-xs font-bold text-emerald-700">
                       Resend OTP
                     </Text>
                   </TouchableOpacity>
@@ -974,28 +1088,41 @@ export default function App() {
             )}
 
             {/* Trust & Freshness Guarantee Badges */}
-            <View className="mt-3 mb-6">
-              <View className="flex-row items-center justify-around py-3 px-2 bg-emerald-50/70 border border-emerald-100 rounded-2xl shadow-xs">
-                <View className="items-center px-1">
+            <View style={{ marginTop: 12, marginBottom: 24 }} className="mt-3 mb-6">
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-around',
+                  paddingVertical: 14,
+                  paddingHorizontal: 8,
+                  backgroundColor: '#F0FDF4',
+                  borderColor: '#DCFCE7',
+                  borderWidth: 1,
+                  borderRadius: 16
+                }}
+                className="flex-row items-center justify-around py-3 px-2 bg-emerald-50/70 border border-emerald-100 rounded-2xl shadow-xs"
+              >
+                <View style={{ alignItems: 'center', flex: 1, paddingHorizontal: 4 }} className="items-center px-1">
                   <Sprout size={22} color="#059669" />
-                  <Text className="text-[11px] font-black text-slate-800 mt-0.5">100% Organic</Text>
-                  <Text className="text-[9px] font-semibold text-emerald-800">Certified Pure</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '900', color: '#1E293B', marginTop: 4 }} className="text-[11px] font-black text-slate-800 mt-0.5">100% Organic</Text>
+                  <Text style={{ fontSize: 9, fontWeight: '600', color: '#065F46' }} className="text-[9px] font-semibold text-emerald-800">Certified Pure</Text>
                 </View>
-                <View className="w-[1px] h-7 bg-emerald-200" />
-                <View className="items-center px-1">
+                <View style={{ width: 1, height: 28, backgroundColor: '#A7F3D0' }} className="w-[1px] h-7 bg-emerald-200" />
+                <View style={{ alignItems: 'center', flex: 1, paddingHorizontal: 4 }} className="items-center px-1">
                   <Tractor size={22} color="#059669" />
-                  <Text className="text-[11px] font-black text-slate-800 mt-0.5">Direct Farm</Text>
-                  <Text className="text-[9px] font-semibold text-emerald-800">Fair to Farmers</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '900', color: '#1E293B', marginTop: 4 }} className="text-[11px] font-black text-slate-800 mt-0.5">Direct Farm</Text>
+                  <Text style={{ fontSize: 9, fontWeight: '600', color: '#065F46' }} className="text-[9px] font-semibold text-emerald-800">Fair to Farmers</Text>
                 </View>
-                <View className="w-[1px] h-7 bg-emerald-200" />
-                <View className="items-center px-1">
+                <View style={{ width: 1, height: 28, backgroundColor: '#A7F3D0' }} className="w-[1px] h-7 bg-emerald-200" />
+                <View style={{ alignItems: 'center', flex: 1, paddingHorizontal: 4 }} className="items-center px-1">
                   <Zap size={22} color="#059669" />
-                  <Text className="text-[11px] font-black text-slate-800 mt-0.5">Morning Fresh</Text>
-                  <Text className="text-[9px] font-semibold text-emerald-800">Daily Harvest</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '900', color: '#1E293B', marginTop: 4 }} className="text-[11px] font-black text-slate-800 mt-0.5">Morning Fresh</Text>
+                  <Text style={{ fontSize: 9, fontWeight: '600', color: '#065F46' }} className="text-[9px] font-semibold text-emerald-800">Daily Harvest</Text>
                 </View>
               </View>
 
-              <Text className="text-[11px] text-slate-400 text-center mt-3 font-medium">
+              <Text style={{ fontSize: 11, color: '#94A3B8', textAlign: 'center', marginTop: 12, fontWeight: '500' }} className="text-[11px] text-slate-400 text-center mt-3 font-medium">
                 Safe & Secure Login • No Password Required
               </Text>
             </View>
