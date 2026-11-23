@@ -9,11 +9,6 @@
       "**/*"
     ],
     "icon": "./asset/logo.png",
-    "splash": {
-      "image": "./asset/gif.gif",
-      "resizeMode": "contain",
-      "backgroundColor": "#FFFFFF"
-    },
     "ios": {
       "supportsTablet": true
     },
