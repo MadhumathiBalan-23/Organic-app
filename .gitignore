@@ -45,6 +45,7 @@ Desktop.ini
 *.log
 *.db-journal
 *.apk
+*.aab
 
 .gradle/
 **/android/.gradle/
